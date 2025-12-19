@@ -1,0 +1,20 @@
+kivy==2.3.0
+https://github.com/kivymd/KivyMD/archive/master.zip  # Use KivyMD version 2.0.0
+
+sqlalchemy==2.0.30
+alembic==1.13.1
+
+requests==2.31.0
+aiohttp==3.9.5
+
+python-dateutil==2.9.0.post0
+pytz==2024.1
+
+python-dotenv==1.0.1
+
+black==24.4.2
+flake8==7.0.0
+pytest==8.1.1
+
+pandas==2.2.2
+numpy==1.26.4

@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vibe-fridge"
+version = "0.1.0"
+description = "智能物品管理与过期提醒安卓应用"
+requires-python = ">=3.8"
+dependencies = [
+    "kivy>=2.3.0",
+    "kivymd @ git+https://github.com/kivymd/KivyMD.git",
+    "sqlalchemy>=2.0.30",
+    "alembic>=1.13.1",
+    "requests>=2.31.0",
+    "python-dateutil>=2.9.0",
+    "pytz>=2024.1",
+    "python-dotenv>=1.0.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=24.4.2",
+    "flake8>=7.0.0",
+    "pytest>=8.1.1",
+]
+ai = [
+    "pandas>=2.2.2",
+    "numpy>=1.26.4",
+]
+
+[tool.black]
+line-length = 88
+target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
+
+[tool.pytest.ini_options]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+known_third_party = ["kivy", "kivymd", "sqlalchemy", "alembic"]
+
+[project.scripts]
+vibe-fridge = "app.main:main"
