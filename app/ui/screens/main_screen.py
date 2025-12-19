@@ -145,11 +145,17 @@ class ItemListItem(MDListItem):
         }
         category_text = category_map.get(self.category, "其他")
 
-        status_text = "正常"
-        if self.days_until_expiry < 0:
-            status_text = "已过期"
-        elif self.days_until_expiry <= 3:
-            status_text = "即将过期"
+        # 根据是否有过期日期来决定状态文案
+        has_expiry = self.expiry_date != "无"
+        if not has_expiry:
+            # 未设置过期日期，不再错误显示为“即将过期”
+            status_text = "无过期日期"
+        else:
+            status_text = "正常"
+            if self.days_until_expiry < 0:
+                status_text = "已过期"
+            elif self.days_until_expiry <= 3:
+                status_text = "即将过期"
 
         supporting_text = f"{category_text} | {status_text}"
         text_box.add_widget(_make_label(supporting_text, dp(18), (0.35, 0.35, 0.35, 1)))
@@ -170,7 +176,10 @@ class ItemListItem(MDListItem):
 
     def _setup_background(self):
         """根据过期状态设置背景色"""
-        if self.days_until_expiry < 0:
+        # 没有过期日期的物品统一按“正常”处理，不高亮为即将过期/已过期
+        if self.expiry_date == "无":
+            self._set_background_color(1, 1, 1)
+        elif self.days_until_expiry < 0:
             # 已过期 - 浅红色
             self._set_background_color(1, 0.9, 0.9)
         elif self.days_until_expiry <= 3:
