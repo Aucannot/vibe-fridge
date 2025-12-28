@@ -75,10 +75,12 @@ class VibeFridgeApp(MDApp):
             try:
                 # 确保字体应用到所有文本组件：遍历 KivyMD 的字体样式并替换为中文字体
                 if hasattr(self.theme_cls, 'font_styles'):
-                    # 为所有字体样式设置中文字体
+                    # 为所有字体样式设置中文字体，但跳过"Icon"样式（图标需要使用自己的字体）
                     for style_name in self.theme_cls.font_styles:
+                        if style_name == 'Icon':
+                            continue  # 跳过图标字体样式
                         if hasattr(self.theme_cls.font_styles[style_name], 'font_name'):
-                            self.theme_cls.font_styles[style_name].font_name = chinese_font_name
+                            self.theme_cls.font_styles[style_name]['font-name'] = chinese_font_name
                 print(f"已为 KivyMD 设置中文字体: {chinese_font_name}")
             except Exception as e:
                 print(f"设置 KivyMD 字体失败: {e}")

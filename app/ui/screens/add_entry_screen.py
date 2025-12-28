@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 选择添加方式屏幕 - 展示三种添加物品的入口（仅展示，不实现逻辑）
 1. 从订单截图自动批量导入
@@ -41,6 +42,7 @@ class AddEntryScreen(Screen):
         back_btn = MDIconButton(
             icon="arrow-left",
             on_release=self._on_back_click,
+            font_name="Roboto",
         )
         header.add_widget(back_btn)
 
@@ -110,6 +112,7 @@ class AddEntryScreen(Screen):
         icon_btn = MDIconButton(
             icon=icon,
             disabled=True,
+            font_name="Roboto",
         )
         layout.add_widget(icon_btn)
 

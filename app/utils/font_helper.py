@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 字体辅助工具 - 确保中文字体正确应用到所有组件
 """
@@ -107,28 +108,51 @@ def apply_font_to_widget(widget, font_name):
     """
     为组件应用中文字体。
 
-    注意：不要改写图标控件（如 MDIconButton、MDListItemLeadingIcon），
+    注意：不要改写图标控件（如 MDIconButton、MDIcon、MDListItemLeadingIcon、MDListItemTrailingIcon），
     它们依赖自己的 icon 字体，否则左侧图标会变成乱码。
     """
     if not font_name or widget is None:
         return
 
     try:
-        # 延迟导入，避免在 Kivy 初始化前导入 UI 模块
         from kivy.uix.label import Label
         from kivy.uix.textinput import TextInput
         try:
-            from kivymd.uix.button import MDButtonText
+            from kivymd.uix.button import MDButtonText, MDIconButton
+            from kivymd.uix.label import MDIcon
+            from kivymd.uix.list import (
+                MDListItemLeadingIcon, MDListItemTrailingIcon, 
+                MDListItemIcon
+            )
         except Exception:
             MDButtonText = type("Dummy", (), {})
+            MDIconButton = type("Dummy", (), {})
+            MDIcon = type("Dummy", (), {})
+            MDListItemLeadingIcon = type("Dummy", (), {})
+            MDListItemTrailingIcon = type("Dummy", (), {})
+            MDListItemIcon = type("Dummy", (), {})
 
-        # 只对纯文本类控件设置字体：
-        # - Label / TextInput：基础文本
-        # - MDButtonText：KivyMD 按钮文字
-        # 不包含 MDLabel，避免覆盖 MDIconButton 等图标控件内部的 icon 字体。
+        # 排除所有图标控件，避免影响图标显示
+        # 使用类名检查，避免isinstance检查失败的问题
+        widget_type_name = type(widget).__name__
+        
+        # 检查是否是图标控件
+        is_icon_widget = (
+            widget_type_name == 'MDIcon' or
+            widget_type_name == 'MDIconButton' or
+            widget_type_name == 'MDListItemLeadingIcon' or
+            widget_type_name == 'MDListItemTrailingIcon' or
+            widget_type_name == 'MDListItemIcon'
+        )
+        
+        if is_icon_widget:
+            return  # 直接返回，不处理子组件
+
+        # 只对纯文本类控件设置字体
         text_types = (Label, TextInput, MDButtonText)
 
-        if isinstance(widget, text_types):
+        # 确保不是图标控件（因为MDIcon可能继承自Label）
+        if isinstance(widget, text_types) and not is_icon_widget:
             if hasattr(widget, "font_name"):
                 widget.font_name = font_name
 
@@ -137,6 +161,5 @@ def apply_font_to_widget(widget, font_name):
             for child in widget.children:
                 apply_font_to_widget(child, font_name)
     except Exception:
-        # 字体应用失败时静默忽略，避免影响正常渲染
         return
 

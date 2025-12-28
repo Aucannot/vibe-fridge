@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 物品分页屏幕 - 左侧类别列表 + 右侧物品明细列表
 """
@@ -9,8 +10,10 @@ from kivy.uix.button import Button
 from kivy.uix.scrollview import ScrollView
 from kivy.metrics import dp
 from kivy.properties import StringProperty, NumericProperty, ObjectProperty
+from kivy.graphics import Color, Rectangle
 from kivymd.app import MDApp
-from kivymd.uix.list import MDList, MDListItem, MDListItemLeadingIcon
+from kivymd.uix.list import MDList, MDListItem
+from kivymd.uix.button import MDIconButton
 
 from app.services.item_service import item_service
 from app.models.item import ItemCategory
@@ -21,14 +24,13 @@ logger = setup_logger(__name__)
 
 
 try:
-    import app.main as main_module
-
-    CHINESE_FONT = getattr(main_module, "CHINESE_FONT_NAME", None)
+    from app.main import CHINESE_FONT_NAME
+    CHINESE_FONT = CHINESE_FONT_NAME
 except Exception:
     CHINESE_FONT = None
 
 
-class SimpleItemListItem(MDListItem):
+class SimpleItemListItem(BoxLayout):
     """物品列表项（精简版，用于右侧列表）"""
 
     item_id = StringProperty()
@@ -47,35 +49,181 @@ class SimpleItemListItem(MDListItem):
         self.days_until_expiry = item_data.get("days_until_expiry", 0)
         self.quantity = item_data.get("quantity", 1)
 
-        # 左侧图标
-        self._setup_icon()
-        # 文本区域
-        self._setup_text()
+        # 设置基本布局属性
+        self.padding = (0, 0, 0, 0)
+        self.orientation = "horizontal"
+        self.size_hint_y = None
+        self.size_hint_x = 1  # 确保占据完整宽度
+        self.height = dp(80)
+        
+        # 直接添加图标到左侧 (固定宽度)
+        icon = self._setup_icon()
+        icon.size_hint_x = None
+        icon.width = dp(48)
+        self.add_widget(icon)
+        
+        # 添加文本内容到中间（占据剩余空间）
+        text_box = self._setup_text()
+        text_box.size_hint_x = 1  # 占据剩余空间
+        text_box.size_hint_y = None
+        text_box.height = dp(80)
+        self.add_widget(text_box)
+        
+        # 添加复选框到右侧 (固定宽度)
+        checkbox = self._setup_checkbox()
+        checkbox.size_hint_x = None
+        checkbox.width = dp(48)
+        self.add_widget(checkbox)
+        
+        self._setup_background()
+        
+        # 添加点击事件支持 - 使用Kivy标准事件名，不需要手动绑定
 
     def _setup_icon(self):
+        from kivymd.uix.label import MDIcon
         icon_map = {
-            ItemCategory.FOOD.value: "food",
+            ItemCategory.FOOD.value: "food-apple",  # 使用KivyMD支持的食物图标
             ItemCategory.DAILY_NECESSITIES.value: "home",
-            ItemCategory.MEDICINE.value: "pill",
-            ItemCategory.COSMETICS.value: "lipstick",
+            ItemCategory.MEDICINE.value: "medical-bag",  # 使用KivyMD支持的药品图标
+            ItemCategory.COSMETICS.value: "face-woman",  # 使用KivyMD支持的化妆品图标
             ItemCategory.OTHERS.value: "package-variant",
         }
         icon_name = icon_map.get(self.category, "package-variant")
-        self.add_widget(MDListItemLeadingIcon(icon=icon_name))
+        icon = MDIcon(
+            icon=icon_name,
+            theme_text_color="Custom",
+            text_color=(0.4, 0.4, 0.4, 1),
+            size_hint_x=None,
+            width=dp(48),
+            size_hint_y=None,
+            height=dp(80),
+            halign="center",
+            valign="middle",
+            font_size=dp(28),  # 设置合适的图标大小
+        )
+        # KivyMD会自动处理图标字体，不需要手动设置font_name为Roboto
+        return icon
 
     def _setup_text(self):
-        # 这里只展示一行：名称 x数量
-        text = f"{self.item_name} x{self.quantity}"
-        label = Label(
-            text=text,
-            halign="left",
-            valign="middle",
-            color=(0, 0, 0, 1),
+        text_box = BoxLayout(
+            orientation="vertical",
+            padding=(dp(8), dp(6)),
+            spacing=dp(2),
+            size_hint_y=None,
+            size_hint_x=1,
         )
-        label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
-        if CHINESE_FONT:
-            label.font_name = CHINESE_FONT
-        self.add_widget(label)
+        text_box.bind(minimum_height=lambda inst, val: setattr(inst, "height", val))
+        
+        def _make_label(text, height, color, font_size=dp(14), bold=False):
+            lbl = Label(
+                text=text,
+                size_hint_y=None,
+                height=height,
+                halign="left",
+                valign="middle",
+                color=color,
+                font_size=font_size,
+                bold=bold,
+            )
+            lbl.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
+            if CHINESE_FONT:
+                lbl.font_name = CHINESE_FONT
+            return lbl
+        
+        headline_text = f"{self.item_name} x{self.quantity}"
+        text_box.add_widget(_make_label(headline_text, dp(24), (0.15, 0.15, 0.15, 1), dp(16), True))
+
+        category_map = {
+            ItemCategory.FOOD.value: "食品",
+            ItemCategory.DAILY_NECESSITIES.value: "日用品",
+            ItemCategory.MEDICINE.value: "药品",
+            ItemCategory.COSMETICS.value: "化妆品",
+            ItemCategory.OTHERS.value: "其他",
+        }
+        category_text = category_map.get(self.category, "其他")
+
+        if self.expiry_date == "无":
+            status_text = "无过期日期"
+            status_color = (0.5, 0.5, 0.5, 1)
+        else:
+            status_text = "正常"
+            status_color = (0.3, 0.7, 0.3, 1)
+            if self.days_until_expiry < 0:
+                status_text = "已过期"
+                status_color = (0.85, 0.25, 0.25, 1)
+            elif self.days_until_expiry <= 3:
+                status_text = "即将过期"
+                status_color = (0.9, 0.6, 0.2, 1)
+
+        supporting_text = f"{category_text}  |  {status_text}"
+        text_box.add_widget(_make_label(supporting_text, dp(20), status_color, dp(13)))
+
+        if self.expiry_date == "无":
+            tertiary_text = "无过期日期"
+            tertiary_color = (0.55, 0.55, 0.55, 1)
+        else:
+            days_text = f"剩余{self.days_until_expiry}天"
+            if self.days_until_expiry < 0:
+                days_text = f"过期{-self.days_until_expiry}天"
+            elif self.days_until_expiry == 0:
+                days_text = "今天过期"
+            tertiary_text = f"{self.expiry_date}  |  {days_text}"
+            if self.days_until_expiry < 0:
+                tertiary_color = (0.8, 0.2, 0.2, 1)
+            elif self.days_until_expiry <= 3:
+                tertiary_color = (0.85, 0.55, 0.2, 1)
+            else:
+                tertiary_color = (0.45, 0.45, 0.45, 1)
+        text_box.add_widget(_make_label(tertiary_text, dp(20), tertiary_color, dp(12)))
+
+        return text_box
+
+    def _setup_checkbox(self):
+        from kivy.uix.checkbox import CheckBox
+        checkbox = CheckBox(
+            size_hint_x=None,
+            width=dp(48),
+        )
+        return checkbox
+
+    def _setup_background(self):
+        if self.expiry_date == "无":
+            self._set_background_color(1, 1, 1)
+        elif self.days_until_expiry < 0:
+            self._set_background_color(1, 0.9, 0.9)
+        elif self.days_until_expiry <= 3:
+            self._set_background_color(1, 1, 0.9)
+        else:
+            self._set_background_color(1, 1, 1)
+
+    def _set_background_color(self, r, g, b):
+        with self.canvas.before:
+            Color(r, g, b, 1)
+            Rectangle(pos=self.pos, size=self.size)
+        self.bind(pos=self._update_rect, size=self._update_rect)
+
+    def _update_rect(self, *args):
+        self.canvas.before.clear()
+        with self.canvas.before:
+            if self.expiry_date == "无":
+                Color(1, 1, 1, 1)
+            elif self.days_until_expiry < 0:
+                Color(1, 0.9, 0.9, 1)
+            elif self.days_until_expiry <= 3:
+                Color(1, 1, 0.9, 1)
+            else:
+                Color(1, 1, 1, 1)
+            Rectangle(pos=self.pos, size=self.size)
+    
+    def on_touch_down(self, touch):
+        if self.collide_point(*touch.pos):
+            # 触发点击事件
+            self.dispatch('on_release')
+        return super().on_touch_down(touch) if hasattr(super(), 'on_touch_down') else False
+    
+    def on_release(self, *args):
+        # 默认实现，会被外部绑定覆盖
+        pass
 
 
 class ItemsScreen(Screen):
@@ -125,14 +273,33 @@ class ItemsScreen(Screen):
             btn = Button(
                 text=text,
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(44),
+                size_hint_x=1,
+                width=dp(100),
                 background_normal="",
                 background_color=(0.96, 0.96, 0.96, 1),
-                color=(0.15, 0.15, 0.15, 1),
+                color=(0.3, 0.3, 0.3, 1),
+                halign="center",
+                font_size=dp(15),
                 on_release=lambda *_: self._on_category_selected(category),
             )
-            if CHINESE_FONT:
-                btn.font_name = CHINESE_FONT
+            btn.text_size = btn.size
+            btn.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], val[1])))
+
+            def on_press(instance):
+                instance.background_color = (0.2, 0.6, 0.9, 1)
+                instance.color = (1, 1, 1, 1)
+
+            def on_release(instance):
+                if self.selected_category == category:
+                    instance.background_color = (0.25, 0.55, 0.9, 1)
+                    instance.color = (1, 1, 1, 1)
+                else:
+                    instance.background_color = (0.96, 0.96, 0.96, 1)
+                    instance.color = (0.3, 0.3, 0.3, 1)
+
+            btn.bind(on_press=on_press)
+            btn.bind(on_release=on_release)
             cat_box.add_widget(btn)
             self._category_buttons[category] = btn
 
@@ -161,7 +328,12 @@ class ItemsScreen(Screen):
         right.add_widget(header)
 
         list_scroll = ScrollView()
-        self.item_list_layout = MDList()
+        self.item_list_layout = BoxLayout(
+            orientation="vertical",
+            size_hint_y=None,
+            spacing=dp(2),
+        )
+        self.item_list_layout.bind(minimum_height=self.item_list_layout.setter("height"))
         list_scroll.add_widget(self.item_list_layout)
         right.add_widget(list_scroll)
 
@@ -180,11 +352,11 @@ class ItemsScreen(Screen):
         """高亮当前选中类别"""
         for cat, btn in self._category_buttons.items():
             if cat == self.selected_category:
-                btn.background_color = (0.25, 0.55, 0.9, 1)
+                btn.background_color = (0.2, 0.6, 0.9, 1)
                 btn.color = (1, 1, 1, 1)
             else:
                 btn.background_color = (0.96, 0.96, 0.96, 1)
-                btn.color = (0.15, 0.15, 0.15, 1)
+                btn.color = (0.3, 0.3, 0.3, 1)
 
     def _prepare_item_data(self, item) -> dict:
         from datetime import date as _date
@@ -216,8 +388,11 @@ class ItemsScreen(Screen):
                     text="该类别下暂无物品",
                     size_hint_y=None,
                     height=dp(60),
+                    halign="left",
+                    valign="middle",
                     color=(0.6, 0.6, 0.6, 1),
                 )
+                empty.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], val[1])))
                 if CHINESE_FONT:
                     empty.font_name = CHINESE_FONT
                 self.item_list_layout.add_widget(empty)
@@ -237,8 +412,11 @@ class ItemsScreen(Screen):
                 text="加载失败，请重试",
                 size_hint_y=None,
                 height=dp(60),
+                halign="left",
+                valign="middle",
                 color=(0.9, 0.3, 0.3, 1),
             )
+            error.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], val[1])))
             if CHINESE_FONT:
                 error.font_name = CHINESE_FONT
             self.item_list_layout.add_widget(error)

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 主屏幕 - 显示物品清单和主要功能
 """
@@ -9,6 +10,7 @@ from kivy.uix.button import Button
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.floatlayout import FloatLayout
+from kivy.uix.modalview import ModalView
 from kivy.graphics import Color, Rectangle
 from kivy.metrics import dp
 from kivy.properties import (
@@ -18,15 +20,13 @@ from kivy.clock import Clock
 from kivymd.app import MDApp
 from kivymd.uix.list import (
     MDList, MDListItem,
-    MDListItemLeadingIcon,
     MDListItemHeadlineText,
     MDListItemSupportingText,
     MDListItemTertiaryText,
 )
+from kivymd.uix.button import MDFabButton, MDButton, MDIconButton
 from kivymd.uix.card import MDCard
-from kivymd.uix.button import MDFabButton, MDButton
 from kivymd.uix.dialog import MDDialog
-from kivymd.uix.menu import MDDropdownMenu
 from datetime import date, timedelta
 import os
 
@@ -48,17 +48,32 @@ except:
 class OneLineListItem(MDListItem):
     """单行列表项 - 用于下拉菜单"""
     text = StringProperty()
-    
+
     def __init__(self, text="", **kwargs):
         super().__init__(**kwargs)
-        self.text = text
-        headline = MDListItemHeadlineText(text=text)
+        self.theme_text_color = "Custom"
+        self.text_color = (0, 0, 0, 1)
+        self._txt = text
+
+        from kivy.uix.label import Label
+        from kivy.metrics import dp
+
+        label = Label(
+            text=text,
+            size_hint_y=None,
+            height=dp(48),
+            halign="left",
+            valign="middle",
+            color=(0, 0, 0, 1),
+            font_size=dp(16),
+        )
+        label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], val[1])))
         if CHINESE_FONT:
-            headline.font_name = CHINESE_FONT
-        self.add_widget(headline)
+            label.font_name = CHINESE_FONT
+        self.add_widget(label)
 
 
-class ItemListItem(MDListItem):
+class ItemListItem(BoxLayout):
     """物品列表项"""
     item_id = StringProperty()
     item_name = StringProperty()
@@ -76,33 +91,86 @@ class ItemListItem(MDListItem):
         self.days_until_expiry = item_data.get('days_until_expiry', 0)
         self.quantity = item_data.get('quantity', 1)
 
-        # 设置图标
-        self._setup_icon()
+        # 添加交互状态属性
+        self.is_hovering = False
+        self.is_pressed = False
+        self.original_bg_color = None
 
-        # 设置文本
-        self._setup_text(item_data)
+        # 设置基本布局属性
+        self.orientation = "horizontal"
+        self.size_hint_y = None
+        self.size_hint_x = 1
+        self.height = dp(85)
+        self.pos_hint = {'x': 0, 'y': 0}
+
+        # 左侧图标
+        icon = self._setup_icon()
+        icon.size_hint_x = None
+        icon.width = dp(48)
+        self.add_widget(icon)
+
+        # 中间文本内容
+        text_box = self._setup_text(item_data)
+        text_box.size_hint_x = 1
+        self.add_widget(text_box)
+
+        # 右侧复选框
+        checkbox = self._setup_checkbox()
+        checkbox.size_hint_x = None
+        checkbox.width = dp(48)
+        self.add_widget(checkbox)
 
         # 设置背景色（根据过期状态）
         self._setup_background()
+        
+        # 添加点击事件支持 - 使用Kivy标准事件名，不需要手动绑定
+        self.register_event_type('on_release')
+        
+        # 绑定鼠标事件
+        self.bind(on_touch_move=self.on_touch_move)
 
     def _setup_icon(self):
-        """设置图标"""
-        icon_name = self._get_category_icon()
-        self.add_widget(MDListItemLeadingIcon(
-            icon=icon_name
-        ))
-
-    def _get_category_icon(self) -> str:
-        """根据类别获取图标名称"""
+        """设置图标（测试MDIcon显示）"""
+        from kivymd.uix.label import MDIcon
+        
+        # 创建MDIcon - 完全模仿items_screen.py的配置
         icon_map = {
-            ItemCategory.FOOD.value: "food",
+            ItemCategory.FOOD.value: "food-apple",  # 使用KivyMD支持的食物图标
             ItemCategory.DAILY_NECESSITIES.value: "home",
-            ItemCategory.MEDICINE.value: "pill",
-            ItemCategory.COSMETICS.value: "lipstick",
-            ItemCategory.OTHERS.value: "package-variant"
+            ItemCategory.MEDICINE.value: "medical-bag",  # 使用KivyMD支持的药品图标
+            ItemCategory.COSMETICS.value: "face-woman",  # 使用KivyMD支持的化妆品图标
+            ItemCategory.OTHERS.value: "package-variant",
         }
-        return icon_map.get(self.category, "package-variant")
-
+        icon_name = icon_map.get(self.category, "package-variant")
+        icon = MDIcon(
+            icon=icon_name,
+            theme_text_color="Custom",
+            text_color=(0.4, 0.4, 0.4, 1),
+            size_hint_x=None,
+            width=dp(48),
+            size_hint_y=None,
+            height=dp(80),
+            halign="center",
+            valign="middle",
+            font_size=dp(28),
+        )
+        
+        return icon
+    
+    def _setup_checkbox(self):
+        """设置右侧复选框"""
+        from kivymd.uix.selectioncontrol import MDCheckbox
+        
+        checkbox = MDCheckbox(
+            size_hint=(None, None),
+            size=(dp(32), dp(32)),
+            pos_hint={'center_y': 0.5},
+            active=False,
+            color=(0.5, 0.5, 0.5, 1),  # 默认未选中颜色
+            selected_color=(0.2, 0.5, 0.8, 1),  # 选中时的颜色
+        )
+        return checkbox
+    
     def _setup_text(self, item_data):
         """设置文本内容，使用自定义容器避免 MDListItem 的子控件布局问题"""
         from kivy.uix.label import Label
@@ -116,7 +184,7 @@ class ItemListItem(MDListItem):
         )
         text_box.bind(minimum_height=lambda inst, val: setattr(inst, "height", val))
 
-        def _make_label(text, height, color):
+        def _make_label(text, height, color, font_size=dp(14), bold=False):
             lbl = Label(
                 text=text,
                 size_hint_y=None,
@@ -124,18 +192,17 @@ class ItemListItem(MDListItem):
                 halign="left",
                 valign="middle",
                 color=color,
+                font_size=font_size,
+                bold=bold,
             )
-            # 让文本按容器宽度换行/居左
             lbl.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
             if CHINESE_FONT:
                 lbl.font_name = CHINESE_FONT
             return lbl
 
-        # 第一行：物品名称和数量
         headline_text = f"{self.item_name} x{self.quantity}"
-        text_box.add_widget(_make_label(headline_text, dp(22), (0, 0, 0, 1)))
+        text_box.add_widget(_make_label(headline_text, dp(28), (0.1, 0.1, 0.1, 1), dp(18), True))
 
-        # 第二行：类别和状态
         category_map = {
             ItemCategory.FOOD.value: "食品",
             ItemCategory.DAILY_NECESSITIES.value: "日用品",
@@ -145,66 +212,148 @@ class ItemListItem(MDListItem):
         }
         category_text = category_map.get(self.category, "其他")
 
-        # 根据是否有过期日期来决定状态文案
         has_expiry = self.expiry_date != "无"
         if not has_expiry:
-            # 未设置过期日期，不再错误显示为“即将过期”
             status_text = "无过期日期"
+            status_color = (0.5, 0.5, 0.5, 1)
         else:
             status_text = "正常"
+            status_color = (0.2, 0.6, 0.2, 1)
             if self.days_until_expiry < 0:
                 status_text = "已过期"
+                status_color = (0.8, 0.2, 0.2, 1)
             elif self.days_until_expiry <= 3:
                 status_text = "即将过期"
+                status_color = (0.85, 0.5, 0.1, 1)
 
-        supporting_text = f"{category_text} | {status_text}"
-        text_box.add_widget(_make_label(supporting_text, dp(18), (0.35, 0.35, 0.35, 1)))
+        supporting_text = f"{category_text}  |  {status_text}"
+        text_box.add_widget(_make_label(supporting_text, dp(22), status_color, dp(14)))
 
-        # 第三行：过期信息
         if self.expiry_date == "无":
             tertiary_text = "无过期日期"
+            tertiary_color = (0.5, 0.5, 0.5, 1)
         else:
             days_text = f"剩余{self.days_until_expiry}天"
             if self.days_until_expiry < 0:
                 days_text = f"过期{-self.days_until_expiry}天"
             elif self.days_until_expiry == 0:
                 days_text = "今天过期"
-            tertiary_text = f"{self.expiry_date} | {days_text}"
-        text_box.add_widget(_make_label(tertiary_text, dp(16), (0.5, 0.5, 0.5, 1)))
+            tertiary_text = f"{self.expiry_date}  |  {days_text}"
+            if self.days_until_expiry < 0:
+                tertiary_color = (0.75, 0.2, 0.2, 1)
+            elif self.days_until_expiry <= 3:
+                tertiary_color = (0.8, 0.5, 0.1, 1)
+            else:
+                tertiary_color = (0.4, 0.4, 0.4, 1)
+        text_box.add_widget(_make_label(tertiary_text, dp(22), tertiary_color, dp(13)))
 
-        self.add_widget(text_box)
+        return text_box
 
     def _setup_background(self):
-        """根据过期状态设置背景色"""
+        """根据过期状态设置背景色和圆角"""
+        # 设置布局属性
+        self.padding = (dp(8), dp(8), dp(8), dp(8))
+        self.spacing = dp(12)
+        
         # 没有过期日期的物品统一按“正常”处理，不高亮为即将过期/已过期
         if self.expiry_date == "无":
             self._set_background_color(1, 1, 1)
         elif self.days_until_expiry < 0:
             # 已过期 - 浅红色
-            self._set_background_color(1, 0.9, 0.9)
+            self._set_background_color(1, 0.95, 0.95)
         elif self.days_until_expiry <= 3:
             # 即将过期 - 浅黄色
-            self._set_background_color(1, 1, 0.9)
+            self._set_background_color(1, 1, 0.95)
         else:
             # 正常 - 白色
             self._set_background_color(1, 1, 1)
 
     def _set_background_color(self, r, g, b):
-        """设置背景颜色"""
+        """设置背景颜色和圆角"""
+        from kivy.graphics import RoundedRectangle
         with self.canvas.before:
             Color(r, g, b, 1)
-            Rectangle(pos=self.pos, size=self.size)
+            RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(12), dp(12), dp(12), dp(12)])
 
         # 绑定大小变化
         self.bind(pos=self._update_rect, size=self._update_rect)
 
     def _update_rect(self, *args):
-        """更新矩形位置和大小"""
+        """更新背景位置和大小"""
+        from kivy.graphics import RoundedRectangle
         self.canvas.before.clear()
         with self.canvas.before:
-            Color(1, 1, 1, 1 if self.days_until_expiry > 3 else
-                  0.9 if self.days_until_expiry >= 0 else 0.9)
-            Rectangle(pos=self.pos, size=self.size)
+            if self.expiry_date == "无":
+                Color(1, 1, 1, 1)
+            elif self.days_until_expiry < 0:
+                Color(1, 0.95, 0.95, 1)
+            elif self.days_until_expiry <= 3:
+                Color(1, 1, 0.95, 1)
+            else:
+                Color(1, 1, 1, 1)
+            RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(12), dp(12), dp(12), dp(12)])
+    
+    def on_touch_move(self, instance, touch):
+        """处理鼠标移动事件，实现悬停效果"""
+        is_hovering = self.collide_point(*touch.pos)
+        if is_hovering != self.is_hovering:
+            self.is_hovering = is_hovering
+            self._update_background_with_hover()
+        return False
+
+    def on_touch_down(self, touch):
+        """处理触摸事件，添加按下效果"""
+        if self.collide_point(*touch.pos):
+            self.is_pressed = True
+            self._update_background_with_press()
+            return True
+        return super().on_touch_down(touch) if hasattr(super(), 'on_touch_down') else False
+
+    def on_touch_up(self, touch):
+        """处理触摸抬起事件"""
+        if self.is_pressed and self.collide_point(*touch.pos):
+            self.dispatch('on_release')
+        self.is_pressed = False
+        self._update_background_with_hover()
+        return super().on_touch_up(touch) if hasattr(super(), 'on_touch_up') else False
+    
+    def on_release(self, *args):
+        """释放事件（供外部绑定）"""
+        pass
+
+    def _update_background_with_hover(self):
+        """更新背景色，添加悬停效果"""
+        if self.expiry_date == "无":
+            bg_color = (0.98, 0.98, 1, 1) if self.is_hovering else (1, 1, 1, 1)
+        elif self.days_until_expiry < 0:
+            bg_color = (1, 0.92, 0.92, 1) if self.is_hovering else (1, 0.95, 0.95, 1)
+        elif self.days_until_expiry <= 3:
+            bg_color = (1, 0.98, 0.92, 1) if self.is_hovering else (1, 1, 0.95, 1)
+        else:
+            bg_color = (0.98, 0.98, 1, 1) if self.is_hovering else (1, 1, 1, 1)
+        
+        self.canvas.before.clear()
+        from kivy.graphics import Color, RoundedRectangle
+        with self.canvas.before:
+            Color(*bg_color)
+            RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(12), dp(12), dp(12), dp(12)])
+
+    def _update_background_with_press(self):
+        """更新背景色，添加按下效果"""
+        if self.expiry_date == "无":
+            bg_color = (0.95, 0.95, 0.98, 1)
+        elif self.days_until_expiry < 0:
+            bg_color = (0.98, 0.88, 0.88, 1)
+        elif self.days_until_expiry <= 3:
+            bg_color = (0.98, 0.95, 0.88, 1)
+        else:
+            bg_color = (0.95, 0.95, 0.98, 1)
+        
+        self.canvas.before.clear()
+        from kivy.graphics import Color, RoundedRectangle
+        with self.canvas.before:
+            Color(*bg_color)
+            RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(12), dp(12), dp(12), dp(12)])
 
 
 class MainScreen(Screen):
@@ -320,8 +469,11 @@ class MainScreen(Screen):
             size_hint_x=0.4,
             background_color=(0.9, 0.9, 0.9, 1),
             color=(0, 0, 0, 1),
+            halign="center",
             on_release=self._show_category_menu
         )
+        self.category_button.text_size = self.category_button.size
+        self.category_button.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], val[1])))
         if CHINESE_FONT:
             self.category_button.font_name = CHINESE_FONT
         filter_bar.add_widget(self.category_button)
@@ -332,51 +484,51 @@ class MainScreen(Screen):
         """创建统计卡片"""
         stats_layout = BoxLayout(
             size_hint_y=None,
-            height=dp(100),
-            padding=dp(8),
-            spacing=dp(8)
+            height=dp(110),
+            padding=dp(12),
+            spacing=dp(10)
         )
 
-        # 总物品数卡片
-        self.total_card = self._create_stat_card("总物品", "0", (0.2, 0.6, 0.8, 1))
+        self.total_card = self._create_stat_card("总物品", "0", (0.2, 0.55, 0.85, 1), (0.95, 0.98, 1.0, 1))
         stats_layout.add_widget(self.total_card)
 
-        # 即将过期卡片
-        self.expiring_card = self._create_stat_card("即将过期", "0", (0.9, 0.6, 0.2, 1))
+        self.expiring_card = self._create_stat_card("即将过期", "0", (0.85, 0.55, 0.15, 1), (1.0, 0.98, 0.92, 1))
         stats_layout.add_widget(self.expiring_card)
 
-        # 已过期卡片
-        self.expired_card = self._create_stat_card("已过期", "0", (0.9, 0.3, 0.3, 1))
+        self.expired_card = self._create_stat_card("已过期", "0", (0.85, 0.25, 0.25, 1), (1.0, 0.94, 0.94, 1))
         stats_layout.add_widget(self.expired_card)
 
         return stats_layout
 
-    def _create_stat_card(self, title: str, value: str, color) -> MDCard:
+    def _create_stat_card(self, title: str, value: str, color, bg_color) -> MDCard:
         """创建统计卡片"""
         card = MDCard(
             size_hint=(0.33, 1),
-            padding=dp(8),
-            radius=[dp(8), dp(8), dp(8), dp(8)]
+            padding=dp(10),
+            radius=[dp(12), dp(12), dp(12), dp(12)],
+            md_bg_color=bg_color,
         )
 
         layout = BoxLayout(orientation='vertical')
 
-        # 标题
         title_label = Label(
             text=title,
-            font_size=dp(12),
-            color=(0.4, 0.4, 0.4, 1)
+            font_size=dp(13),
+            color=(0.45, 0.45, 0.45, 1),
+            size_hint_y=None,
+            height=dp(20),
         )
         if CHINESE_FONT:
             title_label.font_name = CHINESE_FONT
         layout.add_widget(title_label)
 
-        # 数值
         value_label = Label(
             text=value,
-            font_size=dp(24),
+            font_size=dp(28),
+            color=color,
             bold=True,
-            color=color
+            size_hint_y=None,
+            height=dp(36),
         )
         if CHINESE_FONT:
             value_label.font_name = CHINESE_FONT
@@ -406,55 +558,106 @@ class MainScreen(Screen):
         return scroll_view
 
     def _create_category_menu(self):
-        """创建类别筛选菜单"""
-        category_items = [
-            {
-                "viewclass": "OneLineListItem",
-                "text": "所有类别",
-                "on_release": lambda x="所有类别": self._select_category(None),
-            },
-            {
-                "viewclass": "OneLineListItem",
-                "text": "食品",
-                "on_release": lambda x="食品": self._select_category(ItemCategory.FOOD),
-            },
-            {
-                "viewclass": "OneLineListItem",
-                "text": "日用品",
-                "on_release": lambda x="日用品": self._select_category(ItemCategory.DAILY_NECESSITIES),
-            },
-            {
-                "viewclass": "OneLineListItem",
-                "text": "药品",
-                "on_release": lambda x="药品": self._select_category(ItemCategory.MEDICINE),
-            },
-            {
-                "viewclass": "OneLineListItem",
-                "text": "化妆品",
-                "on_release": lambda x="化妆品": self._select_category(ItemCategory.COSMETICS),
-            },
-            {
-                "viewclass": "OneLineListItem",
-                "text": "其他",
-                "on_release": lambda x="其他": self._select_category(ItemCategory.OTHERS),
-            }
+        """创建类别筛选菜单（使用自定义弹窗）"""
+        self.category_menu = ModalView(size_hint=(0.75, None), auto_dismiss=True, background_color=(0, 0, 0, 0.3))
+        self.category_menu.size_hint_y = None
+        self.category_menu.height = dp(420)
+
+        main_box = BoxLayout(orientation="vertical", padding=dp(0), spacing=dp(0), size_hint_y=None)
+        main_box.bind(minimum_height=main_box.setter('height'))
+
+        content_box = BoxLayout(
+            orientation="vertical",
+            padding=dp(20),
+            spacing=dp(12),
+            size_hint_y=None,
+            height=dp(400),
+        )
+        content_box.bind(height=self._update_content_height)
+
+        with content_box.canvas.before:
+            Color(1, 1, 1, 1)
+            Rectangle(size=content_box.size, pos=content_box.pos)
+        content_box.bind(pos=self._update_rect, size=self._update_rect)
+
+        title_label = Label(
+            text="选择类别",
+            size_hint_y=None,
+            height=dp(36),
+            font_size=dp(20),
+            bold=True,
+            color=(0.2, 0.2, 0.2, 1),
+        )
+        if CHINESE_FONT:
+            title_label.font_name = CHINESE_FONT
+        content_box.add_widget(title_label)
+
+        categories = [
+            ("所有类别", None),
+            ("食品", ItemCategory.FOOD),
+            ("日用品", ItemCategory.DAILY_NECESSITIES),
+            ("药品", ItemCategory.MEDICINE),
+            ("化妆品", ItemCategory.COSMETICS),
+            ("其他", ItemCategory.OTHERS),
         ]
 
-        self.category_menu = MDDropdownMenu(
-            caller=self.category_button,
-            items=category_items,
-            width_mult=4,
-            # 下拉菜单整体背景色，避免纯白色块太突兀
-            background_color=(0.97, 0.97, 0.99, 1),
+        for i, (cat_text, cat_value) in enumerate(categories):
+            btn = self._create_category_button(cat_text, cat_value)
+            content_box.add_widget(btn)
+
+        close_btn = Button(
+            text="取消",
+            size_hint_y=None,
+            height=dp(48),
+            background_color=(0.92, 0.92, 0.92, 1),
+            color=(0.4, 0.4, 0.4, 1),
+            background_normal="",
+            font_size=dp(16),
+        )
+        close_btn.bind(on_release=lambda x: self.category_menu.dismiss())
+        content_box.add_widget(close_btn)
+
+        main_box.add_widget(content_box)
+        self.category_menu.add_widget(main_box)
+
+    def _create_category_button(self, text, category_value):
+        """创建带悬停效果的类别按钮"""
+        btn = Button(
+            text=text,
+            size_hint_y=None,
+            height=dp(48),
+            background_color=(0.98, 0.98, 0.98, 1),
+            color=(0.3, 0.3, 0.3, 1),
+            background_normal="",
+            font_size=dp(16),
         )
 
-        # 稍微加一点圆角和阴影，让下拉菜单更像悬浮卡片
-        try:
-            self.category_menu.radius = [dp(10), dp(10), dp(10), dp(10)]
-            self.category_menu.shadow_color = (0, 0, 0, 0.18)
-        except Exception:
-            # 某些 KivyMD 版本可能没有这些属性，忽略即可
-            pass
+        def on_press(instance):
+            instance.background_color = (0.2, 0.6, 0.9, 1)
+            instance.color = (1, 1, 1, 1)
+
+        def on_release(instance):
+            instance.background_color = (0.98, 0.98, 0.98, 1)
+            instance.color = (0.3, 0.3, 0.3, 1)
+
+        btn.bind(on_press=on_press)
+        btn.bind(on_release=on_release)
+        btn.bind(
+            on_release=lambda instance, v=category_value, t=text: [
+                self._select_category(v),
+                self.category_menu.dismiss()
+            ]
+        )
+        return btn
+
+    def _update_rect(self, instance, value):
+        instance.canvas.before.clear()
+        with instance.canvas.before:
+            Color(1, 1, 1, 1)
+            Rectangle(size=instance.size, pos=instance.pos)
+
+    def _update_content_height(self, instance, height):
+        pass
 
     def _load_items(self, category: ItemCategory = None):
         """加载物品列表"""
@@ -471,9 +674,11 @@ class MainScreen(Screen):
                     text="暂无物品，点击右下角+添加",
                     size_hint_y=None,
                     height=dp(100),
+                    halign="left",
+                    valign="middle",
                     color=(0.6, 0.6, 0.6, 1),
-                    valign='middle'
                 )
+                empty_label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], val[1])))
                 if CHINESE_FONT:
                     empty_label.font_name = CHINESE_FONT
                 self.item_list_layout.add_widget(empty_label)

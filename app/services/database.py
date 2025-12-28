@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 数据库服务
 """
@@ -24,6 +25,11 @@ def get_database_url() -> str:
     """
     # 从环境变量获取数据库URL
     db_url = os.getenv('DATABASE_URL', 'sqlite:///data/vibe_fridge.db')
+    
+    # 确保SQLite使用UTF-8编码
+    if db_url.startswith('sqlite:///') and '?' not in db_url:
+        db_url += '?charset=utf8'
+    
     return db_url
 
 

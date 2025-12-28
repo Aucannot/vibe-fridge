@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 物品详情屏幕 - 显示物品详细信息和管理功能
 """
@@ -133,7 +134,8 @@ class ItemDetailScreen(Screen):
         # 编辑按钮
         edit_btn = MDIconButton(
             icon="pencil",
-            on_release=self._on_edit_click
+            on_release=self._on_edit_click,
+            font_name="Roboto",
         )
         header.add_widget(edit_btn)
 
@@ -392,7 +394,7 @@ class ItemDetailScreen(Screen):
         """创建AI预测卡片"""
         card = MDCard(
             size_hint_y=None,
-            height=dp(0),  # 默认高度为0，有数据时再调整
+            height=dp(0),
             padding=dp(16),
             radius=[dp(8), dp(8), dp(8), dp(8)]
         )
@@ -401,6 +403,8 @@ class ItemDetailScreen(Screen):
         ai_title_label = Label(
             text="AI预测信息",
             bold=True,
+            size_hint_y=None,
+            height=dp(24),
             color=(0.4, 0.4, 0.4, 1)
         )
         if CHINESE_FONT:
@@ -409,8 +413,11 @@ class ItemDetailScreen(Screen):
 
         self.ai_content_label = Label(
             text="",
-            color=(0.4, 0.4, 0.4, 1)
+            color=(0.4, 0.4, 0.4, 1),
+            halign="left",
+            valign="top"
         )
+        self.ai_content_label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], val[1])))
         if CHINESE_FONT:
             self.ai_content_label.font_name = CHINESE_FONT
         self.ai_layout.add_widget(self.ai_content_label)
@@ -422,7 +429,7 @@ class ItemDetailScreen(Screen):
         """创建来源信息卡片"""
         card = MDCard(
             size_hint_y=None,
-            height=dp(0),  # 默认高度为0，有数据时再调整
+            height=dp(0),
             padding=dp(16),
             radius=[dp(8), dp(8), dp(8), dp(8)]
         )
@@ -431,6 +438,8 @@ class ItemDetailScreen(Screen):
         source_title_label = Label(
             text="来源信息",
             bold=True,
+            size_hint_y=None,
+            height=dp(24),
             color=(0.4, 0.4, 0.4, 1)
         )
         if CHINESE_FONT:
@@ -439,8 +448,11 @@ class ItemDetailScreen(Screen):
 
         self.source_content_label = Label(
             text="",
-            color=(0.4, 0.4, 0.4, 1)
+            color=(0.4, 0.4, 0.4, 1),
+            halign="left",
+            valign="top"
         )
+        self.source_content_label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], val[1])))
         if CHINESE_FONT:
             self.source_content_label.font_name = CHINESE_FONT
         self.source_layout.add_widget(self.source_content_label)

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 添加物品屏幕 - 新建物品表单
 """
@@ -131,7 +132,8 @@ class AddItemScreen(Screen):
         # 返回按钮
         back_btn = MDIconButton(
             icon="arrow-left",
-            on_release=self._on_back_click
+            on_release=self._on_back_click,
+            font_name="Roboto",
         )
         header.add_widget(back_btn)
 
@@ -311,7 +313,8 @@ class AddItemScreen(Screen):
 
         increase_btn = MDIconButton(
             icon="plus",
-            on_release=lambda x: self._change_quantity(1)
+            on_release=lambda x: self._change_quantity(1),
+            font_name="Roboto",
         )
         button_layout.add_widget(increase_btn)
 
