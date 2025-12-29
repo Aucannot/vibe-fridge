@@ -50,6 +50,9 @@ def init_database() -> None:
         # 创建数据库引擎
         engine = create_engine(db_url)
 
+        # 关键：先导入ItemWiki，确保SQLAlchemy在配置Item的关系之前已加载该模型
+        from app.models.item_wiki import ItemWiki, ItemWikiCategory
+
         # 创建表
         Base.metadata.create_all(engine)
 
@@ -65,22 +68,73 @@ def init_database() -> None:
 
 def _migrate_database(engine) -> None:
     """
-    数据库迁移：添加新字段
+    数据库迁移：添加新字段和新表
     """
     try:
+        from sqlalchemy import inspect
+        inspector = inspect(engine)
+
         with engine.connect() as conn:
-            # 检查consumed_at字段是否存在
-            from sqlalchemy import inspect
-            inspector = inspect(engine)
-            columns = [col['name'] for col in inspector.get_columns('items')]
-            
-            if 'consumed_at' not in columns:
+            # 检查 items 表中的字段
+            items_columns = [col['name'] for col in inspector.get_columns('items')]
+
+            if 'consumed_at' not in items_columns:
                 logger.info("添加consumed_at字段到items表")
                 conn.execute(text("ALTER TABLE items ADD COLUMN consumed_at DATETIME"))
                 conn.commit()
                 logger.info("consumed_at字段添加成功")
+
+            if 'wiki_id' not in items_columns:
+                logger.info("添加wiki_id字段到items表")
+                conn.execute(text("ALTER TABLE items ADD COLUMN wiki_id VARCHAR(36)"))
+                conn.commit()
+                logger.info("wiki_id字段添加成功")
+
+                # 添加外键约束
+                try:
+                    conn.execute(text("ALTER TABLE items ADD CONSTRAINT fk_wiki_id FOREIGN KEY (wiki_id) REFERENCES item_wikis(id)"))
+                    conn.commit()
+                    logger.info("wiki_id外键约束添加成功")
+                except Exception as e:
+                    logger.warning(f"添加wiki_id外键约束失败（可能是表不存在）: {e}")
+
+            # 检查是否需要创建 item_wikis 表
+            tables = inspector.get_table_names()
+            if 'item_wikis' not in tables:
+                logger.info("创建item_wikis表")
+                conn.execute(text("""
+                    CREATE TABLE item_wikis (
+                        id VARCHAR(36) PRIMARY KEY,
+                        name VARCHAR(100) NOT NULL,
+                        description TEXT,
+                        default_unit VARCHAR(20),
+                        suggested_expiry_days INTEGER,
+                        storage_location VARCHAR(100),
+                        notes TEXT,
+                        created_at DATETIME NOT NULL,
+                        updated_at DATETIME NOT NULL
+                    )
+                """))
+                conn.commit()
+                logger.info("item_wikis表创建成功")
+
+            if 'item_wiki_categories' not in tables:
+                logger.info("创建item_wiki_categories表")
+                conn.execute(text("""
+                    CREATE TABLE item_wiki_categories (
+                        id VARCHAR(36) PRIMARY KEY,
+                        name VARCHAR(50) NOT NULL UNIQUE,
+                        icon VARCHAR(50),
+                        color VARCHAR(20),
+                        sort_order INTEGER NOT NULL DEFAULT 0,
+                        created_at DATETIME NOT NULL
+                    )
+                """))
+                conn.commit()
+                logger.info("item_wiki_categories表创建成功")
+
     except Exception as e:
-        logger.warning(f"数据库迁移失败（可能是字段已存在）: {e}")
+        logger.warning(f"数据库迁移失败: {e}")
 
 
 def get_session() -> Session:

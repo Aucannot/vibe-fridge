@@ -12,9 +12,8 @@ from sqlalchemy import (
     Column, String, Integer, Float, Date, DateTime,
     Text, Boolean, Enum as SQLEnum, ForeignKey
 )
-from sqlalchemy.orm import declarative_base, relationship
-
-Base = declarative_base()
+from sqlalchemy.orm import relationship
+from app.models import Base
 
 
 class ItemCategory(Enum):
@@ -36,12 +35,17 @@ class ItemStatus(Enum):
 
 class Item(Base):
     """
-    物品模型
+    物品模型 - 库存记录（类的实例）
+
+    存储具体的物品库存记录，关联到ItemWiki条目。
     """
     __tablename__ = 'items'
 
     # 主键
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    # Wiki关联（类定义）
+    wiki_id = Column(String(36), ForeignKey('item_wikis.id'), nullable=True, index=True)
 
     # 基本信息
     name = Column(String(100), nullable=False, index=True)
@@ -77,6 +81,9 @@ class Item(Base):
 
     # 标签关系（多对多）
     tags = relationship('Tag', secondary='item_tags', back_populates='items')
+
+    # Wiki关联（多对一）- 使用字符串形式避免循环导入
+    wiki = relationship('ItemWiki', remote_side='[ItemWiki.id]', backref='items', lazy='selectin')
 
     def __repr__(self):
         return f"<Item(id='{self.id}', name='{self.name}', category='{self.category.value}')>"

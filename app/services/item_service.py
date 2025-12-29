@@ -6,7 +6,7 @@
 import os
 from datetime import datetime, date, timedelta
 from typing import List, Optional, Dict, Any
-from sqlalchemy import desc, or_, and_
+from sqlalchemy import desc, or_, and_, func
 from sqlalchemy.orm import Session, object_session
 
 from app.models.item import Item, ItemCategory, ItemStatus, Tag
@@ -210,6 +210,33 @@ class ItemService:
             return False
 
     @staticmethod
+    def restore_item(item_id: str) -> bool:
+        """
+        恢复物品状态为使用中（取消已消耗状态）
+
+        Args:
+            item_id: 物品ID
+
+        Returns:
+            bool: 是否恢复成功
+        """
+        try:
+            with db_service.session_scope() as session:
+                item = session.query(Item).filter(Item.id == item_id).first()
+                if not item:
+                    logger.warning(f"物品不存在: {item_id}")
+                    return False
+
+                item.status = ItemStatus.ACTIVE
+                item.consumed_at = None
+                logger.info(f"物品已恢复为使用中状态: {item.name} (ID: {item_id})")
+                return True
+
+        except Exception as e:
+            logger.error(f"恢复物品状态失败: {str(e)}")
+            return False
+
+    @staticmethod
     def cleanup_consumed_items(days: int = 3) -> int:
         """
         清理超过指定天数的已消耗物品
@@ -278,10 +305,15 @@ class ItemService:
                     )
 
                 # 排序和分页
+                # 1. 按状态排序：已消耗(CONSUMED)的物品在最下面
+                # 2. 对于未消耗的物品：按保质期排序，保质期越短的越在上面
+                # 3. 对于已消耗的物品：按消耗时间排序，消耗时间越长的越在下面
                 items = query.order_by(
+                    Item.status,
                     desc(Item.expiry_date.is_(None)),
                     Item.expiry_date,
-                    desc(Item.created_at)
+                    desc(Item.consumed_at.is_(None)),
+                    Item.consumed_at
                 ).limit(limit).offset(offset).all()
 
                 # 将所有返回的项目从会话中移除，避免detached错误
@@ -292,6 +324,75 @@ class ItemService:
 
         except Exception as e:
             logger.error(f"获取物品列表失败: {str(e)}")
+            return []
+
+    @staticmethod
+    def get_registered_items() -> List[Dict[str, Any]]:
+        """
+        获取所有已注册的独特物品（按名称去重），用于物品wiki目录
+
+        Returns:
+            List[Dict]: 包含物品名称和类别的字典列表
+        """
+        try:
+            with db_service.session_scope() as session:
+                items = session.query(
+                    Item.name,
+                    Item.category,
+                    func.count(Item.id).label('total_count')
+                ).filter(
+                    Item.status == ItemStatus.ACTIVE
+                ).group_by(Item.name).order_by(Item.name).all()
+
+                result = []
+                for name, category, count in items:
+                    result.append({
+                        'name': name,
+                        'category': category.value if hasattr(category, 'value') else str(category),
+                        'total_count': count
+                    })
+
+                return result
+
+        except Exception as e:
+            logger.error(f"获取已注册物品失败: {str(e)}")
+            return []
+
+    @staticmethod
+    def get_inventory_by_name(name: str, status: ItemStatus = None) -> List[Item]:
+        """
+        根据物品名称获取冰箱中的库存记录
+
+        Args:
+            name: 物品名称
+            status: 可选的状态筛选条件
+
+        Returns:
+            List[Item]: 匹配的物品列表
+        """
+        try:
+            with db_service.session_scope() as session:
+                query = session.query(Item).filter(
+                    func.lower(Item.name) == func.lower(name)
+                )
+
+                if status:
+                    query = query.filter(Item.status == status)
+                else:
+                    query = query.filter(Item.status == ItemStatus.ACTIVE)
+
+                items = query.order_by(
+                    desc(Item.expiry_date.is_(None)),
+                    Item.expiry_date
+                ).all()
+
+                for item in items:
+                    session.expunge(item)
+
+                return items
+
+        except Exception as e:
+            logger.error(f"获取物品库存失败: {str(e)}")
             return []
 
     @staticmethod
@@ -556,6 +657,102 @@ def seed_example_items():
                 "unit": "盒",
                 "expiry_date": today + timedelta(days=365),
                 "description": "家用备用感冒药",
+            },
+            {
+                "name": "燕麦片",
+                "category": ItemCategory.FOOD,
+                "quantity": 1,
+                "unit": "袋",
+                "expiry_date": today + timedelta(days=60),
+                "description": "早餐燕麦片",
+            },
+            {
+                "name": "番茄酱",
+                "category": ItemCategory.FOOD,
+                "quantity": 1,
+                "unit": "瓶",
+                "expiry_date": today + timedelta(days=1),
+                "description": "明天过期",
+            },
+            {
+                "name": "面包",
+                "category": ItemCategory.FOOD,
+                "quantity": 1,
+                "unit": "袋",
+                "expiry_date": today - timedelta(days=2),
+                "description": "已过期的面包",
+            },
+            {
+                "name": "洗衣液",
+                "category": ItemCategory.DAILY_NECESSITIES,
+                "quantity": 1,
+                "unit": "瓶",
+                "expiry_date": today + timedelta(days=180),
+                "description": "家用洗衣液",
+            },
+            {
+                "name": "面膜",
+                "category": ItemCategory.COSMETICS,
+                "quantity": 5,
+                "unit": "片",
+                "expiry_date": today + timedelta(days=200),
+                "description": "保湿面膜",
+            },
+            {
+                "name": "咖啡豆",
+                "category": ItemCategory.FOOD,
+                "quantity": 1,
+                "unit": "袋",
+                "expiry_date": today + timedelta(days=45),
+                "description": "现磨咖啡豆",
+            },
+            {
+                "name": "酸奶",
+                "category": ItemCategory.FOOD,
+                "quantity": 4,
+                "unit": "杯",
+                "expiry_date": today + timedelta(days=5),
+                "description": "原味酸奶",
+            },
+            {
+                "name": "水果刀",
+                "category": ItemCategory.DAILY_NECESSITIES,
+                "quantity": 1,
+                "unit": "把",
+                "expiry_date": None,
+                "description": "厨房用品",
+            },
+            {
+                "name": "维生素C",
+                "category": ItemCategory.MEDICINE,
+                "quantity": 1,
+                "unit": "瓶",
+                "expiry_date": today + timedelta(days=90),
+                "description": "保健品",
+            },
+            {
+                "name": "口红",
+                "category": ItemCategory.COSMETICS,
+                "quantity": 1,
+                "unit": "支",
+                "expiry_date": today + timedelta(days=300),
+                "description": "日常化妆品",
+            },
+            {
+                "name": "矿泉水",
+                "category": ItemCategory.FOOD,
+                "quantity": 6,
+                "unit": "瓶",
+                "expiry_date": today + timedelta(days=120),
+                "description": "瓶装水",
+            },
+            {
+                "name": "牙膏",
+                "category": ItemCategory.DAILY_NECESSITIES,
+                "quantity": 1,
+                "unit": "支",
+                "expiry_date": today + timedelta(days=250),
+                "description": "口腔清洁",
             },
         ]
 
