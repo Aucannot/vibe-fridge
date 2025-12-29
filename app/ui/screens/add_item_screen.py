@@ -27,16 +27,12 @@ import os
 from app.services.item_service import item_service
 from app.models.item import ItemCategory
 from app.utils.logger import setup_logger
-from app.utils.font_helper import apply_font_to_widget
+from app.utils.font_helper import apply_font_to_widget, CHINESE_FONT_NAME as CHINESE_FONT
 
 logger = setup_logger(__name__)
 
 # 获取中文字体名称
-try:
-    import app.main as main_module
-    CHINESE_FONT = getattr(main_module, 'CHINESE_FONT_NAME', None)
-except:
-    CHINESE_FONT = None
+CHINESE_FONT = CHINESE_FONT
 
 
 class OneLineListItem(MDListItem):

@@ -7,6 +7,12 @@ from kivy.config import Config
 import os
 import sys
 
+# 全局变量：存储中文字体名称（供其他模块导入使用）
+CHINESE_FONT_NAME = None
+
+# 已注册的字体名称缓存
+_REGISTERED_FONT_NAME = None
+
 
 def register_chinese_font():
     """注册中文字体并返回字体名称"""
@@ -101,7 +107,18 @@ def register_chinese_font():
         logging.warning(f"无法注册中文字体: {e}")
         print(f"字体注册异常: {e}")
     
+    # 将字体名称存储到全局变量
+    global CHINESE_FONT_NAME, _REGISTERED_FONT_NAME
+    CHINESE_FONT_NAME = chinese_font_name
+    _REGISTERED_FONT_NAME = chinese_font_name
+    
     return chinese_font_name
+
+
+def get_chinese_font_name():
+    """获取已注册的中文字体名称"""
+    global _REGISTERED_FONT_NAME
+    return _REGISTERED_FONT_NAME
 
 
 def apply_font_to_widget(widget, font_name):
@@ -142,7 +159,8 @@ def apply_font_to_widget(widget, font_name):
             widget_type_name == 'MDIconButton' or
             widget_type_name == 'MDListItemLeadingIcon' or
             widget_type_name == 'MDListItemTrailingIcon' or
-            widget_type_name == 'MDListItemIcon'
+            widget_type_name == 'MDListItemIcon' or
+            widget_type_name == 'MDCheckbox'  # 添加MDCheckbox到图标控件排除列表
         )
         
         if is_icon_widget:
@@ -153,6 +171,12 @@ def apply_font_to_widget(widget, font_name):
 
         # 确保不是图标控件（因为MDIcon可能继承自Label）
         if isinstance(widget, text_types) and not is_icon_widget:
+            if hasattr(widget, "font_name"):
+                widget.font_name = font_name
+        
+        # 特别处理Button控件
+        from kivy.uix.button import Button
+        if isinstance(widget, Button) and not is_icon_widget:
             if hasattr(widget, "font_name"):
                 widget.font_name = font_name
 

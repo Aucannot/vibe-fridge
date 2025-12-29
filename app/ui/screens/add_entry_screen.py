@@ -14,15 +14,9 @@ from kivymd.app import MDApp
 from kivymd.uix.card import MDCard
 from kivymd.uix.button import MDButton, MDIconButton, MDButtonText
 
-from app.utils.font_helper import apply_font_to_widget
+from app.utils.font_helper import apply_font_to_widget, CHINESE_FONT_NAME
 
-
-try:
-    import app.main as main_module
-
-    CHINESE_FONT = getattr(main_module, "CHINESE_FONT_NAME", None)
-except Exception:
-    CHINESE_FONT = None
+CHINESE_FONT = CHINESE_FONT_NAME
 
 
 class AddEntryScreen(Screen):

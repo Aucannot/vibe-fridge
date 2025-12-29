@@ -60,6 +60,7 @@ class Item(Base):
     # 状态信息
     status = Column(SQLEnum(ItemStatus), nullable=False, default=ItemStatus.ACTIVE, index=True)
     is_reminder_enabled = Column(Boolean, nullable=False, default=True)
+    consumed_at = Column(DateTime, nullable=True, index=True)  # 消耗时间
 
     # AI 预测信息
     predicted_expiry_date = Column(Date, nullable=True)

@@ -8,7 +8,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.metrics import dp
 
-from app.utils.font_helper import apply_font_to_widget
+from app.utils.font_helper import apply_font_to_widget, CHINESE_FONT_NAME as CHINESE_FONT
 
 
 class SettingsScreen(Screen):
@@ -44,13 +44,7 @@ class SettingsScreen(Screen):
 
     def on_enter(self):
         """进入屏幕时为整个屏幕应用中文字体"""
-        try:
-            import app.main as main_module
-
-            chinese_font = getattr(main_module, "CHINESE_FONT_NAME", None)
-        except Exception:
-            chinese_font = None
-        if chinese_font:
-            apply_font_to_widget(self, chinese_font)
+        if CHINESE_FONT:
+            apply_font_to_widget(self, CHINESE_FONT)
 
 

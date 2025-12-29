@@ -53,11 +53,34 @@ def init_database() -> None:
         # 创建表
         Base.metadata.create_all(engine)
 
+        # 添加新字段（数据库迁移）
+        _migrate_database(engine)
+
         logger.info(f"数据库初始化成功: {db_url}")
 
     except Exception as e:
         logger.error(f"数据库初始化失败: {str(e)}")
         raise
+
+
+def _migrate_database(engine) -> None:
+    """
+    数据库迁移：添加新字段
+    """
+    try:
+        with engine.connect() as conn:
+            # 检查consumed_at字段是否存在
+            from sqlalchemy import inspect
+            inspector = inspect(engine)
+            columns = [col['name'] for col in inspector.get_columns('items')]
+            
+            if 'consumed_at' not in columns:
+                logger.info("添加consumed_at字段到items表")
+                conn.execute(text("ALTER TABLE items ADD COLUMN consumed_at DATETIME"))
+                conn.commit()
+                logger.info("consumed_at字段添加成功")
+    except Exception as e:
+        logger.warning(f"数据库迁移失败（可能是字段已存在）: {e}")
 
 
 def get_session() -> Session:

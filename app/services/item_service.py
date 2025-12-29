@@ -183,6 +183,63 @@ class ItemService:
             return False
 
     @staticmethod
+    def mark_as_consumed(item_id: str) -> bool:
+        """
+        标记物品为已消耗
+
+        Args:
+            item_id: 物品ID
+
+        Returns:
+            bool: 是否标记成功
+        """
+        try:
+            with db_service.session_scope() as session:
+                item = session.query(Item).filter(Item.id == item_id).first()
+                if not item:
+                    logger.warning(f"物品不存在: {item_id}")
+                    return False
+
+                item.status = ItemStatus.CONSUMED
+                item.consumed_at = datetime.utcnow()
+                logger.info(f"物品标记为已消耗: {item.name} (ID: {item_id})")
+                return True
+
+        except Exception as e:
+            logger.error(f"标记物品为已消耗失败: {str(e)}")
+            return False
+
+    @staticmethod
+    def cleanup_consumed_items(days: int = 3) -> int:
+        """
+        清理超过指定天数的已消耗物品
+
+        Args:
+            days: 天数阈值
+
+        Returns:
+            int: 删除的物品数量
+        """
+        try:
+            threshold_date = datetime.utcnow() - timedelta(days=days)
+            with db_service.session_scope() as session:
+                items = session.query(Item).filter(
+                    Item.status == ItemStatus.CONSUMED,
+                    Item.consumed_at < threshold_date
+                ).all()
+
+                count = len(items)
+                for item in items:
+                    session.delete(item)
+
+                logger.info(f"清理了 {count} 个超过 {days} 天的已消耗物品")
+                return count
+
+        except Exception as e:
+            logger.error(f"清理已消耗物品失败: {str(e)}")
+            return 0
+
+    @staticmethod
     def get_items(
         category: ItemCategory = None,
         status: ItemStatus = None,

@@ -18,20 +18,14 @@ from kivymd.uix.button import MDIconButton
 from app.services.item_service import item_service
 from app.models.item import ItemCategory
 from app.utils.logger import setup_logger
-from app.utils.font_helper import apply_font_to_widget
+from app.utils.font_helper import apply_font_to_widget, CHINESE_FONT_NAME as CHINESE_FONT
 
 logger = setup_logger(__name__)
 
 
-try:
-    from app.main import CHINESE_FONT_NAME
-    CHINESE_FONT = CHINESE_FONT_NAME
-except Exception:
-    CHINESE_FONT = None
-
-
 class SimpleItemListItem(BoxLayout):
     """物品列表项（精简版，用于右侧列表）"""
+    __events__ = ('on_release',)
 
     item_id = StringProperty()
     item_name = StringProperty()
@@ -69,15 +63,9 @@ class SimpleItemListItem(BoxLayout):
         text_box.height = dp(80)
         self.add_widget(text_box)
         
-        # 添加复选框到右侧 (固定宽度)
-        checkbox = self._setup_checkbox()
-        checkbox.size_hint_x = None
-        checkbox.width = dp(48)
-        self.add_widget(checkbox)
-        
         self._setup_background()
         
-        # 添加点击事件支持 - 使用Kivy标准事件名，不需要手动绑定
+        # 注册释放事件
 
     def _setup_icon(self):
         from kivymd.uix.label import MDIcon
@@ -177,14 +165,6 @@ class SimpleItemListItem(BoxLayout):
         text_box.add_widget(_make_label(tertiary_text, dp(20), tertiary_color, dp(12)))
 
         return text_box
-
-    def _setup_checkbox(self):
-        from kivy.uix.checkbox import CheckBox
-        checkbox = CheckBox(
-            size_hint_x=None,
-            width=dp(48),
-        )
-        return checkbox
 
     def _setup_background(self):
         if self.expiry_date == "无":

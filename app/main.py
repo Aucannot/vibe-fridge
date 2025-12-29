@@ -70,6 +70,12 @@ class VibeFridgeApp(MDApp):
         self.theme_cls.primary_palette = "Blue"
         self.theme_cls.material_style = "M3"
         
+        # 底部导航按钮引用
+        self.home_btn = None
+        self.items_btn = None
+        self.recipes_btn = None
+        self.settings_btn = None
+        
         # 设置中文字体（如果已注册）
         if chinese_font_name:
             try:
@@ -77,13 +83,30 @@ class VibeFridgeApp(MDApp):
                 if hasattr(self.theme_cls, 'font_styles'):
                     # 为所有字体样式设置中文字体，但跳过"Icon"样式（图标需要使用自己的字体）
                     for style_name in self.theme_cls.font_styles:
-                        if style_name == 'Icon':
+                        if style_name == 'Icon' or style_name == 'Icons':
                             continue  # 跳过图标字体样式
                         if hasattr(self.theme_cls.font_styles[style_name], 'font_name'):
                             self.theme_cls.font_styles[style_name]['font-name'] = chinese_font_name
                 print(f"已为 KivyMD 设置中文字体: {chinese_font_name}")
             except Exception as e:
                 print(f"设置 KivyMD 字体失败: {e}")
+                import traceback
+                traceback.print_exc()
+                
+            # 特别确保MDIcon类使用正确的字体
+            try:
+                from kivymd.uix.label import MDIcon
+                if hasattr(MDIcon, 'font_name'):
+                    MDIcon.font_name = 'MaterialIcons'
+                    print("已为 MDIcon 设置图标字体为 MaterialIcons")
+                
+                # 确保MDCheckbox也使用正确的图标字体
+                from kivymd.uix.selectioncontrol import MDCheckbox
+                if hasattr(MDCheckbox, 'font_name'):
+                    MDCheckbox.font_name = 'MaterialIcons'
+                    print("已为 MDCheckbox 设置图标字体为 MaterialIcons")
+            except Exception as e:
+                print(f"设置 MDIcon/MDCheckbox 字体失败: {e}")
                 import traceback
                 traceback.print_exc()
 
@@ -201,6 +224,15 @@ class VibeFridgeApp(MDApp):
         nav.add_widget(recipes_btn)
         nav.add_widget(settings_btn)
 
+        # 保存按钮引用
+        self.home_btn = home_btn
+        self.items_btn = items_btn
+        self.recipes_btn = recipes_btn
+        self.settings_btn = settings_btn
+
+        # 初始化首页按钮为高亮状态
+        self._set_button_highlight(self.home_btn)
+
         return nav
 
     def switch_to_screen(self, name: str):
@@ -209,6 +241,37 @@ class VibeFridgeApp(MDApp):
             return
         if name in self.screen_manager.screen_names:
             self.screen_manager.current = name
+            self._update_nav_buttons(name)
+
+    def _update_nav_buttons(self, current_screen: str):
+        """根据当前屏幕更新底部导航按钮的高亮状态"""
+        # 重置所有按钮为未高亮状态
+        self._set_button_normal(self.home_btn)
+        self._set_button_normal(self.items_btn)
+        self._set_button_normal(self.recipes_btn)
+        self._set_button_normal(self.settings_btn)
+        
+        # 根据当前屏幕高亮对应按钮
+        if current_screen == "main":
+            self._set_button_highlight(self.home_btn)
+        elif current_screen == "items":
+            self._set_button_highlight(self.items_btn)
+        elif current_screen == "recipes":
+            self._set_button_highlight(self.recipes_btn)
+        elif current_screen == "settings":
+            self._set_button_highlight(self.settings_btn)
+
+    def _set_button_highlight(self, btn):
+        """设置按钮为高亮状态"""
+        if btn:
+            btn.background_color = (0.25, 0.55, 0.9, 1)
+            btn.color = (1, 1, 1, 1)
+
+    def _set_button_normal(self, btn):
+        """设置按钮为普通状态"""
+        if btn:
+            btn.background_color = (0.95, 0.95, 0.95, 1)
+            btn.color = (0.1, 0.1, 0.1, 1)
 
     def on_start(self):
         """应用启动时调用"""
