@@ -16,15 +16,6 @@ from sqlalchemy.orm import relationship
 from app.models import Base
 
 
-class ItemCategory(Enum):
-    """物品类别枚举"""
-    FOOD = "food"               # 食品
-    DAILY_NECESSITIES = "daily"  # 日用品
-    MEDICINE = "medicine"       # 药品
-    COSMETICS = "cosmetics"     # 化妆品
-    OTHERS = "others"           # 其他
-
-
 class ItemStatus(Enum):
     """物品状态枚举"""
     ACTIVE = "active"           # 使用中
@@ -50,7 +41,6 @@ class Item(Base):
     # 基本信息
     name = Column(String(100), nullable=False, index=True)
     description = Column(Text, nullable=True)
-    category = Column(SQLEnum(ItemCategory), nullable=False, index=True)
 
     # 数量信息
     quantity = Column(Integer, nullable=False, default=1)
@@ -83,10 +73,10 @@ class Item(Base):
     tags = relationship('Tag', secondary='item_tags', back_populates='items')
 
     # Wiki关联（多对一）- 使用字符串形式避免循环导入
-    wiki = relationship('ItemWiki', remote_side='[ItemWiki.id]', backref='items', lazy='selectin')
+    wiki = relationship('ItemWiki', remote_side='[ItemWiki.id]', back_populates='items', lazy='joined')
 
     def __repr__(self):
-        return f"<Item(id='{self.id}', name='{self.name}', category='{self.category.value}')>"
+        return f"<Item(id='{self.id}', name='{self.name}')>"
 
     @property
     def is_expired(self) -> bool:

@@ -52,6 +52,8 @@ CHINESE_FONT_NAME = chinese_font_name
 from app.ui.screens.main_screen import MainScreen
 from app.ui.screens.items_screen import ItemsScreen
 from app.ui.screens.item_detail_screen import ItemDetailScreen
+from app.ui.screens.item_wiki_detail_screen import ItemWikiDetailScreen
+from app.ui.screens.item_wiki_edit_screen import ItemWikiEditScreen
 from app.ui.screens.add_item_screen import AddItemScreen
 from app.ui.screens.add_entry_screen import AddEntryScreen
 from app.ui.screens.recipes_screen import RecipesScreen
@@ -158,6 +160,14 @@ class VibeFridgeApp(MDApp):
         # 物品详情屏幕
         item_detail_screen = ItemDetailScreen(name='item_detail')
         self.screen_manager.add_widget(item_detail_screen)
+
+        # 物品Wiki详情屏幕
+        item_wiki_detail_screen = ItemWikiDetailScreen(name='item_wiki_detail')
+        self.screen_manager.add_widget(item_wiki_detail_screen)
+
+        # 物品Wiki编辑屏幕
+        item_wiki_edit_screen = ItemWikiEditScreen(name='item_wiki_edit')
+        self.screen_manager.add_widget(item_wiki_edit_screen)
 
         # 选择添加方式屏幕
         add_entry_screen = AddEntryScreen(name="add_entry")

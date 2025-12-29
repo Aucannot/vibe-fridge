@@ -30,7 +30,8 @@ from datetime import date, datetime
 import os
 
 from app.services.item_service import item_service
-from app.models.item import ItemCategory, ItemStatus
+from app.services.wiki_service import wiki_service
+from app.models.item import ItemStatus
 from app.utils.logger import setup_logger
 from app.utils.font_helper import apply_font_to_widget, CHINESE_FONT_NAME as CHINESE_FONT
 
@@ -602,6 +603,58 @@ class ItemDetailScreen(Screen):
         if value:
             self._load_item(value)
 
+    def _load_wiki_item(self, item_name: str):
+        """加载物品wiki信息"""
+        try:
+            wiki_item = wiki_service.get_wiki_by_name(item_name)
+            if not wiki_item:
+                logger.error(f"物品wiki不存在: {item_name}")
+                return
+
+            self.item_name = wiki_item['name']
+            self.item_category = wiki_item['category_name'] or "其他"
+            self.item_description = wiki_item['description'] or ""
+            inventory_items = item_service.get_inventory_by_name(item_name)
+            total_quantity = sum(item.quantity for item in inventory_items)
+            self.item_quantity = total_quantity
+            self.item_unit = wiki_item['default_unit'] or "个"
+            
+            self.source_info = f"共{len(inventory_items)}条库存记录"
+
+            self._update_wiki_ui()
+
+        except Exception as e:
+            logger.error(f"加载物品wiki信息失败: {str(e)}")
+
+    def _update_wiki_ui(self):
+        """更新wiki信息UI显示"""
+        # 更新标题
+        self.title_label.text = self.item_name
+        if CHINESE_FONT:
+            self.title_label.font_name = CHINESE_FONT
+
+        # 更新基本信息
+        self.name_label.text = self.item_name
+        if CHINESE_FONT:
+            self.name_label.font_name = CHINESE_FONT
+        self.category_label.text = self.item_category
+        if CHINESE_FONT:
+            self.category_label.font_name = CHINESE_FONT
+        self.description_label.text = self.item_description or "无描述"
+        if CHINESE_FONT:
+            self.description_label.font_name = CHINESE_FONT
+
+        # 更新数量信息
+        self.quantity_label.text = str(self.item_quantity)
+        if CHINESE_FONT:
+            self.quantity_label.font_name = CHINESE_FONT
+        self.unit_label.text = self.item_unit or "个"
+        if CHINESE_FONT:
+            self.unit_label.font_name = CHINESE_FONT
+
+        # 更新来源信息
+        self._update_source_card()
+
     def _on_item_data_changed(self, instance, value):
         """物品数据变化时调用"""
         if self.current_item:
@@ -617,7 +670,7 @@ class ItemDetailScreen(Screen):
 
             # 更新属性
             self.item_name = self.current_item.name
-            self.item_category = self._get_category_text(self.current_item.category)
+            self.item_category = self._get_category_text(self.current_item)
             self.item_description = self.current_item.description or ""
             self.item_quantity = self.current_item.quantity
             self.item_unit = self.current_item.unit or ""
@@ -705,16 +758,14 @@ class ItemDetailScreen(Screen):
             return date_obj.strftime('%Y-%m-%d')
         return str(date_obj)
 
-    def _get_category_text(self, category):
+    def _get_category_text(self, item):
         """获取类别文本"""
-        category_map = {
-            ItemCategory.FOOD: "食品",
-            ItemCategory.DAILY_NECESSITIES: "日用品",
-            ItemCategory.MEDICINE: "药品",
-            ItemCategory.COSMETICS: "化妆品",
-            ItemCategory.OTHERS: "其他"
-        }
-        return category_map.get(category, "其他")
+        try:
+            if item.wiki and item.wiki.category:
+                return item.wiki.category.name
+        except Exception:
+            pass
+        return "其他"
 
     def _update_ai_card(self):
         """更新AI卡片"""

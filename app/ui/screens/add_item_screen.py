@@ -25,7 +25,7 @@ from datetime import date, datetime
 import os
 
 from app.services.item_service import item_service
-from app.models.item import ItemCategory
+
 from app.utils.logger import setup_logger
 from app.utils.font_helper import apply_font_to_widget, CHINESE_FONT_NAME as CHINESE_FONT
 
@@ -70,7 +70,7 @@ class AddItemScreen(Screen):
         # 表单数据
         self.form_data = {
             'name': '',
-            'category': ItemCategory.FOOD,
+            'category': '食品',
             'description': '',
             'quantity': 1,
             'unit': '',
@@ -471,11 +471,11 @@ class AddItemScreen(Screen):
     def _create_category_menu(self):
         """预先准备类别数据（自定义弹窗使用）"""
         self._category_items = [
-            ("食品", ItemCategory.FOOD),
-            ("日用品", ItemCategory.DAILY_NECESSITIES),
-            ("药品", ItemCategory.MEDICINE),
-            ("化妆品", ItemCategory.COSMETICS),
-            ("其他", ItemCategory.OTHERS),
+            ("食品", "食品"),
+            ("日用品", "日用品"),
+            ("药品", "药品"),
+            ("化妆品", "化妆品"),
+            ("其他", "其他"),
         ]
 
     def _show_category_menu(self, instance):
@@ -529,15 +529,15 @@ class AddItemScreen(Screen):
         dialog.add_widget(root)
         dialog.open()
 
-    def _select_category(self, category: ItemCategory):
+    def _select_category(self, category: str):
         """选择类别"""
         # 更新按钮文本
         category_map = {
-            ItemCategory.FOOD: "食品",
-            ItemCategory.DAILY_NECESSITIES: "日用品",
-            ItemCategory.MEDICINE: "药品",
-            ItemCategory.COSMETICS: "化妆品",
-            ItemCategory.OTHERS: "其他",
+            "食品": "食品",
+            "日用品": "日用品",
+            "药品": "药品",
+            "化妆品": "化妆品",
+            "其他": "其他",
         }
         # 使用 MDButtonText 组件更新按钮文字，兼容 KivyMD 2.x API
         if hasattr(self, "category_label"):
@@ -864,7 +864,7 @@ class AddItemScreen(Screen):
         # 重置表单数据
         self.form_data = {
             'name': '',
-            'category': ItemCategory.FOOD,
+            'category': "食品",
             'description': '',
             'quantity': 1,
             'unit': '',

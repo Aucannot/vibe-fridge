@@ -74,26 +74,24 @@ def _migrate_database(engine) -> None:
         from sqlalchemy import inspect
         inspector = inspect(engine)
 
-        with engine.connect() as conn:
+        # 使用begin()创建自动提交的事务
+        with engine.begin() as conn:
             # 检查 items 表中的字段
             items_columns = [col['name'] for col in inspector.get_columns('items')]
 
             if 'consumed_at' not in items_columns:
                 logger.info("添加consumed_at字段到items表")
                 conn.execute(text("ALTER TABLE items ADD COLUMN consumed_at DATETIME"))
-                conn.commit()
                 logger.info("consumed_at字段添加成功")
 
             if 'wiki_id' not in items_columns:
                 logger.info("添加wiki_id字段到items表")
                 conn.execute(text("ALTER TABLE items ADD COLUMN wiki_id VARCHAR(36)"))
-                conn.commit()
                 logger.info("wiki_id字段添加成功")
 
                 # 添加外键约束
                 try:
                     conn.execute(text("ALTER TABLE items ADD CONSTRAINT fk_wiki_id FOREIGN KEY (wiki_id) REFERENCES item_wikis(id)"))
-                    conn.commit()
                     logger.info("wiki_id外键约束添加成功")
                 except Exception as e:
                     logger.warning(f"添加wiki_id外键约束失败（可能是表不存在）: {e}")
@@ -107,16 +105,42 @@ def _migrate_database(engine) -> None:
                         id VARCHAR(36) PRIMARY KEY,
                         name VARCHAR(100) NOT NULL,
                         description TEXT,
+                        category_id VARCHAR(36),
                         default_unit VARCHAR(20),
                         suggested_expiry_days INTEGER,
                         storage_location VARCHAR(100),
                         notes TEXT,
+                        image_path VARCHAR(255),
                         created_at DATETIME NOT NULL,
                         updated_at DATETIME NOT NULL
                     )
                 """))
-                conn.commit()
                 logger.info("item_wikis表创建成功")
+            else:
+                # 检查并添加缺失的字段
+                item_wikis_columns = [col['name'] for col in inspector.get_columns('item_wikis')]
+                
+                if 'category_id' not in item_wikis_columns:
+                    logger.info("添加category_id字段到item_wikis表")
+                    conn.execute(text("ALTER TABLE item_wikis ADD COLUMN category_id VARCHAR(36)"))
+                    logger.info("category_id字段添加成功")
+                
+                if 'image_path' not in item_wikis_columns:
+                    logger.info("添加image_path字段到item_wikis表")
+                    conn.execute(text("ALTER TABLE item_wikis ADD COLUMN image_path VARCHAR(255)"))
+                    logger.info("image_path字段添加成功")
+            
+            # 添加外键约束（如果不存在）
+            if 'item_wikis' in tables and 'item_wiki_categories' in tables:
+                try:
+                    constraints = inspector.get_foreign_keys('item_wikis')
+                    has_fk = any(ct['constrained_columns'] == ['category_id'] for ct in constraints)
+                    if not has_fk:
+                        logger.info("添加item_wikis.category_id外键约束")
+                        conn.execute(text("ALTER TABLE item_wikis ADD CONSTRAINT fk_category_id FOREIGN KEY (category_id) REFERENCES item_wiki_categories(id)"))
+                        logger.info("外键约束添加成功")
+                except Exception as e:
+                    logger.warning(f"添加外键约束失败: {e}")
 
             if 'item_wiki_categories' not in tables:
                 logger.info("创建item_wiki_categories表")
@@ -127,10 +151,10 @@ def _migrate_database(engine) -> None:
                         icon VARCHAR(50),
                         color VARCHAR(20),
                         sort_order INTEGER NOT NULL DEFAULT 0,
-                        created_at DATETIME NOT NULL
+                        created_at DATETIME NOT NULL,
+                        updated_at DATETIME NOT NULL
                     )
                 """))
-                conn.commit()
                 logger.info("item_wiki_categories表创建成功")
 
     except Exception as e:

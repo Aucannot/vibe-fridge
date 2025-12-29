@@ -6,55 +6,10 @@
 import uuid
 import logging
 from datetime import datetime
-from typing import Optional
-from sqlalchemy import Column, String, Text, DateTime, Integer
+from typing import Optional, List
+from sqlalchemy import Column, String, Text, DateTime, Integer, ForeignKey
+from sqlalchemy.orm import relationship
 from app.models import Base
-
-
-class ItemWiki(Base):
-    """
-    物品Wiki模型 - 物品的类定义
-
-    存储物品的通用属性，作为物品库存记录的模板。
-    每个库存记录(Item)关联到一个Wiki条目。
-    """
-    __tablename__ = 'item_wikis'
-
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-
-    name = Column(String(100), nullable=False, index=True)
-    description = Column(Text, nullable=True)
-
-    default_unit = Column(String(20), nullable=True)  # 默认单位：个、盒、瓶等
-
-    suggested_expiry_days = Column(Integer, nullable=True)  # 建议保质期（天）
-
-    storage_location = Column(String(100), nullable=True)  # 建议存放位置：冷藏、冷冻、常温
-
-    notes = Column(Text, nullable=True)  # 备注信息
-
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    def __repr__(self):
-        return f"<ItemWiki(id='{self.id}', name='{self.name}')>"
-
-    @property
-    def inventory_count(self) -> int:
-        """获取该Wiki下的库存记录数量"""
-        try:
-            from app.services.database import db_service
-            from app.models.item import ItemStatus
-
-            with db_service.session_scope() as session:
-                count = session.query(Item).filter(
-                    Item.wiki_id == self.id,
-                    Item.status != ItemStatus.CONSUMED
-                ).count()
-                return count
-        except Exception as e:
-            logging.error(f"获取Wiki库存数量失败: {e}")
-            return 0
 
 
 class ItemWikiCategory(Base):
@@ -74,6 +29,67 @@ class ItemWikiCategory(Base):
     sort_order = Column(Integer, nullable=False, default=0)  # 排序顺序
 
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # 关系定义
+    items = relationship('ItemWiki', back_populates='category', cascade='all, delete-orphan')
 
     def __repr__(self):
         return f"<ItemWikiCategory(id='{self.id}', name='{self.name}')>"
+
+
+class ItemWiki(Base):
+    """
+    物品Wiki模型 - 物品的类定义
+
+    存储物品的通用属性，作为物品库存记录的模板。
+    每个库存记录(Item)关联到一个Wiki条目。
+    """
+    __tablename__ = 'item_wikis'
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    # 基本信息
+    name = Column(String(100), nullable=False, index=True)
+    description = Column(Text, nullable=True)
+
+    # 分类关联
+    category_id = Column(String(36), ForeignKey('item_wiki_categories.id'), nullable=True, index=True)
+    category = relationship('ItemWikiCategory', back_populates='items', lazy='joined')
+
+    # 物品属性
+    default_unit = Column(String(20), nullable=True)  # 默认单位：个、盒、瓶等
+    suggested_expiry_days = Column(Integer, nullable=True)  # 建议保质期（天）
+    storage_location = Column(String(100), nullable=True)  # 建议存放位置：冷藏、冷冻、常温
+
+    # 扩展信息
+    notes = Column(Text, nullable=True)  # 备注信息
+    image_path = Column(String(255), nullable=True)  # 物品图片路径
+
+    # 元数据
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # 关系定义
+    items = relationship('Item', back_populates='wiki', cascade='all, delete-orphan')
+
+    def __repr__(self):
+        return f"<ItemWiki(id='{self.id}', name='{self.name}', category='{self.category.name if self.category else 'None'}')>"
+
+    @property
+    def inventory_count(self) -> int:
+        """获取该Wiki下的库存记录数量"""
+        try:
+            from app.services.database import db_service
+            from app.models.item import ItemStatus, Item
+
+            with db_service.session_scope() as session:
+                count = session.query(Item).filter(
+                    Item.wiki_id == self.id,
+                    Item.status != ItemStatus.CONSUMED
+                ).count()
+                return count
+        except Exception as e:
+            logging.error(f"获取Wiki库存数量失败: {e}")
+            return 0
+

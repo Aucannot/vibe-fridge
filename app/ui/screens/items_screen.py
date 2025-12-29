@@ -16,7 +16,9 @@ from kivymd.app import MDApp
 from kivymd.uix.label import MDIcon
 
 from app.services.item_service import item_service
-from app.models.item import ItemCategory, ItemStatus
+from app.services.wiki_service import wiki_service
+from app.models.item import ItemStatus
+from app.models.item_wiki import ItemWikiCategory
 from app.utils.logger import setup_logger
 from app.utils.font_helper import apply_font_to_widget, CHINESE_FONT_NAME as CHINESE_FONT
 from app.ui.theme.design_tokens import COLOR_PALETTE, DESIGN_TOKENS
@@ -25,33 +27,54 @@ logger = setup_logger(__name__)
 
 COLORS = COLOR_PALETTE
 
-CATEGORY_MAP = {
-    ItemCategory.FOOD.value: "食品",
-    ItemCategory.DAILY_NECESSITIES.value: "日用品",
-    ItemCategory.MEDICINE.value: "药品",
-    ItemCategory.COSMETICS.value: "化妆品",
-    ItemCategory.OTHERS.value: "其他",
+# 自定义更鲜艳的颜色
+BRIGHT_COLORS = {
+    'primary': [0.39, 0.40, 0.95, 1],
+    'primary_light': [0.51, 0.55, 0.97, 1],
+    'success': [0.13, 0.77, 0.37, 1],
+    'warning': [0.96, 0.35, 0.07, 1],
+    'error': [0.94, 0.27, 0.27, 1],
+    'surface': [1, 1, 1, 1],
+    'surface_variant': [0.96, 0.96, 0.96, 1],
+    'background': [0.98, 0.98, 0.99, 1],
+    'text_primary': [0.15, 0.15, 0.15, 1],
+    'text_secondary': [0.50, 0.50, 0.50, 1],
+    'selected_bg': [0.39, 0.40, 0.95, 1],
+    'selected_text': [1, 1, 1, 1],
+    'hover_bg': [0.92, 0.92, 0.98, 1],
+    'card_bg': [1, 1, 1, 1],
+    'accent_orange': [1, 0.60, 0.20, 1],
+    'accent_purple': [0.60, 0.40, 0.95, 1],
+    'accent_green': [0.20, 0.78, 0.45, 1],
 }
 
-CATEGORY_ICONS = {
-    ItemCategory.FOOD.value: "food-apple",
-    ItemCategory.DAILY_NECESSITIES.value: "home",
-    ItemCategory.MEDICINE.value: "medical-bag",
-    ItemCategory.COSMETICS.value: "face-woman",
-    ItemCategory.OTHERS.value: "package-variant",
+# 分类图标和颜色映射
+CATEGORY_CONFIG = {
+    "全部": {"icon": "view-grid", "color": BRIGHT_COLORS['primary']},
+    "食品": {"icon": "food-apple", "color": [0.95, 0.35, 0.35, 1]},
+    "日用品": {"icon": "home", "color": [0.25, 0.60, 0.95, 1]},
+    "药品": {"icon": "medical-bag", "color": [0.20, 0.75, 0.50, 1]},
+    "化妆品": {"icon": "face-woman", "color": [0.95, 0.45, 0.75, 1]},
+    "其他": {"icon": "package-variant", "color": [0.60, 0.60, 0.70, 1]},
+}
+
+CATEGORY_ICON_MAP = {
+    "食品": "food-apple",
+    "日用品": "home",
+    "药品": "medical-bag",
+    "化妆品": "face-woman",
+    "其他": "package-variant",
 }
 
 STATUS_COLORS = {
-    'fresh': COLORS['success'],
-    'expiring': COLORS['warning'],
-    'expired': COLORS['error'],
+    'fresh': BRIGHT_COLORS['success'],
+    'expiring': BRIGHT_COLORS['warning'],
+    'expired': BRIGHT_COLORS['error'],
 }
-
-ALL_CATEGORY = "all"
 
 
 class CategoryChip(BoxLayout):
-    """分类筛选标签 - 带动画效果"""
+    """分类筛选标签 - 鲜艳配色选中状态高亮"""
     __events__ = ('on_release',)
 
     category_key = StringProperty()
@@ -59,6 +82,8 @@ class CategoryChip(BoxLayout):
     icon = StringProperty()
     is_selected = BooleanProperty(False)
     count = NumericProperty(0)
+    _name_label = None
+    _icon_widget = None
 
     def __init__(self, category_key, category_name, icon_name, count=0, **kwargs):
         super().__init__(**kwargs)
@@ -71,52 +96,53 @@ class CategoryChip(BoxLayout):
         self.orientation = "horizontal"
         self.size_hint_y = None
         self.size_hint_x = 1
-        self.height = dp(38)
-        self.padding = (dp(10), dp(4), dp(10), dp(4))
-        spacing = dp(6)
+        self.height = dp(48)
+        self.padding = (dp(14), dp(8), dp(14), dp(8))
 
         self._setup_ui()
         self._update_visual_state()
 
     def _setup_ui(self):
-        icon = MDIcon(
+        self._icon_widget = MDIcon(
             icon=self.icon,
             theme_text_color="Custom",
             text_color=self._get_icon_color(),
             size_hint_x=None,
-            width=dp(22),
+            width=dp(28),
             size_hint_y=None,
-            height=dp(30),
+            height=dp(32),
             halign="center",
             valign="middle",
-            font_size=dp(16),
+            font_size=dp(20),
         )
-        self.add_widget(icon)
+        self.add_widget(self._icon_widget)
 
-        name_label = Label(
+        self._name_label = Label(
             text=self.category_name,
-            size_hint_x=None,
-            width=dp(50),
+            size_hint_x=1,
             size_hint_y=None,
-            height=dp(30),
+            height=dp(32),
             halign="left",
             valign="middle",
             color=self._get_text_color(),
-            font_size=dp(13),
-            bold=self.is_selected,
+            font_size=dp(15),
+            bold=True,
         )
-        name_label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0] - dp(4), None)))
+        self._name_label.bind(
+            size=lambda inst, val: self._update_label_size(),
+            width=lambda inst, val: self._update_label_size()
+        )
         if CHINESE_FONT:
-            name_label.font_name = CHINESE_FONT
-        self.add_widget(name_label)
+            self._name_label.font_name = CHINESE_FONT
+        self.add_widget(self._name_label)
 
         if self.count > 0:
             count_badge = BoxLayout(
                 size_hint_x=None,
-                width=dp(28),
+                width=dp(32),
                 size_hint_y=None,
-                height=dp(18),
-                padding=(dp(4), 0, dp(4), 0),
+                height=dp(22),
+                padding=(dp(8), 0, dp(8), 0),
             )
             count_label = Label(
                 text=str(self.count),
@@ -124,7 +150,7 @@ class CategoryChip(BoxLayout):
                 halign="center",
                 valign="middle",
                 color=self._get_count_color(),
-                font_size=dp(11),
+                font_size=dp(13),
                 bold=True,
             )
             if CHINESE_FONT:
@@ -132,49 +158,56 @@ class CategoryChip(BoxLayout):
             count_badge.add_widget(count_label)
 
             with count_badge.canvas.before:
-                Color(*self._get_badge_color())
-                Ellipse(pos=count_badge.pos, size=count_badge.size)
-            count_badge.bind(pos=self._update_badge_ellipse, size=self._update_badge_ellipse)
+                Color(*self._get_badge_bg_color())
+                RoundedRectangle(pos=count_badge.pos, size=count_badge.size, radius=[dp(11)])
+            count_badge.bind(pos=self._update_badge_pos, size=self._update_badge_pos)
             self.add_widget(count_badge)
 
-    def _update_badge_ellipse(self, *args):
-        self.canvas.before.clear()
-        with self.canvas.before:
-            Color(*self._get_badge_color())
-            Ellipse(pos=self.pos, size=self.size)
+    def _update_label_size(self):
+        if self._name_label:
+            width = self._name_label.width if self._name_label.width > 0 else 100
+            self._name_label.text_size = (width - dp(8), None)
+
+    def _update_badge_pos(self, *args):
+        pass
 
     def _get_icon_color(self):
         if self.is_selected:
-            return COLORS['surface']
-        return COLORS['text_secondary']
+            return BRIGHT_COLORS['selected_text']
+        return BRIGHT_COLORS['primary']
 
     def _get_text_color(self):
         if self.is_selected:
-            return COLORS['surface']
-        return COLORS['text_primary']
+            return BRIGHT_COLORS['selected_text']
+        return BRIGHT_COLORS['text_primary']
 
     def _get_count_color(self):
         if self.is_selected:
-            return COLORS['surface']
-        return COLORS['primary']
+            return BRIGHT_COLORS['primary']
+        return BRIGHT_COLORS['selected_text']
 
-    def _get_badge_color(self):
+    def _get_badge_bg_color(self):
         if self.is_selected:
-            return COLORS['surface'], (1, 1, 1, 0.3)
-        return COLORS['primary'], (1, 1, 1, 0.8)
+            return [1, 1, 1, 0.25]
+        return BRIGHT_COLORS['primary'][:3] + [0.1]
 
     def _get_background_color(self):
         if self.is_selected:
-            return COLORS['chip_selected']
+            return BRIGHT_COLORS['selected_bg']
         if self._hovered:
-            return COLORS['chip_unselected']
-        return COLORS['chip_unselected']
+            return BRIGHT_COLORS['hover_bg']
+        return BRIGHT_COLORS['surface']
 
     def _update_visual_state(self):
         self.canvas.before.clear()
         with self.canvas.before:
             Color(*self._get_background_color())
-            RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(16)])
+            RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(14)])
+
+        if self._icon_widget:
+            self._icon_widget.text_color = self._get_icon_color()
+        if self._name_label:
+            self._name_label.color = self._get_text_color()
 
     def set_selected(self, selected: bool):
         if self.is_selected != selected:
@@ -185,8 +218,8 @@ class CategoryChip(BoxLayout):
 
     def _animate_selection(self):
         if self.is_selected:
-            anim = Animation(height=dp(42), duration=0.1)
-            anim.bind(on_complete=lambda *args: Animation(height=dp(38), duration=0.1).start(self))
+            anim = Animation(height=dp(50), duration=0.12)
+            anim.bind(on_complete=lambda *args: Animation(height=dp(48), duration=0.12).start(self))
             anim.start(self)
         self._update_visual_state()
 
@@ -232,51 +265,54 @@ class WikiItemCard(BoxLayout):
         self.item_name = item_data.get('name', '未命名')
         self.category = item_data.get('category', '其他')
         self.has_inventory = item_data.get('total_count', 0)
-        self.category_icon = CATEGORY_ICONS.get(self.category, "package-variant")
+        self.category_icon = CATEGORY_ICON_MAP.get(self.category, "package-variant")
         self._hovered = False
 
         self.orientation = "horizontal"
         self.size_hint_y = None
         self.size_hint_x = 1
-        self.height = dp(56)
-        self.padding = (dp(12), dp(6), dp(12), dp(6))
+        self.height = dp(60)
+        self.padding = (dp(14), dp(8), dp(14), dp(8))
 
         self._setup_ui()
 
     def _setup_ui(self):
+        cat_config = CATEGORY_CONFIG.get(self.category, CATEGORY_CONFIG["其他"])
+        icon_color = cat_config["color"]
+
         icon_bg = BoxLayout(
             size_hint_x=None,
-            width=dp(40),
+            width=dp(44),
             size_hint_y=None,
             height=dp(44),
-            padding=dp(4),
+            padding=dp(6),
         )
         with icon_bg.canvas.before:
-            Color(*COLORS['primary_container'])
-            RoundedRectangle(pos=icon_bg.pos, size=icon_bg.size, radius=[dp(8)])
+            Color(*icon_color[:3] + [0.15])
+            RoundedRectangle(pos=icon_bg.pos, size=icon_bg.size, radius=[dp(12)])
 
         icon = MDIcon(
             icon=self.category_icon,
             theme_text_color="Custom",
-            text_color=COLORS['primary'],
+            text_color=icon_color,
             size_hint=(1, 1),
             halign="center",
             valign="middle",
-            font_size=dp(20),
+            font_size=dp(22),
         )
         icon_bg.add_widget(icon)
         self.add_widget(icon_bg)
 
-        text_box = BoxLayout(orientation="vertical", size_hint_x=1, spacing=dp(2))
+        text_box = BoxLayout(orientation="vertical", size_hint_x=1, spacing=dp(3))
 
         name_label = Label(
             text=self.item_name,
             size_hint_y=None,
-            height=dp(22),
+            height=dp(24),
             halign="left",
             valign="bottom",
-            color=COLORS['text_primary'],
-            font_size=dp(15),
+            color=BRIGHT_COLORS['text_primary'],
+            font_size=dp(16),
             bold=True,
         )
         name_label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
@@ -284,15 +320,15 @@ class WikiItemCard(BoxLayout):
             name_label.font_name = CHINESE_FONT
         text_box.add_widget(name_label)
 
-        category_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(16), spacing=dp(4))
+        category_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(18), spacing=dp(6))
         cat_label = Label(
-            text=CATEGORY_MAP.get(self.category, self.category),
+            text=self.category,
             size_hint_y=None,
-            height=dp(16),
+            height=dp(18),
             halign="left",
             valign="top",
-            color=COLORS['text_secondary'],
-            font_size=dp(12),
+            color=BRIGHT_COLORS['text_secondary'],
+            font_size=dp(13),
         )
         cat_label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
         if CHINESE_FONT:
@@ -303,9 +339,9 @@ class WikiItemCard(BoxLayout):
             stock_indicator = Label(
                 text="● 有库存",
                 size_hint_y=None,
-                height=dp(16),
-                color=COLORS['success'],
-                font_size=dp(11),
+                height=dp(18),
+                color=BRIGHT_COLORS['success'],
+                font_size=dp(12),
             )
             if CHINESE_FONT:
                 stock_indicator.font_name = CHINESE_FONT
@@ -318,22 +354,22 @@ class WikiItemCard(BoxLayout):
             badge = BoxLayout(
                 orientation="vertical",
                 size_hint_x=None,
-                width=dp(32),
+                width=dp(36),
                 size_hint_y=None,
-                height=dp(32),
-                padding=(dp(4), dp(2)),
+                height=dp(36),
+                padding=(dp(6), dp(4)),
             )
             with badge.canvas.before:
-                Color(*COLORS['primary'])
-                RoundedRectangle(pos=badge.pos, size=badge.size, radius=[dp(12)])
+                Color(*BRIGHT_COLORS['accent_green'])
+                RoundedRectangle(pos=badge.pos, size=badge.size, radius=[dp(14)])
 
             count_label = Label(
                 text=str(self.has_inventory),
                 size_hint=(1, 1),
                 halign="center",
                 valign="middle",
-                color=COLORS['surface'],
-                font_size=dp(14),
+                color=BRIGHT_COLORS['surface'],
+                font_size=dp(15),
                 bold=True,
             )
             if CHINESE_FONT:
@@ -343,15 +379,17 @@ class WikiItemCard(BoxLayout):
 
         self._update_background()
 
+    def _get_background_color(self):
+        if self.is_selected:
+            return BRIGHT_COLORS['selected_bg']
+        if self._hovered:
+            return BRIGHT_COLORS['hover_bg']
+        return BRIGHT_COLORS['surface']
+
     def _update_background(self):
         self.canvas.before.clear()
         with self.canvas.before:
-            if self.is_selected:
-                Color(*COLORS['primary_container'])
-            elif self._hovered:
-                Color(*COLORS['surface_variant'])
-            else:
-                Color(*COLORS['surface'])
+            Color(*self._get_background_color())
             RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(10)])
 
     def set_selected(self, selected: bool):
@@ -401,6 +439,7 @@ class InventoryRecordCard(BoxLayout):
     expiry_date = StringProperty()
     quantity = NumericProperty(0)
     status = StringProperty('fresh')
+    is_selected = BooleanProperty(False)
 
     def __init__(self, item_data, **kwargs):
         super().__init__(**kwargs)
@@ -414,8 +453,8 @@ class InventoryRecordCard(BoxLayout):
         self.orientation = "horizontal"
         self.size_hint_y = None
         self.size_hint_x = 1
-        self.height = dp(64)
-        self.padding = (dp(10), dp(6), dp(10), dp(6))
+        self.height = dp(68)
+        self.padding = (dp(12), dp(8), dp(12), dp(8))
 
         self._setup_ui()
 
@@ -424,25 +463,25 @@ class InventoryRecordCard(BoxLayout):
 
         status_indicator = BoxLayout(
             size_hint_x=None,
-            width=dp(6),
+            width=dp(8),
             size_hint_y=None,
             height=dp(52),
         )
         with status_indicator.canvas.before:
             Color(*status_color)
-            RoundedRectangle(pos=status_indicator.pos, size=status_indicator.size, radius=[dp(3)])
+            RoundedRectangle(pos=status_indicator.pos, size=status_indicator.size, radius=[dp(4)])
         self.add_widget(status_indicator)
 
         icon_box = BoxLayout(
             size_hint_x=None,
-            width=dp(40),
+            width=dp(44),
             size_hint_y=None,
             height=dp(52),
-            padding=dp(4),
+            padding=dp(6),
         )
         with icon_box.canvas.before:
-            Color(*COLORS['background'])
-            RoundedRectangle(pos=icon_box.pos, size=icon_box.size, radius=[dp(6)])
+            Color(*BRIGHT_COLORS['background'])
+            RoundedRectangle(pos=icon_box.pos, size=icon_box.size, radius=[dp(10)])
 
         icon = MDIcon(
             icon=self._get_status_icon(),
@@ -451,23 +490,23 @@ class InventoryRecordCard(BoxLayout):
             size_hint=(1, 1),
             halign="center",
             valign="middle",
-            font_size=dp(18),
+            font_size=dp(20),
         )
         icon_box.add_widget(icon)
         self.add_widget(icon_box)
 
-        text_box = BoxLayout(orientation="vertical", size_hint_x=1, spacing=dp(3))
+        text_box = BoxLayout(orientation="vertical", size_hint_x=1, spacing=dp(4))
 
-        name_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(22), spacing=dp(6))
+        name_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(24), spacing=dp(8))
         name_label = Label(
             text=self.item_name,
             size_hint_x=1,
             size_hint_y=None,
-            height=dp(22),
+            height=dp(24),
             halign="left",
             valign="bottom",
-            color=COLORS['text_primary'],
-            font_size=dp(14),
+            color=BRIGHT_COLORS['text_primary'],
+            font_size=dp(15),
             bold=True,
         )
         name_label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
@@ -479,13 +518,13 @@ class InventoryRecordCard(BoxLayout):
             qty_label = Label(
                 text=f"x{self.quantity}",
                 size_hint_x=None,
-                width=dp(30),
+                width=dp(36),
                 size_hint_y=None,
-                height=dp(22),
+                height=dp(24),
                 halign="right",
                 valign="bottom",
-                color=COLORS['primary'],
-                font_size=dp(13),
+                color=BRIGHT_COLORS['accent_orange'],
+                font_size=dp(14),
                 bold=True,
             )
             if CHINESE_FONT:
@@ -494,18 +533,18 @@ class InventoryRecordCard(BoxLayout):
 
         text_box.add_widget(name_row)
 
-        date_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(18), spacing=dp(4))
+        date_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(20), spacing=dp(6))
         date_icon = MDIcon(
             icon="calendar-clock",
             theme_text_color="Custom",
-            text_color=COLORS['text_hint'],
+            text_color=BRIGHT_COLORS['text_secondary'],
             size_hint_x=None,
-            width=dp(16),
+            width=dp(18),
             size_hint_y=None,
-            height=dp(18),
+            height=dp(20),
             halign="center",
             valign="middle",
-            font_size=dp(12),
+            font_size=dp(14),
         )
         date_row.add_widget(date_icon)
 
@@ -513,11 +552,11 @@ class InventoryRecordCard(BoxLayout):
             text=f"过期: {self.expiry_date}" if self.expiry_date != "无" else "无过期日期",
             size_hint_x=1,
             size_hint_y=None,
-            height=dp(18),
+            height=dp(20),
             halign="left",
             valign="middle",
             color=self._get_expiry_color(),
-            font_size=dp(12),
+            font_size=dp(13),
         )
         date_label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
         if CHINESE_FONT:
@@ -529,11 +568,11 @@ class InventoryRecordCard(BoxLayout):
         status_label = Label(
             text=self._get_status_text(),
             size_hint_y=None,
-            height=dp(16),
+            height=dp(18),
             halign="left",
             valign="middle",
             color=status_color,
-            font_size=dp(11),
+            font_size=dp(12),
             italic=True,
         )
         if CHINESE_FONT:
@@ -545,14 +584,14 @@ class InventoryRecordCard(BoxLayout):
         arrow = MDIcon(
             icon="chevron-right",
             theme_text_color="Custom",
-            text_color=COLORS['text_hint'],
+            text_color=BRIGHT_COLORS['text_secondary'],
             size_hint_x=None,
-            width=dp(20),
+            width=dp(24),
             size_hint_y=None,
             height=dp(52),
             halign="center",
             valign="middle",
-            font_size=dp(20),
+            font_size=dp(22),
         )
         self.add_widget(arrow)
 
@@ -576,21 +615,23 @@ class InventoryRecordCard(BoxLayout):
 
     def _get_expiry_color(self):
         colors = {
-            'fresh': COLORS['text_secondary'],
-            'expiring': COLORS['warning'],
-            'expired': COLORS['error'],
+            'fresh': BRIGHT_COLORS['text_secondary'],
+            'expiring': BRIGHT_COLORS['warning'],
+            'expired': BRIGHT_COLORS['error'],
         }
-        return colors.get(self.status, COLORS['text_secondary'])
+        return colors.get(self.status, BRIGHT_COLORS['text_secondary'])
+
+    def _get_background_color(self):
+        if self.is_selected:
+            return BRIGHT_COLORS['selected_bg']
+        if self._hovered:
+            return BRIGHT_COLORS['hover_bg']
+        return BRIGHT_COLORS['surface']
 
     def _update_background(self):
         self.canvas.before.clear()
         with self.canvas.before:
-            if self.is_selected:
-                Color(*COLORS['primary_container'])
-            elif self._hovered:
-                Color(*COLORS['surface_variant'])
-            else:
-                Color(*COLORS['surface'])
+            Color(*self._get_background_color())
             RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(8)])
 
     def on_touch_down(self, touch):
@@ -640,7 +681,7 @@ class SectionHeader(BoxLayout):
             height=dp(24),
             halign="left",
             valign="middle",
-            color=COLORS['text_primary'],
+            color=BRIGHT_COLORS['text_primary'],
             font_size=dp(16),
             bold=True,
         )
@@ -656,7 +697,7 @@ class SectionHeader(BoxLayout):
                 height=dp(16),
                 halign="left",
                 valign="middle",
-                color=COLORS['text_secondary'],
+                color=BRIGHT_COLORS['text_secondary'],
                 font_size=dp(12),
             )
             subtitle_label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
@@ -666,68 +707,37 @@ class SectionHeader(BoxLayout):
 
 
 class ItemsScreen(Screen):
-    """物品目录屏幕 - 左侧分类和物品目录 + 右侧库存记录"""
+    """物品目录屏幕 - 左侧分类 + 右侧物品列表和库存记录"""
 
     selected_item_name = ObjectProperty(allownone=True)
-    selected_item_category = StringProperty()
-    selected_filter_category = StringProperty(defaultvalue=ALL_CATEGORY)
+    selected_category = StringProperty("全部")
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.name = "items"
-        self._item_cards = {}
         self._category_buttons = {}
-        self._category_counts = {}
+        self._item_cards = {}
+        self._categories = []
         self._build_ui()
+        self._load_categories()
+        self._load_wiki_items()
 
     def _build_ui(self):
         root = BoxLayout(orientation="horizontal", size_hint=(1, 1), spacing=dp(0), padding=dp(0))
 
         left_panel = BoxLayout(
             orientation="vertical",
-            size_hint_x=0.42,
+            size_hint_x=0.3,
             padding=(dp(8), dp(8), dp(4), dp(8)),
             spacing=dp(6),
         )
 
-        header_section = BoxLayout(orientation="vertical", size_hint_y=None, height=dp(44))
-        main_title = Label(
-            text="物品目录",
-            size_hint_y=None,
-            height=dp(28),
-            halign="left",
-            valign="middle",
-            color=COLORS['text_primary'],
-            font_size=dp(18),
-            bold=True,
-        )
-        main_title.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
-        if CHINESE_FONT:
-            main_title.font_name = CHINESE_FONT
-        header_section.add_widget(main_title)
-
-        sub_title = Label(
-            text="选择分类和物品查看库存",
-            size_hint_y=None,
-            height=dp(16),
-            halign="left",
-            valign="middle",
-            color=COLORS['text_secondary'],
-            font_size=dp(12),
-        )
-        sub_title.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
-        if CHINESE_FONT:
-            sub_title.font_name = CHINESE_FONT
-        header_section.add_widget(sub_title)
-        left_panel.add_widget(header_section)
-
         category_scroll = ScrollView(
-            size_hint_y=None,
-            height=dp(140),
+            size_hint_y=1,
             do_scroll_x=False,
             bar_width=dp(3),
-            bar_color=COLORS['primary'],
-            bar_inactive_color=COLORS['divider'],
+            bar_color=BRIGHT_COLORS['primary'],
+            bar_inactive_color=BRIGHT_COLORS['surface_variant'],
         )
         self._category_box = BoxLayout(
             orientation="vertical",
@@ -739,33 +749,22 @@ class ItemsScreen(Screen):
         category_scroll.add_widget(self._category_box)
         left_panel.add_widget(category_scroll)
 
-        divider = BoxLayout(size_hint_y=None, height=dp(1), size_hint_x=1)
-        with divider.canvas.before:
-            Color(*COLORS['divider'])
-            RoundedRectangle(pos=divider.pos, size=divider.size, radius=[dp(0.5)])
-        left_panel.add_widget(divider)
+        root.add_widget(left_panel)
 
-        item_list_label = Label(
-            text="物品列表",
-            size_hint_y=None,
-            height=dp(24),
-            halign="left",
-            valign="middle",
-            color=COLORS['text_secondary'],
-            font_size=dp(13),
-            bold=True,
-        )
-        item_list_label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
-        if CHINESE_FONT:
-            item_list_label.font_name = CHINESE_FONT
-        left_panel.add_widget(item_list_label)
+        divider_v = BoxLayout(size_hint_x=None, width=dp(1), size_hint_y=1)
+        with divider_v.canvas.before:
+            Color(*BRIGHT_COLORS['surface_variant'][:3] + [0.5])
+            RoundedRectangle(pos=divider_v.pos, size=divider_v.size, radius=[dp(0.5)])
+        root.add_widget(divider_v)
+
+        right_panel = BoxLayout(orientation="vertical", size_hint_x=0.7, padding=(dp(8), dp(8), dp(8), dp(8)), spacing=dp(6))
 
         item_scroll = ScrollView(
             size_hint_y=1,
             do_scroll_x=False,
             bar_width=dp(3),
-            bar_color=COLORS['primary'],
-            bar_inactive_color=COLORS['divider'],
+            bar_color=BRIGHT_COLORS['primary'],
+            bar_inactive_color=BRIGHT_COLORS['surface_variant'],
         )
         self._item_list_box = BoxLayout(
             orientation="vertical",
@@ -775,136 +774,80 @@ class ItemsScreen(Screen):
         )
         self._item_list_box.bind(minimum_height=self._item_list_box.setter("height"))
         item_scroll.add_widget(self._item_list_box)
-        left_panel.add_widget(item_scroll)
-
-        root.add_widget(left_panel)
-
-        divider_v = BoxLayout(size_hint_x=None, width=dp(1), size_hint_y=1)
-        with divider_v.canvas.before:
-            Color(*COLORS['divider'])
-            RoundedRectangle(pos=divider_v.pos, size=divider_v.size, radius=[dp(0.5)])
-        root.add_widget(divider_v)
-
-        right_panel = BoxLayout(orientation="vertical", size_hint_x=0.58, padding=(dp(8), dp(8), dp(8), dp(8)), spacing=dp(4))
-
-        self.header_box = BoxLayout(orientation="vertical", size_hint_y=None, height=dp(48))
-        self.header = Label(
-            text="库存记录",
-            size_hint_y=None,
-            height=dp(28),
-            halign="left",
-            valign="middle",
-            color=COLORS['text_primary'],
-            font_size=dp(17),
-            bold=True,
-        )
-        self.header.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
-        if CHINESE_FONT:
-            self.header.font_name = CHINESE_FONT
-        self.header_box.add_widget(self.header)
-
-        self.sub_header = Label(
-            text="",
-            size_hint_y=None,
-            height=dp(18),
-            halign="left",
-            valign="middle",
-            color=COLORS['text_secondary'],
-            font_size=dp(12),
-        )
-        self.sub_header.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
-        if CHINESE_FONT:
-            self.sub_header.font_name = CHINESE_FONT
-        self.header_box.add_widget(self.sub_header)
-        right_panel.add_widget(self.header_box)
-
-        record_list_label = Label(
-            text="库存记录列表",
-            size_hint_y=None,
-            height=dp(24),
-            halign="left",
-            valign="middle",
-            color=COLORS['text_secondary'],
-            font_size=dp(13),
-            bold=True,
-        )
-        record_list_label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
-        if CHINESE_FONT:
-            record_list_label.font_name = CHINESE_FONT
-        right_panel.add_widget(record_list_label)
-
-        list_scroll = ScrollView(
-            size_hint_y=1,
-            do_scroll_x=False,
-            bar_width=dp(3),
-            bar_color=COLORS['primary'],
-            bar_inactive_color=COLORS['divider'],
-        )
-        self.item_list_layout = BoxLayout(
-            orientation="vertical",
-            size_hint_y=None,
-            size_hint_x=1,
-            spacing=dp(6),
-            padding=(dp(2), dp(4), dp(2), dp(4)),
-        )
-        self.item_list_layout.bind(minimum_height=self.item_list_layout.setter("height"))
-        list_scroll.add_widget(self.item_list_layout)
-        right_panel.add_widget(list_scroll)
+        right_panel.add_widget(item_scroll)
 
         root.add_widget(right_panel)
 
         self.add_widget(root)
 
-    def _load_category_buttons(self):
+    def _load_categories(self):
+        """从数据库加载物品分类信息"""
+        try:
+            categories = wiki_service.get_all_categories()
+            self._categories = categories
+            
+            # 定义默认分类
+            default_categories = [
+                {"name": "食品", "icon": "food-apple", "sort_order": 1},
+                {"name": "日用品", "icon": "home", "sort_order": 2},
+                {"name": "化妆品", "icon": "palette", "sort_order": 3},
+                {"name": "药品", "icon": "medical-bag", "sort_order": 4},
+                {"name": "其他", "icon": "package-variant", "sort_order": 5},
+            ]
+            
+            # 获取现有分类名称
+            existing_names = {cat.name for cat in categories}
+            
+            # 创建缺失的默认分类
+            for cat_data in default_categories:
+                if cat_data["name"] not in existing_names:
+                    category = wiki_service.create_category(**cat_data)
+                    if category:
+                        self._categories.append(category)
+                        existing_names.add(cat_data["name"])
+            
+            # 重新加载分类列表（确保包含新创建的分类）
+            self._categories = wiki_service.get_all_categories()
+            
+            # 设置分类按钮
+            self._setup_category_buttons()
+                
+        except Exception as e:
+            logger.error(f"加载分类失败: {e}")
+
+    def _setup_category_buttons(self):
+        """设置分类按钮"""
         self._category_box.clear_widgets()
         self._category_buttons.clear()
-        self._category_counts.clear()
 
-        all_count = 0
-        category_items = {}
-
-        try:
-            all_items = item_service.get_registered_items()
-            for item in all_items:
-                cat = item.get('category', '其他')
-                if cat not in category_items:
-                    category_items[cat] = []
-                category_items[cat].append(item)
-                all_count += 1
-
-            self._category_counts = {cat: len(items) for cat, items in category_items.items()}
-            self._category_counts[ALL_CATEGORY] = all_count
-
-        except Exception as e:
-            logger.error(f"加载分类统计失败: {e}")
-
+        # 添加"全部"按钮
         all_btn = CategoryChip(
-            category_key=ALL_CATEGORY,
-            category_name="全部",
+            category_key="全部",
+            category_name="全部物品",
             icon_name="format-list-bulleted",
-            count=all_count,
+            count=0,
         )
-        all_btn.bind(on_release=lambda inst: self._on_category_selected(ALL_CATEGORY))
+        all_btn.bind(on_release=lambda inst: self._on_category_selected("全部"))
         self._category_box.add_widget(all_btn)
-        self._category_buttons[ALL_CATEGORY] = all_btn
+        self._category_buttons["全部"] = all_btn
 
-        for cat_key, cat_name in CATEGORY_MAP.items():
-            count = self._category_counts.get(cat_key, 0)
-            icon_name = CATEGORY_ICONS.get(cat_key, "folder")
+        # 添加各个分类按钮
+        for category in self._categories:
             btn = CategoryChip(
-                category_key=cat_key,
-                category_name=cat_name,
-                icon_name=icon_name,
-                count=count,
+                category_key=category.name,
+                category_name=category.name,
+                icon_name=category.icon or "folder",
+                count=0,
             )
-            btn.bind(on_release=lambda inst, key=cat_key: self._on_category_selected(key))
+            btn.bind(on_release=lambda inst, key=category.name: self._on_category_selected(key))
             self._category_box.add_widget(btn)
-            self._category_buttons[cat_key] = btn
+            self._category_buttons[category.name] = btn
 
-        self._on_category_selected(self.selected_filter_category)
+        # 默认选中"全部"
+        self._on_category_selected("全部")
 
     def _on_category_selected(self, category_key: str):
-        self.selected_filter_category = category_key
+        self.selected_category = category_key
 
         for key, btn in self._category_buttons.items():
             btn.set_selected(key == category_key)
@@ -915,13 +858,12 @@ class ItemsScreen(Screen):
         self._item_list_box.clear_widgets()
         self._item_cards.clear()
 
-        filter_cat = self.selected_filter_category
-
         try:
             all_items = item_service.get_registered_items()
 
-            if filter_cat != ALL_CATEGORY:
-                items = [item for item in all_items if item.get('category') == filter_cat]
+            # 根据选中的分类筛选物品
+            if self.selected_category != "全部":
+                items = [item for item in all_items if item.get('category') == self.selected_category]
             else:
                 items = all_items
 
@@ -954,7 +896,7 @@ class ItemsScreen(Screen):
                 empty_box.add_widget(empty)
 
                 hint = Label(
-                    text="试试其他分类或添加新物品",
+                    text="请选择其他分类或添加新物品",
                     size_hint_y=None,
                     height=dp(20),
                     halign="center",
@@ -981,7 +923,7 @@ class ItemsScreen(Screen):
             error_icon = MDIcon(
                 icon="alert-circle",
                 theme_text_color="Custom",
-                text_color=COLORS['danger'],
+                text_color=COLORS['error'],
                 size_hint_y=None,
                 height=dp(28),
                 halign="center",
@@ -996,7 +938,7 @@ class ItemsScreen(Screen):
                 height=dp(24),
                 halign="center",
                 valign="middle",
-                color=COLORS['danger'],
+                color=COLORS['error'],
                 font_size=dp(14),
             )
             error.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
@@ -1009,146 +951,24 @@ class ItemsScreen(Screen):
         item_name = item_data['name']
         category = item_data.get('category', '其他')
         self.selected_item_name = item_name
-        self.selected_item_category = category
+        self.selected_category = category
         self._update_item_card_styles()
-        self._load_inventory(item_name)
+        
+        # 跳转到物品Wiki详情页
+        app = MDApp.get_running_app()
+        if hasattr(app, "screen_manager"):
+            app.screen_manager.current = "item_wiki_detail"
+            detail = app.screen_manager.get_screen("item_wiki_detail")
+            if detail:
+                detail.load_wiki_item(item_name)
 
     def _update_item_card_styles(self):
         for name, card in self._item_cards.items():
             card.set_selected(name == self.selected_item_name)
 
-    def _prepare_item_data(self, item) -> dict:
-        from datetime import date as _date
-
-        expiry_date_str = "无"
-        if item.expiry_date:
-            if isinstance(item.expiry_date, _date):
-                expiry_date_str = item.expiry_date.strftime("%Y-%m-%d")
-            else:
-                expiry_date_str = str(item.expiry_date)
-
-        status = 'fresh'
-        if hasattr(item, 'status'):
-            status_value = item.status.value if hasattr(item.status, 'value') else str(item.status)
-            if status_value == 'expiring':
-                status = 'expiring'
-            elif status_value == 'expired':
-                status = 'expired'
-
-        return {
-            "id": item.id,
-            "name": item.name,
-            "expiry_date": expiry_date_str,
-            "quantity": item.quantity,
-            "status": status,
-        }
-
-    def _load_inventory(self, item_name: str):
-        self.item_list_layout.clear_widgets()
-
-        category_text = CATEGORY_MAP.get(self.selected_item_category, self.selected_item_category)
-        self.header.text = item_name
-        self.sub_header.text = f"分类: {category_text}  ·  点击查看详情"
-
-        try:
-            items = item_service.get_inventory_by_name(item_name)
-
-            if not items:
-                empty_box = BoxLayout(orientation="vertical", size_hint_y=None, height=dp(100), spacing=dp(6))
-                empty_icon = MDIcon(
-                    icon="package-variant",
-                    theme_text_color="Custom",
-                    text_color=COLORS['text_hint'],
-                    size_hint_y=None,
-                    height=dp(36),
-                    halign="center",
-                    valign="middle",
-                    font_size=dp(32),
-                )
-                empty_box.add_widget(empty_icon)
-
-                empty = Label(
-                    text=f"暂无{item_name}的库存记录",
-                    size_hint_y=None,
-                    height=dp(24),
-                    halign="center",
-                    valign="middle",
-                    color=COLORS['text_hint'],
-                    font_size=dp(14),
-                )
-                empty.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
-                if CHINESE_FONT:
-                    empty.font_name = CHINESE_FONT
-                empty_box.add_widget(empty)
-
-                hint = Label(
-                    text="点击右上角按钮添加库存",
-                    size_hint_y=None,
-                    height=dp(20),
-                    halign="center",
-                    valign="middle",
-                    color=COLORS['text_hint'],
-                    font_size=dp(12),
-                )
-                hint.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
-                if CHINESE_FONT:
-                    hint.font_name = CHINESE_FONT
-                empty_box.add_widget(hint)
-                self.item_list_layout.add_widget(empty_box)
-                return
-
-            for item in items:
-                data = self._prepare_item_data(item)
-                card = InventoryRecordCard(data)
-                card.bind(
-                    on_release=lambda inst, item_id=item.id: self._on_item_click(item_id)
-                )
-                self.item_list_layout.add_widget(card)
-
-        except Exception as e:
-            logger.error(f"加载库存记录失败: {e}")
-            error_box = BoxLayout(orientation="vertical", size_hint_y=None, height=dp(60))
-            error_icon = MDIcon(
-                icon="wifi-off",
-                theme_text_color="Custom",
-                text_color=COLORS['danger'],
-                size_hint_y=None,
-                height=dp(28),
-                halign="center",
-                valign="middle",
-                font_size=dp(24),
-            )
-            error_box.add_widget(error_icon)
-
-            error = Label(
-                text="加载失败，请重试",
-                size_hint_y=None,
-                height=dp(24),
-                halign="center",
-                valign="middle",
-                color=COLORS['danger'],
-                font_size=dp(14),
-            )
-            error.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
-            if CHINESE_FONT:
-                error.font_name = CHINESE_FONT
-            error_box.add_widget(error)
-            self.item_list_layout.add_widget(error_box)
-
-    def _on_item_click(self, item_id: str):
-        app = MDApp.get_running_app()
-        if hasattr(app, "screen_manager"):
-            app.screen_manager.current = "item_detail"
-            detail = app.screen_manager.get_screen("item_detail")
-            if detail:
-                detail.item_id = item_id
-                detail._load_item(item_id)
-
     def on_enter(self):
-        self._load_category_buttons()
+        self._load_categories()
         self._load_wiki_items()
-        if self.selected_item_name:
-            self._load_inventory(self.selected_item_name)
         try:
             import app.main as main_module
             font = getattr(main_module, "CHINESE_FONT_NAME", None)
@@ -1158,7 +978,5 @@ class ItemsScreen(Screen):
             apply_font_to_widget(self, font)
 
     def refresh_data(self):
-        self._load_category_buttons()
+        self._load_categories()
         self._load_wiki_items()
-        if self.selected_item_name:
-            self._load_inventory(self.selected_item_name)

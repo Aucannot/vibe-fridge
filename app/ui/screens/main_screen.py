@@ -28,7 +28,7 @@ from datetime import date, timedelta
 import os
 
 from app.services.item_service import item_service, statistics_service
-from app.models.item import ItemCategory, ItemStatus
+from app.models.item import ItemStatus
 from app.utils.logger import setup_logger
 from app.utils.font_helper import apply_font_to_widget, CHINESE_FONT_NAME as CHINESE_FONT
 from app.ui.theme.design_tokens import COLOR_PALETTE, DESIGN_TOKENS
@@ -430,7 +430,7 @@ class ItemListItem(BoxLayout):
         super().__init__(**kwargs)
         self.item_id = item_data.id
         self.item_name = item_data.name
-        self.category = item_data.category.value
+        self.category = item_data.wiki.category.name if item_data.wiki and item_data.wiki.category else "其他"
         self.expiry_date = item_data.expiry_date.strftime('%Y-%m-%d') if item_data.expiry_date else '无'
         
         if item_data.expiry_date:
@@ -479,11 +479,11 @@ class ItemListItem(BoxLayout):
         from kivymd.uix.label import MDIcon
         
         icon_map = {
-            ItemCategory.FOOD.value: "food-apple",
-            ItemCategory.DAILY_NECESSITIES.value: "home",
-            ItemCategory.MEDICINE.value: "medical-bag",
-            ItemCategory.COSMETICS.value: "face-woman",
-            ItemCategory.OTHERS.value: "package-variant",
+            "食品": "food-apple",
+            "日用品": "home",
+            "药品": "medical-bag",
+            "化妆品": "face-woman",
+            "其他": "package-variant",
         }
         icon_name = icon_map.get(self.category, "package-variant")
         
@@ -505,11 +505,21 @@ class ItemListItem(BoxLayout):
         self.add_widget(icon)
     
     def _add_text_content(self):
+        from kivy.uix.anchorlayout import AnchorLayout
+        
+        text_anchor = AnchorLayout(
+            anchor_x="left",
+            anchor_y="center",
+            size_hint_x=1,
+            size_hint_y=1,
+        )
+        
         text_box = BoxLayout(
             orientation="vertical",
             padding=(dp(4), dp(2)),
             spacing=dp(6),
             size_hint_x=1,
+            size_hint_y=None,
         )
         text_box.bind(minimum_height=lambda inst, val: setattr(inst, "height", val))
         
@@ -531,14 +541,7 @@ class ItemListItem(BoxLayout):
         self.item_name_label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
         text_box.add_widget(self.item_name_label)
         
-        category_map = {
-            ItemCategory.FOOD.value: "食品",
-            ItemCategory.DAILY_NECESSITIES.value: "日用品",
-            ItemCategory.MEDICINE.value: "药品",
-            ItemCategory.COSMETICS.value: "化妆品",
-            ItemCategory.OTHERS.value: "其他",
-        }
-        category_text = category_map.get(self.category, "其他")
+        category_text = self.category
         
         status_color = self._get_status_color()
         status_text = self._get_status_text()
@@ -579,7 +582,8 @@ class ItemListItem(BoxLayout):
             self.tertiary_label = tertiary_label
             text_box.add_widget(tertiary_label)
         
-        self.add_widget(text_box)
+        text_anchor.add_widget(text_box)
+        self.add_widget(text_anchor)
     
     def _add_checkbox(self):
         from kivymd.uix.selectioncontrol import MDCheckbox
@@ -611,7 +615,7 @@ class ItemListItem(BoxLayout):
         elif self.days_until_expiry <= 3:
             return COLORS['warning']
         else:
-            return COLORS['success']
+            return COLORS['text_secondary']
     
     def _get_status_text(self):
         if self.expiry_date == "无":
@@ -794,8 +798,6 @@ class MainScreen(Screen):
         
         main_layout.bind(pos=self._update_bg_rect, size=self._update_bg_rect)
         
-        self._create_header(main_layout)
-
         filter_bar = BoxLayout(
             orientation='horizontal',
             size_hint_y=None,
@@ -804,23 +806,10 @@ class MainScreen(Screen):
             spacing=dp(10),
         )
 
-        filter_label = Label(
-            text="筛选",
-            font_size=dp(13),
-            color=COLORS['text_secondary'],
-            size_hint_x=None,
-            width=dp(32),
-            halign="right",
-            valign="middle",
-        )
-        filter_label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], val[1])))
-        if CHINESE_FONT:
-            apply_font_to_widget(filter_label, CHINESE_FONT)
-
         self.filter_btn = HoverButton(
             text="全部",
             size_hint_x=None,
-            width=dp(68),
+            width=dp(120),
             height=dp(28),
             font_size=dp(13),
             background_color=COLORS['accent'],
@@ -831,7 +820,6 @@ class MainScreen(Screen):
         if CHINESE_FONT:
             apply_font_to_widget(self.filter_btn, CHINESE_FONT)
 
-        filter_bar.add_widget(filter_label)
         filter_bar.add_widget(self.filter_btn)
 
         with filter_bar.canvas.before:
@@ -848,78 +836,6 @@ class MainScreen(Screen):
     
     def _show_category_menu(self):
         self.category_menu.open()
-    
-    def _create_header(self, parent):
-        header = BoxLayout(
-            orientation='vertical',
-            size_hint_y=None,
-            height=dp(80),
-        )
-
-        with header.canvas.before:
-            Color(0.45, 0.72, 1.0, 1)
-            RoundedRectangle(pos=header.pos, size=header.size, radius=[0])
-            Color(0.25, 0.52, 0.88, 1)
-            RoundedRectangle(pos=header.pos, size=(header.size[0], header.size[1] * 0.5), radius=[0])
-
-        header.bind(pos=self._update_header_rect, size=self._update_header_rect)
-
-        title_row = BoxLayout(
-            orientation='horizontal',
-            size_hint_y=None,
-            height=dp(36),
-            padding=(dp(16), dp(10), dp(16), dp(10)),
-        )
-
-        title_label = Label(
-            text="V I B E",
-            font_size=dp(20),
-            bold=True,
-            color=(1, 1, 1, 0.95),
-            size_hint_x=None,
-            width=dp(80),
-            halign="right",
-            valign="middle",
-        )
-        title_label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], val[1])))
-        if CHINESE_FONT:
-            apply_font_to_widget(title_label, CHINESE_FONT)
-
-        title_row.add_widget(title_label)
-
-        brand_label = Label(
-            text="fridge",
-            font_size=dp(20),
-            color=(1, 1, 1, 0.75),
-            size_hint_x=None,
-            width=dp(60),
-            halign="left",
-            valign="middle",
-        )
-        brand_label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], val[1])))
-        if CHINESE_FONT:
-            apply_font_to_widget(brand_label, CHINESE_FONT)
-
-        title_row.add_widget(brand_label)
-
-        header.add_widget(title_row)
-
-        parent.add_widget(header)
-
-    def _update_header_rect(self, instance, value):
-        # 清除旧的 canvas 绘制
-        instance.canvas.before.clear()
-        
-        # 重新绘制背景
-        with instance.canvas.before:
-            Color(0.45, 0.72, 1.0, 1)
-            RoundedRectangle(pos=instance.pos, size=instance.size, radius=[0])
-            Color(0.25, 0.52, 0.88, 1)
-            RoundedRectangle(
-                pos=(instance.pos[0], instance.pos[1]), 
-                size=(instance.size[0], instance.size[1] * 0.5), 
-                radius=[0]
-            )
     
     def _update_bg_rect(self, instance, value):
         self.bg_rect.pos = instance.pos
@@ -944,11 +860,11 @@ class MainScreen(Screen):
         
         category_names = {
             None: "全部",
-            ItemCategory.FOOD.value: "食品",
-            ItemCategory.DAILY_NECESSITIES.value: "日用品",
-            ItemCategory.MEDICINE.value: "药品",
-            ItemCategory.COSMETICS.value: "化妆品",
-            ItemCategory.OTHERS.value: "其他",
+            "食品": "食品",
+            "日用品": "日用品",
+            "药品": "药品",
+            "化妆品": "化妆品",
+            "其他": "其他",
         }
         
         if hasattr(self, 'filter_btn'):
@@ -972,22 +888,9 @@ class MainScreen(Screen):
         stats_container = BoxLayout(
             orientation='vertical',
             size_hint_y=None,
-            height=dp(120),
+            height=dp(96),
             padding=(dp(16), dp(12), dp(16), dp(12)),
         )
-        
-        stats_label = Label(
-            text="概览",
-            font_size=dp(15),
-            bold=True,
-            color=COLORS['text_secondary'],
-            size_hint_y=None,
-            height=dp(24),
-            halign="left",
-        )
-        if CHINESE_FONT:
-            stats_label.font_name = CHINESE_FONT
-        stats_container.add_widget(stats_label)
         
         cards_row = BoxLayout(size_hint_y=None, height=dp(84), spacing=dp(12))
         
@@ -1147,11 +1050,11 @@ class MainScreen(Screen):
         
         categories = [
             ("所有类别", None),
-            ("食品", ItemCategory.FOOD),
-            ("日用品", ItemCategory.DAILY_NECESSITIES),
-            ("药品", ItemCategory.MEDICINE),
-            ("化妆品", ItemCategory.COSMETICS),
-            ("其他", ItemCategory.OTHERS),
+            ("食品", "食品"),
+            ("日用品", "日用品"),
+            ("药品", "药品"),
+            ("化妆品", "化妆品"),
+            ("其他", "其他"),
         ]
         
         for cat_text, cat_value in categories:
@@ -1255,6 +1158,20 @@ class MainScreen(Screen):
                 self._show_empty_state()
                 return
             
+            def sort_key(item):
+                if item.expiry_date:
+                    days_until = (item.expiry_date - date.today()).days
+                    if days_until < 0:
+                        return (0, days_until)
+                    elif days_until <= 3:
+                        return (1, days_until)
+                    else:
+                        return (2, days_until)
+                else:
+                    return (3, 0)
+            
+            items.sort(key=sort_key)
+            
             for i, item in enumerate(items):
                 item_widget = ItemListItem(item)
                 item_widget.bind(
@@ -1327,13 +1244,7 @@ class MainScreen(Screen):
         self.item_count_label.text = "0 项"
     
     def _on_item_click(self, item_id):
-        app = MDApp.get_running_app()
-        if hasattr(app, "screen_manager"):
-            app.screen_manager.current = "item_detail"
-            detail = app.screen_manager.get_screen("item_detail")
-            if detail:
-                detail.item_id = item_id
-                detail._load_item(item_id)
+        self.show_item_detail(item_id)
     
     def _refresh_items(self, dt):
         self._load_items()
@@ -1349,3 +1260,28 @@ class MainScreen(Screen):
     
     def on_leave(self):
         pass
+    
+    def show_item_wiki_detail(self, item_name: str):
+        """显示物品Wiki详情页"""
+        app = MDApp.get_running_app()
+        if hasattr(app, "screen_manager"):
+            app.screen_manager.current = "item_wiki_detail"
+            detail = app.screen_manager.get_screen("item_wiki_detail")
+            if detail:
+                detail.load_wiki_item(item_name)
+    
+    def show_item_detail(self, item_id: int):
+        """显示物品详情页"""
+        app = MDApp.get_running_app()
+        if hasattr(app, "screen_manager"):
+            app.screen_manager.current = "item_detail"
+            detail = app.screen_manager.get_screen("item_detail")
+            if detail:
+                detail.item_id = item_id
+                detail._load_item(item_id)
+    
+    def show_items(self):
+        """显示物品目录页"""
+        app = MDApp.get_running_app()
+        if hasattr(app, "screen_manager"):
+            app.screen_manager.current = "items"
