@@ -359,9 +359,19 @@ class WikiItemCard(BoxLayout):
                 height=dp(36),
                 padding=(dp(6), dp(4)),
             )
-            with badge.canvas.before:
-                Color(*BRIGHT_COLORS['accent_green'])
-                RoundedRectangle(pos=badge.pos, size=badge.size, radius=[dp(14)])
+            
+            # 创建可更新的canvas
+            def update_badge_canvas(instance, value):
+                instance.canvas.before.clear()
+                with instance.canvas.before:
+                    Color(*BRIGHT_COLORS['accent_green'])
+                    RoundedRectangle(pos=instance.pos, size=instance.size, radius=[dp(14)])
+            
+            # 绑定pos和size变化事件
+            badge.bind(pos=update_badge_canvas, size=update_badge_canvas)
+            
+            # 初始化绘制
+            update_badge_canvas(badge, None)
 
             count_label = Label(
                 text=str(self.has_inventory),
