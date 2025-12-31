@@ -39,7 +39,7 @@ class InventoryListItem(BoxLayout):
         self.inventory_id = inventory_item.id
         self.item_name = inventory_item.name
         self.quantity = inventory_item.quantity
-        self.unit = inventory_item.unit
+        self.unit = inventory_item.unit or ""
         self.production_date = inventory_item.purchase_date.strftime("%Y-%m-%d") if inventory_item.purchase_date else ""
         self.expiry_date = inventory_item.expiry_date.strftime("%Y-%m-%d") if inventory_item.expiry_date else ""
         self.location = ""
@@ -357,26 +357,28 @@ class ItemWikiDetailScreen(Screen):
         """加载物品wiki信息"""
         try:
             wiki_item = wiki_service.get_wiki_by_name(item_name)
-            
+
             if not wiki_item:
                 logger.warning(f"物品wiki不存在: {item_name}，使用默认信息")
                 self.item_name = item_name
                 self.item_category = "其他"
                 self.item_description = ""
                 self.item_image = ""
+                self.item_icon = ""  # 图标
                 self.item_unit = "个"
             else:
                 self.item_name = wiki_item['name']
                 self.item_category = wiki_item['category_name'] or "其他"
                 self.item_description = wiki_item['description'] or ""
-                self.item_image = wiki_item['image_path'] or ""
-                self.item_unit = wiki_item['default_unit'] or "个"
-            
+                self.item_image = wiki_item.get('image_path') or ""
+                self.item_icon = wiki_item.get('icon') or ""  # 获取自定义图标
+                self.item_unit = wiki_item.get('default_unit') or "个"
+
             inventory_items = item_service.get_inventory_by_name(item_name)
             self._inventory_items = inventory_items
             self.total_quantity = sum(item.quantity for item in inventory_items)
             self.inventory_count = len(inventory_items)
-            
+
             self._update_ui()
 
         except Exception as e:
@@ -386,7 +388,8 @@ class ItemWikiDetailScreen(Screen):
         self._name_label.text = self.item_name
         self._category_label.text = f"分类: {self.item_category}"
         self._quantity_label.text = f"当前库存: {self.total_quantity}{self.item_unit}"
-        
+
+        # 处理图片 - 如果有图片就显示，没有就清除
         if self.item_image:
             if not self.item_image.startswith(('http://', 'https://', '/')):
                 import os
@@ -395,21 +398,22 @@ class ItemWikiDetailScreen(Screen):
                 self._item_image.source = self.item_image
         else:
             self._item_image.source = ""
-        
+
+        # 处理描述
         if self.item_description:
             self._description_label.text = self.item_description
             self._description_label.height = self._description_label.texture_size[1]
         else:
             self._description_label.text = "暂无描述"
             self._description_label.height = dp(20)
-        
+
         self._description_box.height = dp(24) + dp(16) + self._description_label.height + dp(16)
-        
+
         self._inventory_count_label.text = f"共{self.inventory_count}条"
-        
+
         self._inventory_list_box.clear_widgets()
         self._inventory_list_box.height = dp(0)
-        
+
         for inventory_item in self._inventory_items:
             list_item = InventoryListItem(inventory_item)
             self._inventory_list_box.add_widget(list_item)

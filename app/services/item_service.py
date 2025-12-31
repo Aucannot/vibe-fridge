@@ -390,32 +390,44 @@ class ItemService:
     @staticmethod
     def get_registered_items() -> List[Dict[str, Any]]:
         """
-        获取所有已注册的独特物品（按名称去重），用于物品wiki目录
+        获取所有已注册的物品 Wiki 条目（用于物品 wiki 目录）
+
+        注意：此方法返回所有 ItemWiki 条目，不管是否有活跃库存。
+        只有没有关联任何 Item 的空 Wiki 会被排除。
 
         Returns:
-            List[Dict]: 包含物品名称和类别的字典列表
+            List[Dict]: 包含物品名称、分类、图标和活跃库存数量的字典列表
         """
         try:
             with db_service.session_scope() as session:
-                # 通过关联的ItemWiki获取分类信息
-                items = session.query(
-                    Item.name,
-                    ItemWikiCategory.name.label('category'),
-                    func.count(Item.id).label('total_count')
-                ).outerjoin(
-                    ItemWiki, Item.wiki_id == ItemWiki.id
-                ).outerjoin(
-                    ItemWikiCategory, ItemWiki.category_id == ItemWikiCategory.id
+                # 从 ItemWiki 表查询所有已注册的物品条目
+                # 子查询：统计每个 Wiki 的活跃库存数量
+                active_count_subquery = session.query(
+                    Item.wiki_id,
+                    func.count(Item.id).label('active_count')
                 ).filter(
                     Item.status == ItemStatus.ACTIVE
-                ).group_by(Item.name, ItemWikiCategory.name).order_by(Item.name).all()
+                ).group_by(Item.wiki_id).subquery()
+
+                # 主查询：获取所有 ItemWiki 及其活跃库存数量
+                items = session.query(
+                    ItemWiki.name,
+                    ItemWiki.icon,
+                    ItemWikiCategory.name.label('category'),
+                    func.coalesce(active_count_subquery.c.active_count, 0).label('total_count')
+                ).outerjoin(
+                    active_count_subquery, ItemWiki.id == active_count_subquery.c.wiki_id
+                ).outerjoin(
+                    ItemWikiCategory, ItemWiki.category_id == ItemWikiCategory.id
+                ).order_by(ItemWiki.name).all()
 
                 result = []
-                for name, category, count in items:
+                for name, icon, category, count in items:
                     result.append({
                         'name': name,
+                        'icon': icon or '',  # 物品自定义图标，None 转换为空字符串
                         'category': category or '其他',  # 如果没有分类，默认为'其他'
-                        'total_count': count
+                        'total_count': count  # 活跃库存数量
                     })
 
                 return result

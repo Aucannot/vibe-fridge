@@ -115,8 +115,6 @@ class CategoryChip(BoxLayout):
     def _setup_ui(self):
         self._icon_widget = MDIcon(
             icon=self.icon,
-            theme_text_color="Custom",
-            text_color=self._get_icon_color(),
             size_hint_x=None,
             width=dp(28),
             size_hint_y=None,
@@ -125,6 +123,7 @@ class CategoryChip(BoxLayout):
             valign="middle",
             font_size=dp(20),
         )
+        self._icon_widget.color = self._get_icon_color()
         self.add_widget(self._icon_widget)
 
         self._name_label = Label(
@@ -240,7 +239,7 @@ class CategoryChip(BoxLayout):
             self._count_badge_bg_color.rgba = self._get_badge_bg_color()
 
         if self._icon_widget:
-            self._icon_widget.text_color = self._get_icon_color()
+            self._icon_widget.color = self._get_icon_color()
         if self._name_label:
             self._name_label.color = self._get_text_color()
 
@@ -299,12 +298,14 @@ class WikiItemCard(BoxLayout):
     has_inventory = NumericProperty(0)
     is_selected = BooleanProperty(False)
     category_icon = StringProperty()
+    item_icon = StringProperty()  # 物品自定义图标
 
     def __init__(self, item_data, **kwargs):
         super().__init__(**kwargs)
         self.item_name = item_data.get('name', '未命名')
         self.category = item_data.get('category', '其他')
         self.has_inventory = item_data.get('total_count', 0)
+        self.item_icon = item_data.get('icon')  # 获取自定义图标
         self.category_icon = CATEGORY_ICON_MAP.get(self.category, "package-variant")
         self._hovered = False
 
@@ -331,15 +332,16 @@ class WikiItemCard(BoxLayout):
             Color(*icon_color[:3] + [0.15])
             RoundedRectangle(pos=icon_bg.pos, size=icon_bg.size, radius=[dp(12)])
 
+        # 优先显示物品自定义图标，否则显示分类图标
+        display_icon = self.item_icon if self.item_icon else self.category_icon
         icon = MDIcon(
-            icon=self.category_icon,
-            theme_text_color="Custom",
-            text_color=icon_color,
+            icon=display_icon,
             size_hint=(1, 1),
             halign="center",
             valign="middle",
             font_size=dp(22),
         )
+        icon.color = icon_color
         icon_bg.add_widget(icon)
         self.add_widget(icon_bg)
 
@@ -535,13 +537,12 @@ class InventoryRecordCard(BoxLayout):
 
         icon = MDIcon(
             icon=self._get_status_icon(),
-            theme_text_color="Custom",
-            text_color=status_color,
             size_hint=(1, 1),
             halign="center",
             valign="middle",
             font_size=dp(20),
         )
+        icon.color = status_color
         icon_box.add_widget(icon)
         self.add_widget(icon_box)
 
@@ -586,8 +587,6 @@ class InventoryRecordCard(BoxLayout):
         date_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(20), spacing=dp(6))
         date_icon = MDIcon(
             icon="calendar-clock",
-            theme_text_color="Custom",
-            text_color=BRIGHT_COLORS['text_secondary'],
             size_hint_x=None,
             width=dp(18),
             size_hint_y=None,
@@ -596,6 +595,7 @@ class InventoryRecordCard(BoxLayout):
             valign="middle",
             font_size=dp(14),
         )
+        date_icon.color = BRIGHT_COLORS['text_secondary']
         date_row.add_widget(date_icon)
 
         date_label = Label(
@@ -633,8 +633,6 @@ class InventoryRecordCard(BoxLayout):
 
         arrow = MDIcon(
             icon="chevron-right",
-            theme_text_color="Custom",
-            text_color=BRIGHT_COLORS['text_secondary'],
             size_hint_x=None,
             width=dp(24),
             size_hint_y=None,
@@ -643,6 +641,7 @@ class InventoryRecordCard(BoxLayout):
             valign="middle",
             font_size=dp(22),
         )
+        arrow.color = BRIGHT_COLORS['text_secondary']
         self.add_widget(arrow)
 
         self._update_background()
@@ -907,6 +906,8 @@ class ItemsScreen(Screen):
     def _load_wiki_items(self):
         self._item_list_box.clear_widgets()
         self._item_cards.clear()
+        # 重置高度为 0，然后重新添加 widget 时会累加
+        self._item_list_box.height = 0
 
         try:
             all_items = item_service.get_registered_items()
@@ -921,14 +922,13 @@ class ItemsScreen(Screen):
                 empty_box = BoxLayout(orientation="vertical", size_hint_y=None, height=dp(80), spacing=dp(4))
                 empty_icon = MDIcon(
                     icon="package-variant-remove",
-                    theme_text_color="Custom",
-                    text_color=COLORS['text_hint'],
                     size_hint_y=None,
                     height=dp(32),
                     halign="center",
                     valign="middle",
                     font_size=dp(28),
                 )
+                empty_icon.color = COLORS['text_hint']
                 empty_box.add_widget(empty_icon)
 
                 empty = Label(
@@ -965,6 +965,8 @@ class ItemsScreen(Screen):
                 card = WikiItemCard(item_data)
                 card.bind(on_release=lambda inst, data=item_data: self._on_item_selected(data))
                 self._item_list_box.add_widget(card)
+                # 累加高度：每个卡片高度 + 间距(dp(6))
+                self._item_list_box.height += card.height + dp(6)
                 self._item_cards[item_data['name']] = card
 
         except Exception as e:
@@ -972,14 +974,13 @@ class ItemsScreen(Screen):
             error_box = BoxLayout(orientation="vertical", size_hint_y=None, height=dp(60))
             error_icon = MDIcon(
                 icon="alert-circle",
-                theme_text_color="Custom",
-                text_color=COLORS['error'],
                 size_hint_y=None,
                 height=dp(28),
                 halign="center",
                 valign="middle",
                 font_size=dp(24),
             )
+            error_icon.color = COLORS['error']
             error_box.add_widget(error_icon)
 
             error = Label(

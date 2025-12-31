@@ -58,6 +58,7 @@ class ItemWiki(Base):
     category = relationship('ItemWikiCategory', back_populates='items', lazy='joined')
 
     # 物品属性
+    icon = Column(String(50), nullable=True)  # 物品图标名称
     default_unit = Column(String(20), nullable=True)  # 默认单位：个、盒、瓶等
     suggested_expiry_days = Column(Integer, nullable=True)  # 建议保质期（天）
     storage_location = Column(String(100), nullable=True)  # 建议存放位置：冷藏、冷冻、常温

@@ -187,19 +187,18 @@ class CategoryChip(BoxLayout):
     
     def _setup_ui(self):
         from kivymd.uix.label import MDIcon
-        
+
         icon_name = "filter-variant" if self.is_selected else "filter-outline"
-        
+
         icon = MDIcon(
             icon=icon_name,
-            theme_text_color="Custom",
-            text_color=COLORS['primary'] if self.is_selected else COLORS['text_secondary'],
             size_hint_x=None,
             width=dp(22),
             halign="center",
             valign="middle",
             font_size=dp(18),
         )
+        icon.color = COLORS['primary'] if self.is_selected else COLORS['text_secondary']
         self.add_widget(icon)
         
         label = Label(
@@ -280,13 +279,12 @@ class StatCard(BoxLayout):
 
         self.icon_widget = MDIcon(
             icon=icon,
-            theme_text_color="Custom",
-            text_color=self._stat_color,
             size_hint_x=None,
             width=dp(24),
             halign="center",
             font_size=dp(20),
         )
+        self.icon_widget.color = self._stat_color
 
         self.value_label = Label(
             text=value,
@@ -490,11 +488,9 @@ class ItemListItem(BoxLayout):
         icon_name = icon_map.get(self.category, "package-variant")
         
         icon_color = self._get_status_color()
-        
+
         icon = MDIcon(
             icon=icon_name,
-            theme_text_color="Custom",
-            text_color=icon_color,
             size_hint_x=None,
             width=dp(48),
             size_hint_y=None,
@@ -503,6 +499,7 @@ class ItemListItem(BoxLayout):
             valign="middle",
             font_size=dp(28),
         )
+        icon.color = icon_color
         self.icon_widget = icon
         self.add_widget(icon)
     
@@ -760,7 +757,7 @@ class ItemListItem(BoxLayout):
         if self.tertiary_label:
             self.tertiary_label.color = COLORS['text_hint']
         if self.icon_widget:
-            self.icon_widget.text_color = COLORS['text_hint']
+            self.icon_widget.color = COLORS['text_hint']
     
     def _hide_consumed_state(self):
         self.canvas.before.clear()
@@ -771,7 +768,7 @@ class ItemListItem(BoxLayout):
         if self.tertiary_label:
             self.tertiary_label.color = self._get_days_color()
         if self.icon_widget:
-            self.icon_widget.text_color = self._get_status_color()
+            self.icon_widget.color = self._get_status_color()
         self._setup_background()
 
 
@@ -1005,7 +1002,7 @@ class MainScreen(Screen):
 
                 # 更新图标和文字颜色
                 if hasattr(self_self, 'icon_widget'):
-                    self_self.icon_widget.text_color = (1, 1, 1, 1) if is_current_selected else COLORS['primary']
+                    self_self.icon_widget.color = (1, 1, 1, 1) if is_current_selected else COLORS['primary']
                 if hasattr(self_self, 'text_label'):
                     self_self.text_label.color = (1, 1, 1, 1) if is_current_selected else COLORS['text_secondary']
                     self_self.text_label.bold = is_current_selected
@@ -1051,14 +1048,13 @@ class MainScreen(Screen):
         from kivymd.uix.label import MDIcon
         icon = MDIcon(
             icon=icon_name,
-            theme_text_color="Custom",
-            text_color=(1, 1, 1, 1) if is_selected else COLORS['primary'],
             size_hint=(None, None),
             size=(dp(32), dp(32)),
             halign="center",
             valign="center",
             font_size=dp(24),
         )
+        icon.color = (1, 1, 1, 1) if is_selected else COLORS['primary']
         card.icon_widget = icon
         inner_layout.add_widget(icon)
 
@@ -1225,14 +1221,13 @@ class MainScreen(Screen):
         # 图标 - 动态显示
         filter_icon = MDIcon(
             icon="view-grid",
-            theme_text_color="Custom",
-            text_color=COLORS['primary'],
             size_hint=(None, None),
             size=(dp(18), dp(18)),
             halign="center",
             valign="center",
             font_size=dp(16),
         )
+        filter_icon.color = COLORS['primary']
         filter_container.add_widget(filter_icon)
 
         # 文字标签
@@ -1453,17 +1448,16 @@ class MainScreen(Screen):
             height=dp(200),
             padding=dp(32),
         )
-        
+
         from kivymd.uix.label import MDIcon
-        
+
         empty_icon = MDIcon(
             icon="fridge-outline",
-            theme_text_color="Custom",
-            text_color=COLORS['text_hint'],
             size_hint_y=None,
             height=dp(64),
             font_size=dp(48),
         )
+        empty_icon.color = COLORS['text_hint']
         empty_container.add_widget(empty_icon)
         
         empty_text = Label(
