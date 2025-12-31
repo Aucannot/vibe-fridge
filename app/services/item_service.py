@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 物品服务
 """
@@ -5,11 +6,13 @@
 import os
 from datetime import datetime, date, timedelta
 from typing import List, Optional, Dict, Any
-from sqlalchemy import desc, or_, and_
+from sqlalchemy import desc, or_, and_, func
 from sqlalchemy.orm import Session, object_session
 
-from app.models.item import Item, ItemCategory, ItemStatus, Tag
+from app.models.item import Item, ItemStatus, Tag
+from app.models.item_wiki import ItemWiki, ItemWikiCategory
 from app.services.database import db_service
+from app.services.wiki_service import wiki_service
 from app.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -21,7 +24,7 @@ class ItemService:
     @staticmethod
     def create_item(
         name: str,
-        category: ItemCategory,
+        category: str = None,
         quantity: int = 1,
         expiry_date: date = None,
         purchase_date: date = None,
@@ -35,7 +38,7 @@ class ItemService:
 
         Args:
             name: 物品名称
-            category: 物品类别
+            category: 物品类别（用于设置ItemWiki的分类）
             quantity: 数量
             expiry_date: 过期日期
             purchase_date: 购买日期
@@ -48,11 +51,38 @@ class ItemService:
             Optional[Item]: 创建的物品对象，失败返回None
         """
         try:
+            from app.services.wiki_service import wiki_service
+
             with db_service.session_scope() as session:
-                # 创建物品对象
+                # 获取或创建对应的ItemWiki
+                wiki = wiki_service.get_wiki_by_name(name)
+                if not wiki:
+                    # 创建新的ItemWiki
+                    wiki = wiki_service.create_wiki(
+                        name=name,
+                        description=description,
+                        default_unit=unit
+                    )
+                    if not wiki:
+                        logger.error(f"创建ItemWiki失败: {name}")
+                        return None
+
+                # 如果传入了category参数，更新ItemWiki的分类
+                if category:
+                    categories = wiki_service.get_all_categories()
+                    category_id = None
+                    for cat in categories:
+                        if cat.name == category:
+                            category_id = cat.id
+                            break
+                    if category_id and wiki.get('category_id') != category_id:
+                        wiki_service.update_wiki(wiki['id'], category_id=category_id)
+                        wiki['category_id'] = category_id
+
+                # 创建物品对象，关联到ItemWiki
                 item = Item(
                     name=name,
-                    category=category,
+                    wiki_id=wiki['id'],
                     quantity=quantity,
                     expiry_date=expiry_date,
                     purchase_date=purchase_date,
@@ -99,10 +129,11 @@ class ItemService:
             from sqlalchemy.orm import joinedload
 
             with db_service.session_scope() as session:
-                # 预加载标签，避免 Session 关闭后懒加载错误
+                # 预加载标签和wiki关系，避免 Session 关闭后懒加载错误
                 item = (
                     session.query(Item)
                     .options(joinedload(Item.tags))
+                    .options(joinedload(Item.wiki).joinedload(ItemWiki.category))
                     .filter(Item.id == item_id)
                     .first()
                 )
@@ -182,8 +213,92 @@ class ItemService:
             return False
 
     @staticmethod
+    def mark_as_consumed(item_id: str) -> bool:
+        """
+        标记物品为已消耗
+
+        Args:
+            item_id: 物品ID
+
+        Returns:
+            bool: 是否标记成功
+        """
+        try:
+            with db_service.session_scope() as session:
+                item = session.query(Item).filter(Item.id == item_id).first()
+                if not item:
+                    logger.warning(f"物品不存在: {item_id}")
+                    return False
+
+                item.status = ItemStatus.CONSUMED
+                item.consumed_at = datetime.utcnow()
+                logger.info(f"物品标记为已消耗: {item.name} (ID: {item_id})")
+                return True
+
+        except Exception as e:
+            logger.error(f"标记物品为已消耗失败: {str(e)}")
+            return False
+
+    @staticmethod
+    def restore_item(item_id: str) -> bool:
+        """
+        恢复物品状态为使用中（取消已消耗状态）
+
+        Args:
+            item_id: 物品ID
+
+        Returns:
+            bool: 是否恢复成功
+        """
+        try:
+            with db_service.session_scope() as session:
+                item = session.query(Item).filter(Item.id == item_id).first()
+                if not item:
+                    logger.warning(f"物品不存在: {item_id}")
+                    return False
+
+                item.status = ItemStatus.ACTIVE
+                item.consumed_at = None
+                logger.info(f"物品已恢复为使用中状态: {item.name} (ID: {item_id})")
+                return True
+
+        except Exception as e:
+            logger.error(f"恢复物品状态失败: {str(e)}")
+            return False
+
+    @staticmethod
+    def cleanup_consumed_items(days: int = 3) -> int:
+        """
+        清理超过指定天数的已消耗物品
+
+        Args:
+            days: 天数阈值
+
+        Returns:
+            int: 删除的物品数量
+        """
+        try:
+            threshold_date = datetime.utcnow() - timedelta(days=days)
+            with db_service.session_scope() as session:
+                items = session.query(Item).filter(
+                    Item.status == ItemStatus.CONSUMED,
+                    Item.consumed_at < threshold_date
+                ).all()
+
+                count = len(items)
+                for item in items:
+                    session.delete(item)
+
+                logger.info(f"清理了 {count} 个超过 {days} 天的已消耗物品")
+                return count
+
+        except Exception as e:
+            logger.error(f"清理已消耗物品失败: {str(e)}")
+            return 0
+
+    @staticmethod
     def get_items(
-        category: ItemCategory = None,
+        category: str = None,
         status: ItemStatus = None,
         keyword: str = None,
         limit: int = 50,
@@ -203,12 +318,27 @@ class ItemService:
             List[Item]: 物品列表
         """
         try:
-            with db_service.session_scope() as session:
-                query = session.query(Item)
+            from sqlalchemy.orm import joinedload
 
-                # 应用筛选条件
+            # 手动管理session，避免session_scope提前关闭导致预加载失效
+            session = db_service.get_session()
+            try:
+                # 使用joinedload预加载wiki和category关系
+                query = session.query(Item).options(
+                    joinedload(Item.wiki).joinedload(ItemWiki.category)
+                )
+
+                # 当需要按分类筛选时，使用join连接ItemWiki和ItemWikiCategory
                 if category:
-                    query = query.filter(Item.category == category)
+                    query = query.join(
+                        ItemWiki, Item.wiki_id == ItemWiki.id
+                    ).join(
+                        ItemWikiCategory, ItemWiki.category_id == ItemWikiCategory.id
+                    ).filter(
+                        ItemWikiCategory.name == category
+                    )
+
+                # 应用其他筛选条件
                 if status:
                     query = query.filter(Item.status == status)
                 if keyword:
@@ -220,20 +350,115 @@ class ItemService:
                     )
 
                 # 排序和分页
+                # 1. 按状态排序：已消耗(CONSUMED)的物品在最下面
+                # 2. 对于未消耗的物品：按保质期排序，保质期越短的越在上面
+                # 3. 对于已消耗的物品：按消耗时间排序，消耗时间越长的越在下面
                 items = query.order_by(
+                    Item.status,
                     desc(Item.expiry_date.is_(None)),
                     Item.expiry_date,
-                    desc(Item.created_at)
+                    desc(Item.consumed_at.is_(None)),
+                    Item.consumed_at
                 ).limit(limit).offset(offset).all()
 
                 # 将所有返回的项目从会话中移除，避免detached错误
+                # 注意：joinedload已经预加载了关联对象，需要正确处理expunge
+                result = []
+                for item in items:
+                    # 在expunge之前先访问关联对象，确保它们被加载到内存
+                    if item.wiki:
+                        # 访问wiki的所有属性，确保它们被加载
+                        _ = item.wiki.id
+                        _ = item.wiki.name
+                        _ = item.wiki.category_id
+                        # 访问category，确保它被加载
+                        _ = item.wiki.category  # 这会触发category的加载
+                        if item.wiki.category:
+                            _ = item.wiki.category.id
+                            _ = item.wiki.category.name
+                    session.expunge(item)
+                    result.append(item)
+
+                return result
+            finally:
+                session.close()
+
+        except Exception as e:
+            logger.error(f"获取物品列表失败: {str(e)}")
+            return []
+
+    @staticmethod
+    def get_registered_items() -> List[Dict[str, Any]]:
+        """
+        获取所有已注册的独特物品（按名称去重），用于物品wiki目录
+
+        Returns:
+            List[Dict]: 包含物品名称和类别的字典列表
+        """
+        try:
+            with db_service.session_scope() as session:
+                # 通过关联的ItemWiki获取分类信息
+                items = session.query(
+                    Item.name,
+                    ItemWikiCategory.name.label('category'),
+                    func.count(Item.id).label('total_count')
+                ).outerjoin(
+                    ItemWiki, Item.wiki_id == ItemWiki.id
+                ).outerjoin(
+                    ItemWikiCategory, ItemWiki.category_id == ItemWikiCategory.id
+                ).filter(
+                    Item.status == ItemStatus.ACTIVE
+                ).group_by(Item.name, ItemWikiCategory.name).order_by(Item.name).all()
+
+                result = []
+                for name, category, count in items:
+                    result.append({
+                        'name': name,
+                        'category': category or '其他',  # 如果没有分类，默认为'其他'
+                        'total_count': count
+                    })
+
+                return result
+
+        except Exception as e:
+            logger.error(f"获取已注册物品失败: {str(e)}")
+            return []
+
+    @staticmethod
+    def get_inventory_by_name(name: str, status: ItemStatus = None) -> List[Item]:
+        """
+        根据物品名称获取冰箱中的库存记录
+
+        Args:
+            name: 物品名称
+            status: 可选的状态筛选条件
+
+        Returns:
+            List[Item]: 匹配的物品列表
+        """
+        try:
+            with db_service.session_scope() as session:
+                query = session.query(Item).filter(
+                    func.lower(Item.name) == func.lower(name)
+                )
+
+                if status:
+                    query = query.filter(Item.status == status)
+                else:
+                    query = query.filter(Item.status == ItemStatus.ACTIVE)
+
+                items = query.order_by(
+                    desc(Item.expiry_date.is_(None)),
+                    Item.expiry_date
+                ).all()
+
                 for item in items:
                     session.expunge(item)
 
                 return items
 
         except Exception as e:
-            logger.error(f"获取物品列表失败: {str(e)}")
+            logger.error(f"获取物品库存失败: {str(e)}")
             return []
 
     @staticmethod
@@ -378,12 +603,14 @@ class ItemStatisticsService:
         try:
             with db_service.session_scope() as session:
                 result = {}
-                for category in ItemCategory:
+                # 从数据库获取所有类别
+                categories = wiki_service.get_all_categories()
+                for category in categories:
                     count = session.query(Item).filter(
-                        Item.category == category,
+                        Item.wiki.has(category=category),
                         Item.status == ItemStatus.ACTIVE
                     ).count()
-                    result[category.value] = count
+                    result[category.name] = count
 
                 return result
         except Exception as e:
@@ -477,7 +704,7 @@ def seed_example_items():
         examples = [
             {
                 "name": "鲜牛奶",
-                "category": ItemCategory.FOOD,
+                "category": "食品",
                 "quantity": 2,
                 "unit": "盒",
                 "expiry_date": today + timedelta(days=3),
@@ -485,7 +712,7 @@ def seed_example_items():
             },
             {
                 "name": "鸡蛋",
-                "category": ItemCategory.FOOD,
+                "category": "食品",
                 "quantity": 12,
                 "unit": "个",
                 "expiry_date": today + timedelta(days=10),
@@ -493,11 +720,107 @@ def seed_example_items():
             },
             {
                 "name": "感冒药",
-                "category": ItemCategory.MEDICINE,
+                "category": "药品",
                 "quantity": 1,
                 "unit": "盒",
                 "expiry_date": today + timedelta(days=365),
                 "description": "家用备用感冒药",
+            },
+            {
+                "name": "燕麦片",
+                "category": "食品",
+                "quantity": 1,
+                "unit": "袋",
+                "expiry_date": today + timedelta(days=60),
+                "description": "早餐燕麦片",
+            },
+            {
+                "name": "番茄酱",
+                "category": "食品",
+                "quantity": 1,
+                "unit": "瓶",
+                "expiry_date": today + timedelta(days=1),
+                "description": "明天过期",
+            },
+            {
+                "name": "面包",
+                "category": "食品",
+                "quantity": 1,
+                "unit": "袋",
+                "expiry_date": today - timedelta(days=2),
+                "description": "已过期的面包",
+            },
+            {
+                "name": "洗衣液",
+                "category": "日用品",
+                "quantity": 1,
+                "unit": "瓶",
+                "expiry_date": today + timedelta(days=180),
+                "description": "家用洗衣液",
+            },
+            {
+                "name": "面膜",
+                "category": "化妆品",
+                "quantity": 5,
+                "unit": "片",
+                "expiry_date": today + timedelta(days=200),
+                "description": "保湿面膜",
+            },
+            {
+                "name": "咖啡豆",
+                "category": "食品",
+                "quantity": 1,
+                "unit": "袋",
+                "expiry_date": today + timedelta(days=45),
+                "description": "现磨咖啡豆",
+            },
+            {
+                "name": "酸奶",
+                "category": "食品",
+                "quantity": 4,
+                "unit": "杯",
+                "expiry_date": today + timedelta(days=5),
+                "description": "原味酸奶",
+            },
+            {
+                "name": "水果刀",
+                "category": "日用品",
+                "quantity": 1,
+                "unit": "把",
+                "expiry_date": None,
+                "description": "厨房用品",
+            },
+            {
+                "name": "维生素C",
+                "category": "药品",
+                "quantity": 1,
+                "unit": "瓶",
+                "expiry_date": today + timedelta(days=90),
+                "description": "保健品",
+            },
+            {
+                "name": "口红",
+                "category": "化妆品",
+                "quantity": 1,
+                "unit": "支",
+                "expiry_date": today + timedelta(days=300),
+                "description": "日常化妆品",
+            },
+            {
+                "name": "矿泉水",
+                "category": "食品",
+                "quantity": 6,
+                "unit": "瓶",
+                "expiry_date": today + timedelta(days=120),
+                "description": "瓶装水",
+            },
+            {
+                "name": "牙膏",
+                "category": "日用品",
+                "quantity": 1,
+                "unit": "支",
+                "expiry_date": today + timedelta(days=250),
+                "description": "口腔清洁",
             },
         ]
 
@@ -516,26 +839,26 @@ statistics_service = ItemStatisticsService()
 
 if __name__ == '__main__':
     # 测试服务功能
-    from app.models.item import ItemCategory
+
 
     # 创建测试物品
     test_item = item_service.create_item(
         name="测试牛奶",
-        category=ItemCategory.FOOD,
+        category="食品",
         quantity=2,
         expiry_date=date.today() + timedelta(days=5),
         description="测试用物品"
     )
 
     if test_item:
-        print(f"创建成功: {test_item.name}")
-        print(f"物品ID: {test_item.id}")
-        print(f"过期天数: {test_item.days_until_expiry}")
+        logger.info(f"创建成功: {test_item.name}")
+        logger.info(f"物品ID: {test_item.id}")
+        logger.info(f"过期天数: {test_item.days_until_expiry}")
 
         # 获取即将过期物品
         expiring = item_service.get_expiring_items(days=7)
-        print(f"即将过期物品数量: {len(expiring)}")
+        logger.info(f"即将过期物品数量: {len(expiring)}")
 
         # 获取统计信息
         stats = statistics_service.get_category_stats()
-        print(f"类别统计: {stats}")
+        logger.info(f"类别统计: {stats}")

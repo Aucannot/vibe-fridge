@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 数据库服务
 """
@@ -24,6 +25,11 @@ def get_database_url() -> str:
     """
     # 从环境变量获取数据库URL
     db_url = os.getenv('DATABASE_URL', 'sqlite:///data/vibe_fridge.db')
+    
+    # 确保SQLite使用UTF-8编码
+    if db_url.startswith('sqlite:///') and '?' not in db_url:
+        db_url += '?charset=utf8'
+    
     return db_url
 
 
@@ -44,14 +50,115 @@ def init_database() -> None:
         # 创建数据库引擎
         engine = create_engine(db_url)
 
+        # 关键：先导入ItemWiki，确保SQLAlchemy在配置Item的关系之前已加载该模型
+        from app.models.item_wiki import ItemWiki, ItemWikiCategory
+
         # 创建表
         Base.metadata.create_all(engine)
+
+        # 添加新字段（数据库迁移）
+        _migrate_database(engine)
 
         logger.info(f"数据库初始化成功: {db_url}")
 
     except Exception as e:
         logger.error(f"数据库初始化失败: {str(e)}")
         raise
+
+
+def _migrate_database(engine) -> None:
+    """
+    数据库迁移：添加新字段和新表
+    """
+    try:
+        from sqlalchemy import inspect
+        inspector = inspect(engine)
+
+        # 使用begin()创建自动提交的事务
+        with engine.begin() as conn:
+            # 检查 items 表中的字段
+            items_columns = [col['name'] for col in inspector.get_columns('items')]
+
+            if 'consumed_at' not in items_columns:
+                logger.info("添加consumed_at字段到items表")
+                conn.execute(text("ALTER TABLE items ADD COLUMN consumed_at DATETIME"))
+                logger.info("consumed_at字段添加成功")
+
+            if 'wiki_id' not in items_columns:
+                logger.info("添加wiki_id字段到items表")
+                conn.execute(text("ALTER TABLE items ADD COLUMN wiki_id VARCHAR(36)"))
+                logger.info("wiki_id字段添加成功")
+
+                # 添加外键约束
+                try:
+                    conn.execute(text("ALTER TABLE items ADD CONSTRAINT fk_wiki_id FOREIGN KEY (wiki_id) REFERENCES item_wikis(id)"))
+                    logger.info("wiki_id外键约束添加成功")
+                except Exception as e:
+                    logger.warning(f"添加wiki_id外键约束失败（可能是表不存在）: {e}")
+
+            # 检查是否需要创建 item_wikis 表
+            tables = inspector.get_table_names()
+            if 'item_wikis' not in tables:
+                logger.info("创建item_wikis表")
+                conn.execute(text("""
+                    CREATE TABLE item_wikis (
+                        id VARCHAR(36) PRIMARY KEY,
+                        name VARCHAR(100) NOT NULL,
+                        description TEXT,
+                        category_id VARCHAR(36),
+                        default_unit VARCHAR(20),
+                        suggested_expiry_days INTEGER,
+                        storage_location VARCHAR(100),
+                        notes TEXT,
+                        image_path VARCHAR(255),
+                        created_at DATETIME NOT NULL,
+                        updated_at DATETIME NOT NULL
+                    )
+                """))
+                logger.info("item_wikis表创建成功")
+            else:
+                # 检查并添加缺失的字段
+                item_wikis_columns = [col['name'] for col in inspector.get_columns('item_wikis')]
+                
+                if 'category_id' not in item_wikis_columns:
+                    logger.info("添加category_id字段到item_wikis表")
+                    conn.execute(text("ALTER TABLE item_wikis ADD COLUMN category_id VARCHAR(36)"))
+                    logger.info("category_id字段添加成功")
+                
+                if 'image_path' not in item_wikis_columns:
+                    logger.info("添加image_path字段到item_wikis表")
+                    conn.execute(text("ALTER TABLE item_wikis ADD COLUMN image_path VARCHAR(255)"))
+                    logger.info("image_path字段添加成功")
+            
+            # 添加外键约束（如果不存在）
+            if 'item_wikis' in tables and 'item_wiki_categories' in tables:
+                try:
+                    constraints = inspector.get_foreign_keys('item_wikis')
+                    has_fk = any(ct['constrained_columns'] == ['category_id'] for ct in constraints)
+                    if not has_fk:
+                        logger.info("添加item_wikis.category_id外键约束")
+                        conn.execute(text("ALTER TABLE item_wikis ADD CONSTRAINT fk_category_id FOREIGN KEY (category_id) REFERENCES item_wiki_categories(id)"))
+                        logger.info("外键约束添加成功")
+                except Exception as e:
+                    logger.warning(f"添加外键约束失败: {e}")
+
+            if 'item_wiki_categories' not in tables:
+                logger.info("创建item_wiki_categories表")
+                conn.execute(text("""
+                    CREATE TABLE item_wiki_categories (
+                        id VARCHAR(36) PRIMARY KEY,
+                        name VARCHAR(50) NOT NULL UNIQUE,
+                        icon VARCHAR(50),
+                        color VARCHAR(20),
+                        sort_order INTEGER NOT NULL DEFAULT 0,
+                        created_at DATETIME NOT NULL,
+                        updated_at DATETIME NOT NULL
+                    )
+                """))
+                logger.info("item_wiki_categories表创建成功")
+
+    except Exception as e:
+        logger.warning(f"数据库迁移失败: {e}")
 
 
 def get_session() -> Session:

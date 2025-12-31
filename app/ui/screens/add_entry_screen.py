@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 选择添加方式屏幕 - 展示三种添加物品的入口（仅展示，不实现逻辑）
 1. 从订单截图自动批量导入
@@ -13,15 +14,9 @@ from kivymd.app import MDApp
 from kivymd.uix.card import MDCard
 from kivymd.uix.button import MDButton, MDIconButton, MDButtonText
 
-from app.utils.font_helper import apply_font_to_widget
+from app.utils.font_helper import apply_font_to_widget, CHINESE_FONT_NAME
 
-
-try:
-    import app.main as main_module
-
-    CHINESE_FONT = getattr(main_module, "CHINESE_FONT_NAME", None)
-except Exception:
-    CHINESE_FONT = None
+CHINESE_FONT = CHINESE_FONT_NAME
 
 
 class AddEntryScreen(Screen):
@@ -41,6 +36,7 @@ class AddEntryScreen(Screen):
         back_btn = MDIconButton(
             icon="arrow-left",
             on_release=self._on_back_click,
+            font_name="Roboto",
         )
         header.add_widget(back_btn)
 
@@ -110,6 +106,7 @@ class AddEntryScreen(Screen):
         icon_btn = MDIconButton(
             icon=icon,
             disabled=True,
+            font_name="Roboto",
         )
         layout.add_widget(icon_btn)
 
