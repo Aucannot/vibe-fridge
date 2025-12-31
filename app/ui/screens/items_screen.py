@@ -99,6 +99,16 @@ class CategoryChip(BoxLayout):
         self.height = dp(48)
         self.padding = (dp(14), dp(8), dp(14), dp(8))
 
+        # Canvas 指令引用
+        self._bg_color = None
+        self._bg_rect = None
+        self._count_badge_bg_color = None
+        self._count_badge_rect = None
+        self._count_badge = None
+
+        # 绑定 pos 和 size 变化事件
+        self.bind(pos=self._update_canvas, size=self._update_canvas)
+
         self._setup_ui()
         self._update_visual_state()
 
@@ -137,7 +147,7 @@ class CategoryChip(BoxLayout):
         self.add_widget(self._name_label)
 
         if self.count > 0:
-            count_badge = BoxLayout(
+            self._count_badge = BoxLayout(
                 size_hint_x=None,
                 width=dp(32),
                 size_hint_y=None,
@@ -155,21 +165,35 @@ class CategoryChip(BoxLayout):
             )
             if CHINESE_FONT:
                 count_label.font_name = CHINESE_FONT
-            count_badge.add_widget(count_label)
+            self._count_badge.add_widget(count_label)
 
-            with count_badge.canvas.before:
-                Color(*self._get_badge_bg_color())
-                RoundedRectangle(pos=count_badge.pos, size=count_badge.size, radius=[dp(11)])
-            count_badge.bind(pos=self._update_badge_pos, size=self._update_badge_pos)
-            self.add_widget(count_badge)
+            with self._count_badge.canvas.before:
+                self._count_badge_bg_color = Color(*self._get_badge_bg_color())
+                self._count_badge_rect = RoundedRectangle(pos=self._count_badge.pos, size=self._count_badge.size, radius=[dp(11)])
+            self._count_badge.bind(pos=self._update_count_badge_canvas, size=self._update_count_badge_canvas)
+            self.add_widget(self._count_badge)
 
     def _update_label_size(self):
         if self._name_label:
             width = self._name_label.width if self._name_label.width > 0 else 100
             self._name_label.text_size = (width - dp(8), None)
 
-    def _update_badge_pos(self, *args):
-        pass
+    def _update_label_size(self):
+        if self._name_label:
+            width = self._name_label.width if self._name_label.width > 0 else 100
+            self._name_label.text_size = (width - dp(8), None)
+
+    def _update_canvas(self, instance, value):
+        """更新背景 Canvas 的位置和大小"""
+        if self._bg_rect:
+            self._bg_rect.pos = self.pos
+            self._bg_rect.size = self.size
+
+    def _update_count_badge_canvas(self, instance, value):
+        """更新 count badge Canvas 的位置和大小"""
+        if self._count_badge_rect:
+            self._count_badge_rect.pos = self._count_badge.pos
+            self._count_badge_rect.size = self._count_badge.size
 
     def _get_icon_color(self):
         if self.is_selected:
@@ -199,15 +223,31 @@ class CategoryChip(BoxLayout):
         return BRIGHT_COLORS['surface']
 
     def _update_visual_state(self):
-        self.canvas.before.clear()
-        with self.canvas.before:
-            Color(*self._get_background_color())
-            RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(14)])
+        # 首次创建 Canvas 指令
+        if self._bg_color is None:
+            with self.canvas.before:
+                self._bg_color = Color(*self._get_background_color())
+                self._bg_rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(14)])
+            # 立即设置正确的位置和大小
+            self._bg_rect.pos = self.pos
+            self._bg_rect.size = self.size
+        else:
+            # 只更新颜色
+            self._bg_color.rgba = self._get_background_color()
+
+        # 更新 count badge 颜色
+        if self._count_badge_bg_color:
+            self._count_badge_bg_color.rgba = self._get_badge_bg_color()
 
         if self._icon_widget:
             self._icon_widget.text_color = self._get_icon_color()
         if self._name_label:
             self._name_label.color = self._get_text_color()
+
+        # 更新 count badge 内部文字颜色
+        if self._count_badge and len(self._count_badge.children) > 0:
+            count_label = self._count_badge.children[0]
+            count_label.color = self._get_count_color()
 
     def set_selected(self, selected: bool):
         if self.is_selected != selected:
