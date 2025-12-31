@@ -22,7 +22,7 @@ from kivy.config import Config
 
 # 配置 Kivy 基本设置（必须在导入其他 Kivy 模块之前）
 Config.set('graphics', 'width', '360')
-Config.set('graphics', 'height', '640')
+Config.set('graphics', 'height', '780')
 Config.set('kivy', 'window_icon', 'assets/icon.png')
 
 # 现在可以导入其他模块
@@ -68,6 +68,7 @@ class VibeFridgeApp(MDApp):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.logger = setup_logger(__name__)
         # 设置主题
         self.theme_cls.theme_style = "Light"
         self.theme_cls.primary_palette = "Blue"
@@ -90,26 +91,26 @@ class VibeFridgeApp(MDApp):
                             continue  # 跳过图标字体样式
                         if hasattr(self.theme_cls.font_styles[style_name], 'font_name'):
                             self.theme_cls.font_styles[style_name]['font-name'] = chinese_font_name
-                print(f"已为 KivyMD 设置中文字体: {chinese_font_name}")
+                self.logger.debug(f"已为 KivyMD 设置中文字体: {chinese_font_name}")
             except Exception as e:
-                print(f"设置 KivyMD 字体失败: {e}")
+                self.logger.debug(f"设置 KivyMD 字体失败: {e}")
                 import traceback
                 traceback.print_exc()
-                
+
             # 特别确保MDIcon类使用正确的字体
             try:
                 from kivymd.uix.label import MDIcon
                 if hasattr(MDIcon, 'font_name'):
                     MDIcon.font_name = 'MaterialIcons'
-                    print("已为 MDIcon 设置图标字体为 MaterialIcons")
-                
+                    self.logger.debug("已为 MDIcon 设置图标字体为 MaterialIcons")
+
                 # 确保MDCheckbox也使用正确的图标字体
                 from kivymd.uix.selectioncontrol import MDCheckbox
                 if hasattr(MDCheckbox, 'font_name'):
                     MDCheckbox.font_name = 'MaterialIcons'
-                    print("已为 MDCheckbox 设置图标字体为 MaterialIcons")
+                    self.logger.debug("已为 MDCheckbox 设置图标字体为 MaterialIcons")
             except Exception as e:
-                print(f"设置 MDIcon/MDCheckbox 字体失败: {e}")
+                self.logger.debug(f"设置 MDIcon/MDCheckbox 字体失败: {e}")
                 import traceback
                 traceback.print_exc()
 
@@ -219,7 +220,7 @@ class VibeFridgeApp(MDApp):
                 def __init__(self, **kwargs):
                     super().__init__(**kwargs)
                     self.orientation = "vertical"
-                    self.spacing = dp(4)
+                    self.spacing = dp(2)  # 减小间距，使图标和文字更靠近
                     self.size_hint_y = None
                     self.height = dp(52) if not kwargs.get('is_center', False) else dp(56)
                     self.bind(on_press=self._on_press)
@@ -279,22 +280,35 @@ class VibeFridgeApp(MDApp):
                         size=lambda ins, val: setattr(ins, 'text_size', val),
                         icon_color=lambda ins, val: setattr(self, 'icon_color', val)
                     )
-                    if self.is_center_btn:
-                        icon_lbl.size_hint = (1, 1)
-                    self.add_widget(icon_lbl)
-                    
+                    # 确保图标在容器中水平居中
+                    icon_lbl.size_hint_x = 1
+                    icon_lbl.size_hint_y = None
+                    icon_lbl.height = dp(28) if self.is_center_btn else dp(24)
+
+                    # 创建图标容器使其在按钮中水平居中
+                    icon_container = BoxLayout(
+                        orientation='horizontal',
+                        size_hint_x=1,
+                        size_hint_y=None,
+                        height=dp(28) if self.is_center_btn else dp(24),
+                    )
+                    icon_container.add_widget(icon_lbl)
+                    self.add_widget(icon_container)
+
                     if not self.is_center_btn:
                         label = Label(
                             text=self.text,
                             font_size=dp(10),
                             halign="center",
-                            valign="top",
+                            valign="middle",
+                            size_hint_x=1,
                             size_hint_y=None,
                             height=dp(14),
                             color=self.text_color,
                         )
                         if CHINESE_FONT_NAME:
                             label.font_name = CHINESE_FONT_NAME
+                        label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], val[1])))
                         self.add_widget(label)
 
                 def _on_press(self, *args):

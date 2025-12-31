@@ -851,14 +851,14 @@ if __name__ == '__main__':
     )
 
     if test_item:
-        print(f"创建成功: {test_item.name}")
-        print(f"物品ID: {test_item.id}")
-        print(f"过期天数: {test_item.days_until_expiry}")
+        logger.info(f"创建成功: {test_item.name}")
+        logger.info(f"物品ID: {test_item.id}")
+        logger.info(f"过期天数: {test_item.days_until_expiry}")
 
         # 获取即将过期物品
         expiring = item_service.get_expiring_items(days=7)
-        print(f"即将过期物品数量: {len(expiring)}")
+        logger.info(f"即将过期物品数量: {len(expiring)}")
 
         # 获取统计信息
         stats = statistics_service.get_category_stats()
-        print(f"类别统计: {stats}")
+        logger.info(f"类别统计: {stats}")

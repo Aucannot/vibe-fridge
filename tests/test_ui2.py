@@ -3,8 +3,11 @@
 import os
 os.chdir('h:\\code\\vibe-fridge')
 
+from app.utils.logger import setup_logger
 from app.services.database import init_database
 from app.services.item_service import item_service
+
+logger = setup_logger(__name__)
 
 # 初始化数据库
 init_database()
@@ -14,15 +17,15 @@ items = item_service.get_items()
 
 if items:
     item = items[0]
-    print(f'物品数据:')
-    print(f'  id = {item.id!r}')
-    print(f'  name = {item.name!r}')
-    print(f'  category = {item.category}')
-    print(f'  category.value = {item.category.value!r}')
-    print(f'  expiry_date = {item.expiry_date!r}')
-    print(f'  quantity = {item.quantity!r}')
-    print(f'  status = {item.status}')
-    print(f'  status.value = {item.status.value!r}')
+    logger.info(f'物品数据:')
+    logger.info(f'  id = {item.id!r}')
+    logger.info(f'  name = {item.name!r}')
+    logger.info(f'  category = {item.category}')
+    logger.info(f'  category.value = {item.category.value!r}')
+    logger.info(f'  expiry_date = {item.expiry_date!r}')
+    logger.info(f'  quantity = {item.quantity!r}')
+    logger.info(f'  status = {item.status}')
+    logger.info(f'  status.value = {item.status.value!r}')
 
     # 模拟 ItemListItem 初始化
     item_id = item.id
@@ -42,23 +45,23 @@ if items:
     status = item.status.value
     is_consumed = status == 'consumed'
 
-    print(f'\n模拟 ItemListItem 初始化:')
-    print(f'  item_id = {item_id!r}')
-    print(f'  item_name = {item_name!r}')
-    print(f'  category = {category!r}')
-    print(f'  expiry_date = {expiry_date!r}')
-    print(f'  days_until_expiry = {days_until_expiry}')
-    print(f'  quantity = {quantity!r}')
-    print(f'  status = {status!r}')
-    print(f'  is_consumed = {is_consumed}')
+    logger.info(f'模拟 ItemListItem 初始化:')
+    logger.info(f'  item_id = {item_id!r}')
+    logger.info(f'  item_name = {item_name!r}')
+    logger.info(f'  category = {category!r}')
+    logger.info(f'  expiry_date = {expiry_date!r}')
+    logger.info(f'  days_until_expiry = {days_until_expiry}')
+    logger.info(f'  quantity = {quantity!r}')
+    logger.info(f'  status = {status!r}')
+    logger.info(f'  is_consumed = {is_consumed}')
 
     # 构建 headline_text
     headline_text = f"{item_name}"
     if quantity > 1:
         headline_text += f" ×{quantity}"
 
-    print(f'\n构建显示文本:')
-    print(f'  headline_text = {headline_text!r}')
+    logger.info(f'构建显示文本:')
+    logger.info(f'  headline_text = {headline_text!r}')
 
     # 类别映射
     category_map = {
@@ -69,7 +72,7 @@ if items:
         "others": "其他",
     }
     category_text = category_map.get(category, "其他")
-    print(f'  category_text = {category_text!r}')
+    logger.info(f'  category_text = {category_text!r}')
 
     # 状态文本
     status_text = ""
@@ -83,6 +86,6 @@ if items:
         status_text = "正常"
 
     supporting_text = f"{category_text}  ·  {status_text}"
-    print(f'  supporting_text = {supporting_text!r}')
+    logger.info(f'  supporting_text = {supporting_text!r}')
 
-    print(f'\n✓ 所有数据都正确构建，没有发现问题')
+    logger.info('✓ 所有数据都正确构建，没有发现问题')

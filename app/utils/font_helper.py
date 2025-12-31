@@ -7,6 +7,9 @@ from kivy.config import Config
 import os
 import sys
 
+from app.utils.logger import setup_logger
+logger = setup_logger(__name__)
+
 # 全局变量：存储中文字体名称（供其他模块导入使用）
 CHINESE_FONT_NAME = None
 
@@ -38,10 +41,10 @@ def register_chinese_font():
                                 potential_path = line.split(':')[0].strip()
                                 if os.path.exists(potential_path) and potential_path.endswith(('.ttc', '.ttf')):
                                     font_paths.insert(0, potential_path)
-                                    print(f"通过 fc-list 找到字体路径: {potential_path}")
+                                    logger.debug(f"通过 fc-list 找到字体路径: {potential_path}")
                                     break
             except Exception as e:
-                print(f"使用 fc-list 查找字体失败: {e}")
+                logger.debug(f"使用 fc-list 查找字体失败: {e}")
             
             # 尝试注册找到的字体文件
             for font_path in font_paths:
@@ -51,10 +54,10 @@ def register_chinese_font():
                                           fn_regular=font_path,
                                           fn_bold=font_path)
                         chinese_font_name = 'ChineseFont'
-                        print(f"成功注册中文字体文件: {font_path}")
+                        logger.debug(f"成功注册中文字体文件: {font_path}")
                         break
                     except Exception as e:
-                        print(f"注册字体文件失败 {font_path}: {e}")
+                        logger.debug(f"注册字体文件失败 {font_path}: {e}")
                         continue
         
         # Linux 中文字体
@@ -71,11 +74,11 @@ def register_chinese_font():
                                           fn_regular=font_path,
                                           fn_bold=font_path)
                         chinese_font_name = 'ChineseFont'
-                        print(f"成功注册中文字体文件: {font_path}")
+                        logger.debug(f"成功注册中文字体文件: {font_path}")
                         break
                     except Exception as e:
                         continue
-        
+
         # Windows 中文字体
         elif sys.platform == 'win32':
             font_paths = [
@@ -90,22 +93,20 @@ def register_chinese_font():
                                           fn_regular=font_path,
                                           fn_bold=font_path)
                         chinese_font_name = 'ChineseFont'
-                        print(f"成功注册中文字体文件: {font_path}")
+                        logger.debug(f"成功注册中文字体文件: {font_path}")
                         break
                     except Exception as e:
                         continue
-        
+
         # 设置默认字体
         if chinese_font_name:
             Config.set('kivy', 'default_font', [chinese_font_name, 'Roboto'])
-            print(f"已设置默认字体为: {chinese_font_name}")
+            logger.debug(f"已设置默认字体为: {chinese_font_name}")
         else:
-            print("警告: 无法找到中文字体文件，中文可能显示为方框")
-    
+            logger.warning("无法找到中文字体文件，中文可能显示为方框")
+
     except Exception as e:
-        import logging
-        logging.warning(f"无法注册中文字体: {e}")
-        print(f"字体注册异常: {e}")
+        logger.warning(f"无法注册中文字体: {e}")
     
     # 将字体名称存储到全局变量
     global CHINESE_FONT_NAME, _REGISTERED_FONT_NAME

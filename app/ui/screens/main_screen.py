@@ -11,6 +11,8 @@ from kivy.uix.button import Button
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.modalview import ModalView
+from kivy.uix.anchorlayout import AnchorLayout
+from kivy.effects.scroll import ScrollEffect
 from kivy.graphics import Color, Rectangle, RoundedRectangle, Ellipse, Line
 from kivy.metrics import dp
 from kivy.properties import (
@@ -791,73 +793,325 @@ class MainScreen(Screen):
     
     def _build_ui(self):
         main_layout = BoxLayout(orientation='vertical', size_hint=(1, 1))
-        
+
         with main_layout.canvas.before:
             Color(*COLORS['background'])
             self.bg_rect = Rectangle(pos=main_layout.pos, size=main_layout.size)
-        
+
         main_layout.bind(pos=self._update_bg_rect, size=self._update_bg_rect)
-        
-        filter_bar = BoxLayout(
-            orientation='horizontal',
-            size_hint_y=None,
-            height=dp(44),
-            padding=(dp(16), dp(6), dp(16), dp(6)),
-            spacing=dp(10),
-        )
 
-        self.filter_btn = HoverButton(
-            text="全部",
-            size_hint_x=None,
-            width=dp(120),
-            height=dp(28),
-            font_size=dp(13),
-            background_color=COLORS['accent'],
-            background_normal='',
-            border=(0, 0, 0, 0),
-        )
-        self.filter_btn.bind(on_release=lambda x: self._show_category_menu())
-        if CHINESE_FONT:
-            apply_font_to_widget(self.filter_btn, CHINESE_FONT)
-
-        filter_bar.add_widget(self.filter_btn)
-
-        with filter_bar.canvas.before:
-            Color(*COLORS['surface'])
-            RoundedRectangle(pos=filter_bar.pos, size=filter_bar.size, radius=[dp(12)])
-        filter_bar.bind(pos=self._update_filter_bar_bg, size=self._update_filter_bar_bg)
-
-        main_layout.add_widget(filter_bar)
-        
         self._create_stats_section(main_layout)
         self._create_list_section(main_layout)
-        
+
         self.add_widget(main_layout)
-    
+
     def _show_category_menu(self):
+        """显示分类选择弹窗"""
+        self.category_menu.opacity = 0
         self.category_menu.open()
-    
+
+        # 淡入动画
+        Animation(opacity=1, duration=0.3, t='out_cubic').start(self.category_menu)
+
+        # 刷新所有卡片的状态 - 多次延迟确保正确更新
+        def update_cards(dt):
+            count = 0
+            for widget in self.category_menu.walk(restrict=True):
+                if hasattr(widget, '_update_background'):
+                    try:
+                        widget._update_background(widget)
+                        count += 1
+                    except Exception as e:
+                        pass
+
+        # 三次刷新确保正确更新
+        Clock.schedule_once(update_cards, 0.05)
+        Clock.schedule_once(update_cards, 0.15)
+        Clock.schedule_once(update_cards, 0.3)
+
+    def _create_category_menu(self):
+        """创建分类选择弹窗"""
+        # 分类图标映射
+        category_icons = {
+            "全部": "view-grid",
+            "食品": "food-apple",
+            "日用品": "home",
+            "药品": "medical-bag",
+            "化妆品": "face-woman",
+            "其他": "package-variant",
+        }
+
+        self.category_menu = ModalView(
+            size_hint=(0.92, None),
+            auto_dismiss=True,
+            background_color=COLORS['overlay'],
+        )
+        self.category_menu.size_hint_y = None
+        self.category_menu.height = dp(480)
+
+        main_box = BoxLayout(
+            orientation="vertical",
+            size_hint=(1, None),
+            padding=dp(0),
+        )
+        main_box.bind(minimum_width=main_box.setter('width'))
+        main_box.bind(minimum_height=main_box.setter('height'))
+
+        content_box = BoxLayout(
+            orientation="vertical",
+            padding=dp(20),
+            spacing=dp(16),
+            size_hint_y=None,
+            size_hint_x=1,
+        )
+        content_box.bind(minimum_height=content_box.setter('height'))
+
+        # 背景和边框
+        def update_modal_background(instance=None, value=None):
+            content_box.canvas.before.clear()
+            with content_box.canvas.before:
+                Color(*COLORS['surface_elevated'])
+                RoundedRectangle(size=content_box.size, pos=content_box.pos, radius=[dp(24)])
+
+        update_modal_background()
+        content_box.bind(pos=update_modal_background, size=update_modal_background)
+
+        # 标题
+        title = Label(
+            text="选择分类",
+            size_hint_y=None,
+            height=dp(40),
+            font_size=dp(18),
+            bold=True,
+            color=COLORS['text_primary'],
+            halign="center",
+            valign="middle",
+        )
+        title.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], val[1])))
+        if CHINESE_FONT:
+            title.font_name = CHINESE_FONT
+        content_box.add_widget(title)
+
+        # 分隔线
+        separator = BoxLayout(
+            size_hint_y=None,
+            height=dp(1),
+        )
+        sep_color = Color(0, 0, 0, 0.06)
+        sep_rect = Rectangle(pos=separator.pos, size=separator.size)
+        separator.canvas.before.add(sep_color)
+        separator.canvas.before.add(sep_rect)
+        separator.bind(pos=lambda instance, value: setattr(sep_rect, 'pos', instance.pos))
+        separator.bind(size=lambda instance, value: setattr(sep_rect, 'size', instance.size))
+        content_box.add_widget(separator)
+
+        # 分类网格布局
+        categories = [
+            ("全部", None),
+            ("食品", "食品"),
+            ("日用品", "日用品"),
+            ("药品", "药品"),
+            ("化妆品", "化妆品"),
+            ("其他", "其他"),
+        ]
+
+        grid_layout = BoxLayout(
+            orientation='vertical',
+            spacing=dp(12),
+            size_hint_y=None,
+            size_hint_x=1,
+        )
+        grid_layout.bind(minimum_height=grid_layout.setter('height'))
+
+        for i in range(0, len(categories), 2):
+            row_layout = BoxLayout(
+                orientation="horizontal",
+                spacing=dp(12),
+                size_hint_y=None,
+                height=dp(82),
+            )
+            for j in range(2):
+                if i + j < len(categories):
+                    cat_text, cat_value = categories[i + j]
+                    icon_name = category_icons.get(cat_text, "folder")
+                    btn = self._create_category_card(cat_text, cat_value, icon_name)
+                    row_layout.add_widget(btn)
+                else:
+                    placeholder = BoxLayout(size_hint=(1, 1))
+                    row_layout.add_widget(placeholder)
+            grid_layout.add_widget(row_layout)
+
+        content_box.add_widget(grid_layout)
+
+        # 关闭按钮
+        close_btn = HoverButton(
+            text="取消",
+            size_hint=(1, None),
+            height=dp(44),
+            font_size=dp(15),
+            bold=True,
+            background_color=COLORS['surface_variant'],
+            background_normal='',
+            border=(0, 0, 0, 0),
+            color=COLORS['text_secondary'],
+        )
+        # 圆角背景
+        def update_close_btn_bg(instance=None, value=None):
+            btn = close_btn
+            btn.canvas.before.clear()
+            with btn.canvas.before:
+                Color(*COLORS['surface_variant'])
+                RoundedRectangle(pos=btn.pos, size=btn.size, radius=[dp(12)])
+
+        close_btn.canvas.before.clear()
+        update_close_btn_bg()
+        close_btn.bind(pos=update_close_btn_bg, size=update_close_btn_bg)
+        close_btn.bind(on_release=lambda x: self.category_menu.dismiss())
+
+        if CHINESE_FONT:
+            apply_font_to_widget(close_btn, CHINESE_FONT)
+        content_box.add_widget(close_btn)
+
+        main_box.add_widget(content_box)
+        self.category_menu.add_widget(main_box)
+
+    def _create_category_card(self, text, category_value, icon_name):
+        """创建美观的分类卡片"""
+        is_selected = (
+            (self.selected_category is None and category_value is None) or
+            (self.selected_category == category_value)
+        )
+
+        card = BoxLayout(
+            orientation="vertical",
+            size_hint=(1, None),
+            height=dp(82),
+            padding=dp(0),
+        )
+
+        # 创建一个绑定到当前card的方法
+        @staticmethod
+        def make_updater(card_ref, cat_val):
+            def update_updater(self_self=None):
+                if self_self is None:
+                    self_self = card_ref
+
+                card_category = cat_val
+
+                is_current_selected = (
+                    (self.selected_category is None and card_category is None) or
+                    (self.selected_category == card_category)
+                )
+
+                # 更新图标和文字颜色
+                if hasattr(self_self, 'icon_widget'):
+                    self_self.icon_widget.text_color = (1, 1, 1, 1) if is_current_selected else COLORS['primary']
+                if hasattr(self_self, 'text_label'):
+                    self_self.text_label.color = (1, 1, 1, 1) if is_current_selected else COLORS['text_secondary']
+                    self_self.text_label.bold = is_current_selected
+
+                # 更新背景
+                self_self.canvas.before.clear()
+                with self_self.canvas.before:
+                    if is_current_selected:
+                        Color(*COLORS['primary'])
+                        RoundedRectangle(pos=self_self.pos, size=self_self.size, radius=[dp(16)])
+                    else:
+                        Color(*COLORS['surface'])
+                        RoundedRectangle(pos=self_self.pos, size=self_self.size, radius=[dp(16)])
+                        Color(0, 0, 0, 0.05)
+                        Line(width=dp(1), rounded_rectangle=(
+                            self_self.x, self_self.y, self_self.width, self_self.height, dp(16)))
+            return update_updater
+
+        card._update_background = make_updater(card, category_value)
+        card.category_value = category_value
+
+        # 初始化时绘制一次
+        card._update_background(card)
+
+        # 内容布局 - 垂直居中
+        content_layout = AnchorLayout(
+            anchor_x="center",
+            anchor_y="center",
+            size_hint=(1, 1),
+        )
+
+        # 内部水平布局
+        inner_layout = BoxLayout(
+            orientation="horizontal",
+            size_hint=(None, None),
+            spacing=dp(12),
+            padding=(dp(12), 0, dp(12), 0),
+        )
+        inner_layout.bind(minimum_width=inner_layout.setter('width'))
+        inner_layout.bind(minimum_height=inner_layout.setter('height'))
+
+        # 图标
+        from kivymd.uix.label import MDIcon
+        icon = MDIcon(
+            icon=icon_name,
+            theme_text_color="Custom",
+            text_color=(1, 1, 1, 1) if is_selected else COLORS['primary'],
+            size_hint=(None, None),
+            size=(dp(32), dp(32)),
+            halign="center",
+            valign="center",
+            font_size=dp(24),
+        )
+        card.icon_widget = icon
+        inner_layout.add_widget(icon)
+
+        # 文字
+        label = Label(
+            text=text,
+            size_hint=(None, None),
+            height=dp(20),
+            font_size=dp(15),
+            bold=is_selected,
+            color=(1, 1, 1, 1) if is_selected else COLORS['text_secondary'],
+            halign="left",
+            valign="middle",
+        )
+        label.bind(size=lambda inst, val: setattr(inst, "text_size", (None, val[1])))
+        if CHINESE_FONT:
+            label.font_name = CHINESE_FONT
+        card.text_label = label
+        inner_layout.add_widget(label)
+
+        content_layout.add_widget(inner_layout)
+        card.add_widget(content_layout)
+
+        # 点击事件 - 使用 on_touch_up
+        def on_card_touch(instance, touch):
+            if instance.collide_point(*touch.pos) and touch.button == 'left':
+                self._on_category_selected(category_value)
+                self.category_menu.dismiss()
+                return True
+            return False
+
+        card.bind(on_touch_up=on_card_touch)
+
+        return card
+
     def _update_bg_rect(self, instance, value):
         self.bg_rect.pos = instance.pos
         self.bg_rect.size = instance.size
 
-    def _update_filter_bar_bg(self, instance, value):
-        for child in instance.canvas.before.children:
-            if isinstance(child, RoundedRectangle):
-                child.pos = instance.pos
-                child.size = instance.size
-                break
-
-    def _update_header_bg(self, instance, value):
-        h = instance.height
-        self.header_rect_top.pos = instance.pos
-        self.header_rect_top.size = (instance.width, h * 0.55)
-        self.header_rect_bottom.pos = (instance.pos[0], instance.pos[1] + h * 0.45)
-        self.header_rect_bottom.size = (instance.width, h * 0.55)
-    
     def _on_category_selected(self, category):
         self.selected_category = category
-        
+
+        # 分类图标映射
+        category_icons = {
+            None: "view-grid",
+            "食品": "food-apple",
+            "日用品": "home",
+            "药品": "medical-bag",
+            "化妆品": "face-woman",
+            "其他": "package-variant",
+        }
+
+        # 分类名称
         category_names = {
             None: "全部",
             "食品": "食品",
@@ -866,10 +1120,13 @@ class MainScreen(Screen):
             "化妆品": "化妆品",
             "其他": "其他",
         }
-        
-        if hasattr(self, 'filter_btn'):
-            self.filter_btn.text = category_names.get(category, "全部")
-        
+
+        # 更新筛选按钮图标和文字
+        if hasattr(self, 'filter_icon_widget'):
+            self.filter_icon_widget.icon = category_icons.get(category, "view-grid")
+        if hasattr(self, 'filter_text_label'):
+            self.filter_text_label.text = category_names.get(category, "全部")
+
         self._load_items()
     
     def _on_filter_selected(self, filter_type):
@@ -934,23 +1191,143 @@ class MainScreen(Screen):
         list_header = BoxLayout(
             orientation='horizontal',
             size_hint_y=None,
-            height=dp(36),
-            padding=(dp(16), dp(4), dp(16), dp(4)),
+            height=dp(40),
+            padding=(dp(16), dp(6), dp(16), dp(6)),
+            spacing=dp(12),
         )
-        
-        list_title = Label(
-            text="物品清单",
-            font_size=dp(15),
+
+        # 分隔线
+        separator_left = BoxLayout(
+            size_hint_x=None,
+            width=dp(1),
+        )
+        sep_left_color = Color(0, 0, 0, 0.05)
+        sep_left_rect = Rectangle(pos=separator_left.pos, size=separator_left.size)
+        separator_left.canvas.before.add(sep_left_color)
+        separator_left.canvas.before.add(sep_left_rect)
+        def update_sep_pos(instance, value):
+            sep_left_rect.pos = instance.pos
+            sep_left_rect.size = instance.size
+        separator_left.bind(pos=update_sep_pos, size=update_sep_pos)
+
+        # 分类筛选按钮 - 使用图标+文字布局
+        filter_container = BoxLayout(
+            orientation='horizontal',
+            size_hint_x=None,
+            width=dp(110),
+            height=dp(34),
+            spacing=dp(6),
+            padding=(dp(10), 0, dp(10), 0),
+        )
+
+        from kivymd.uix.label import MDIcon
+
+        # 图标 - 动态显示
+        filter_icon = MDIcon(
+            icon="view-grid",
+            theme_text_color="Custom",
+            text_color=COLORS['primary'],
+            size_hint=(None, None),
+            size=(dp(18), dp(18)),
+            halign="center",
+            valign="center",
+            font_size=dp(16),
+        )
+        filter_container.add_widget(filter_icon)
+
+        # 文字标签
+        filter_text = Label(
+            text="全部",
+            font_size=dp(13),
             bold=True,
-            color=COLORS['text_secondary'],
-            size_hint_x=1,
-            halign="left",
+            color=COLORS['primary'],
+            size_hint=(1, 1),
+            halign="center",
             valign="middle",
         )
-        list_title.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], val[1])))
+        filter_text.bind(size=lambda inst, val: setattr(inst, "text_size", (None, val[1])))
+        if CHINESE_FONT:
+            filter_text.font_name = CHINESE_FONT
+        filter_container.add_widget(filter_text)
+
+        # 圆角背景
+        filter_container.filter_bg_color = None
+        filter_container.filter_bg_rect = None
+
+        def create_filter_bg(dt=None):
+            # 清除旧的背景
+            if filter_container.filter_bg_rect:
+                filter_container.canvas.before.remove(filter_container.filter_bg_color)
+                filter_container.canvas.before.remove(filter_container.filter_bg_rect)
+
+            bg_color = Color(*COLORS['secondary_container'])  # 使用更明显的颜色
+            bg_rect = RoundedRectangle(pos=filter_container.pos, size=filter_container.size, radius=[dp(14)])
+            filter_container.canvas.before.add(bg_color)
+            filter_container.canvas.before.add(bg_rect)
+
+            filter_container.filter_bg_color = bg_color
+            filter_container.filter_bg_rect = bg_rect
+
+            def update_filter_bg(instance=None, value=None):
+                filter_container.filter_bg_rect.pos = filter_container.pos
+                filter_container.filter_bg_rect.size = filter_container.size
+
+            filter_container.bind(pos=update_filter_bg, size=update_filter_bg)
+
+        # 延迟绘制，确保 size 已经设置
+        Clock.schedule_once(create_filter_bg, 0.01)
+
+        # 点击事件
+        def on_filter_touch(instance, touch):
+            if instance.collide_point(*touch.pos) and touch.button == 'left':
+                self._show_category_menu()
+                return True
+            return False
+
+        filter_container.bind(on_touch_up=on_filter_touch)
+
+        # 保存引用以便更新图标和文字
+        self.filter_btn_container = filter_container
+        self.filter_icon_widget = filter_icon
+        self.filter_text_label = filter_text
+
+        list_header.add_widget(separator_left)
+        list_header.add_widget(filter_container)
+
+        # 物品清单标题 - 居中
+        list_title_container = AnchorLayout(
+            anchor_x='center',
+            anchor_y='center',
+            size_hint=(1, 1),
+        )
+        list_title = Label(
+            text="物品清单",
+            font_size=dp(16),
+            bold=True,
+            color=COLORS['text_primary'],
+            halign="center",
+            valign="middle",
+        )
+        list_title.bind(size=lambda inst, val: setattr(inst, "text_size", (None, val[1])))
         if CHINESE_FONT:
             list_title.font_name = CHINESE_FONT
-        list_header.add_widget(list_title)
+        list_title_container.add_widget(list_title)
+        list_header.add_widget(list_title_container)
+
+        # 右侧分隔线
+        separator_right = BoxLayout(
+            size_hint_x=None,
+            width=dp(1),
+        )
+        sep_right_color = Color(0, 0, 0, 0.05)
+        sep_right_rect = Rectangle(pos=separator_right.pos, size=separator_right.size)
+        separator_right.canvas.before.add(sep_right_color)
+        separator_right.canvas.before.add(sep_right_rect)
+        def update_sep_right_pos(instance, value):
+            sep_right_rect.pos = instance.pos
+            sep_right_rect.size = instance.size
+        separator_right.bind(pos=update_sep_right_pos, size=update_sep_right_pos)
+        list_header.add_widget(separator_right)
         
         self.item_count_label = Label(
             text="0 项",
@@ -996,136 +1373,7 @@ class MainScreen(Screen):
     
     def _update_scroll_bg(self, instance, value):
         pass
-    
-    def _create_category_menu(self):
-        self.category_menu = ModalView(
-            size_hint=(0.9, None),
-            auto_dismiss=True,
-            background_color=(0, 0, 0, 0.3),
-        )
-        self.category_menu.size_hint_y = None
-        self.category_menu.height = dp(480)
-        
-        main_box = BoxLayout(
-            orientation="vertical",
-            size_hint_y=None,
-            padding=dp(0),
-        )
-        main_box.bind(minimum_height=main_box.setter('height'))
-        
-        content_box = BoxLayout(
-            orientation="vertical",
-            padding=dp(24),
-            spacing=dp(16),
-            size_hint_y=None,
-            height=dp(480),
-        )
-        
-        with content_box.canvas.before:
-            Color(1, 1, 1, 1)
-            RoundedRectangle(size=content_box.size, pos=content_box.pos, radius=[dp(20)])
-        content_box.bind(pos=self._update_modal_rect, size=self._update_modal_rect)
-        
-        title = Label(
-            text="选择类别",
-            size_hint_y=None,
-            height=dp(48),
-            font_size=dp(20),
-            bold=True,
-            color=COLORS['text_primary'],
-            halign="center",
-            valign="middle",
-        )
-        title.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], val[1])))
-        if CHINESE_FONT:
-            title.font_name = CHINESE_FONT
-        content_box.add_widget(title)
-        
-        button_container = BoxLayout(
-            orientation="vertical",
-            spacing=dp(10),
-            size_hint_y=None,
-        )
-        button_container.bind(minimum_height=button_container.setter('height'))
-        
-        categories = [
-            ("所有类别", None),
-            ("食品", "食品"),
-            ("日用品", "日用品"),
-            ("药品", "药品"),
-            ("化妆品", "化妆品"),
-            ("其他", "其他"),
-        ]
-        
-        for cat_text, cat_value in categories:
-            btn = self._create_category_button(cat_text, cat_value)
-            button_container.add_widget(btn)
-        
-        content_box.add_widget(button_container)
-        
-        close_btn = MDButton(
-            style="outlined",
-            size_hint_y=None,
-            height=dp(48),
-            radius=[dp(12)],
-            line_color=COLORS['primary'],
-            on_release=lambda x: self.category_menu.dismiss()
-        )
-        close_text = MDButtonText(
-            text="取消",
-            font_size=dp(15),
-            theme_text_color="Custom",
-            text_color=COLORS['primary'],
-            theme_font_name="Custom"
-        )
-        if CHINESE_FONT:
-            close_text.font_name = CHINESE_FONT
-        close_btn.add_widget(close_text)
-        content_box.add_widget(close_btn)
-        
-        main_box.add_widget(content_box)
-        self.category_menu.add_widget(main_box)
-    
-    def _create_category_button(self, text, category_value):
-        is_selected = (
-            (self.selected_category is None and category_value is None) or
-            (self.selected_category == category_value)
-        )
-        
-        btn = MDButton(
-            style="filled" if is_selected else "outlined",
-            md_bg_color=COLORS['primary'] if is_selected else COLORS['surface'],
-            size_hint_y=None,
-            height=dp(52),
-            radius=[dp(12)],
-            line_color=COLORS['primary'] if not is_selected else (0, 0, 0, 0),
-        )
-        btn_text = MDButtonText(
-            text=text,
-            font_size=dp(15),
-            theme_text_color="Custom",
-            text_color=(1, 1, 1, 1) if is_selected else COLORS['text_primary'],
-            theme_font_name="Custom"
-        )
-        if CHINESE_FONT:
-            btn_text.font_name = CHINESE_FONT
-        btn.add_widget(btn_text)
-        
-        btn.bind(
-            on_release=lambda inst, v=category_value: [
-                self._on_category_selected(v),
-                self.category_menu.dismiss()
-            ]
-        )
-        
-        return btn
-    
-    def _update_modal_rect(self, instance, value):
-        instance.canvas.before.clear()
-        with instance.canvas.before:
-            Color(1, 1, 1, 1)
-            RoundedRectangle(size=instance.size, pos=instance.pos, radius=[dp(20)])
-    
+
     def _load_items(self):
         self.item_list_layout.clear_widgets()
         

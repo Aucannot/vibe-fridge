@@ -179,7 +179,7 @@ COLOR_PALETTE = {
     "text_hint": DESIGN_TOKENS["colors"]["neutral"]["40"],
     "text_on_primary": DESIGN_TOKENS["colors"]["primary"]["on_main"],
     "divider": DESIGN_TOKENS["colors"]["outline_variant"],
-    "overlay": (*DESIGN_TOKENS["colors"]["neutral"]["80"], 0.5),
+    "overlay": (*DESIGN_TOKENS["colors"]["neutral"]["80"][:3], 0.5),
     "expired": DESIGN_TOKENS["colors"]["error"]["main"],
     "expiring": DESIGN_TOKENS["colors"]["warning"]["main"],
     "normal": DESIGN_TOKENS["colors"]["success"]["main"],
