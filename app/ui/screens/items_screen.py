@@ -314,6 +314,7 @@ class WikiItemCard(BoxLayout):
         self.size_hint_x = 1
         self.height = dp(60)
         self.padding = (dp(14), dp(8), dp(14), dp(8))
+        self.spacing = dp(12)  # 图标和文字之间的间距
 
         self._setup_ui()
 
@@ -328,21 +329,50 @@ class WikiItemCard(BoxLayout):
             height=dp(44),
             padding=dp(6),
         )
-        with icon_bg.canvas.before:
-            Color(*icon_color[:3] + [0.15])
-            RoundedRectangle(pos=icon_bg.pos, size=icon_bg.size, radius=[dp(12)])
+
+        # 存储圆角矩形引用，用于后续更新
+        icon_bg._bg_rect = None
+
+        # 创建图标背景，并绑定 pos/size 更新
+        def update_icon_bg(instance, value):
+            if not hasattr(icon_bg, '_bg_color') or icon_bg._bg_rect is None:
+                # 首次创建
+                icon_bg.canvas.before.clear()
+                with icon_bg.canvas.before:
+                    icon_bg._bg_color = Color(*icon_color[:3] + [0.15])
+                    icon_bg._bg_rect = RoundedRectangle(pos=icon_bg.pos, size=icon_bg.size, radius=[dp(12)])
+            else:
+                # 更新位置和大小
+                icon_bg._bg_rect.pos = icon_bg.pos
+                icon_bg._bg_rect.size = icon_bg.size
+
+        icon_bg.bind(pos=update_icon_bg, size=update_icon_bg)
+        # 初始化背景
+        update_icon_bg(icon_bg, None)
+
+        # 使用 AnchorLayout 确保图标绝对居中
+        from kivy.uix.anchorlayout import AnchorLayout
+
+        icon_anchor = AnchorLayout(
+            anchor_x='center',
+            anchor_y='center',
+            size_hint=(1, 1),
+        )
 
         # 优先显示物品自定义图标，否则显示分类图标
         display_icon = self.item_icon if self.item_icon else self.category_icon
         icon = MDIcon(
             icon=display_icon,
-            size_hint=(1, 1),
-            halign="center",
-            valign="middle",
+            size_hint=(None, None),
+            width=dp(22),
+            height=dp(22),
             font_size=dp(22),
         )
+        icon.theme_text_color = "Custom"
         icon.color = icon_color
-        icon_bg.add_widget(icon)
+
+        icon_anchor.add_widget(icon)
+        icon_bg.add_widget(icon_anchor)
         self.add_widget(icon_bg)
 
         text_box = BoxLayout(orientation="vertical", size_hint_x=1, spacing=dp(3))
@@ -393,6 +423,7 @@ class WikiItemCard(BoxLayout):
         self.add_widget(text_box)
 
         if self.has_inventory > 0:
+            # 数量徽章
             badge = BoxLayout(
                 orientation="vertical",
                 size_hint_x=None,
@@ -401,17 +432,17 @@ class WikiItemCard(BoxLayout):
                 height=dp(36),
                 padding=(dp(6), dp(4)),
             )
-            
+
             # 创建可更新的canvas
             def update_badge_canvas(instance, value):
                 instance.canvas.before.clear()
                 with instance.canvas.before:
                     Color(*BRIGHT_COLORS['accent_green'])
                     RoundedRectangle(pos=instance.pos, size=instance.size, radius=[dp(14)])
-            
+
             # 绑定pos和size变化事件
             badge.bind(pos=update_badge_canvas, size=update_badge_canvas)
-            
+
             # 初始化绘制
             update_badge_canvas(badge, None)
 
@@ -631,18 +662,55 @@ class InventoryRecordCard(BoxLayout):
 
         self.add_widget(text_box)
 
-        arrow = MDIcon(
-            icon="chevron-right",
+        # 数量调整按钮组 (+1/-1)
+        qty_buttons = BoxLayout(
+            orientation="vertical",
             size_hint_x=None,
-            width=dp(24),
+            width=dp(36),
             size_hint_y=None,
             height=dp(52),
-            halign="center",
-            valign="middle",
-            font_size=dp(22),
+            spacing=dp(2),
         )
-        arrow.color = BRIGHT_COLORS['text_secondary']
-        self.add_widget(arrow)
+
+        # +1 按钮
+        plus_btn = BoxLayout(
+            size_hint_y=None,
+            height=dp(25),
+            padding=dp(4),
+        )
+        # 初始化按钮背景
+        self._setup_button_bg(plus_btn, BRIGHT_COLORS['success'])
+        plus_btn.bind(on_touch_down=lambda *args: self._on_quantity_change(1))
+        qty_buttons.add_widget(plus_btn)
+
+        plus_icon = MDIcon(
+            icon="plus",
+            size_hint=(1, 1),
+            font_size=dp(18),
+        )
+        plus_icon.color = BRIGHT_COLORS['surface']
+        plus_btn.add_widget(plus_icon)
+
+        # -1 按钮
+        minus_btn = BoxLayout(
+            size_hint_y=None,
+            height=dp(25),
+            padding=dp(4),
+        )
+        # 初始化按钮背景
+        self._setup_button_bg(minus_btn, BRIGHT_COLORS['warning'])
+        minus_btn.bind(on_touch_down=lambda *args: self._on_quantity_change(-1))
+        qty_buttons.add_widget(minus_btn)
+
+        minus_icon = MDIcon(
+            icon="minus",
+            size_hint=(1, 1),
+            font_size=dp(18),
+        )
+        minus_icon.color = BRIGHT_COLORS['surface']
+        minus_btn.add_widget(minus_icon)
+
+        self.add_widget(qty_buttons)
 
         self._update_background()
 
@@ -683,11 +751,42 @@ class InventoryRecordCard(BoxLayout):
             Color(*self._get_background_color())
             RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(8)])
 
+    def _setup_button_bg(self, button, btn_color):
+        """设置按钮背景"""
+        def update_btn_bg(instance, value):
+            if not hasattr(button, '_btn_color'):
+                button.canvas.before.clear()
+                with button.canvas.before:
+                    button._btn_color = Color(*btn_color)
+                    button._btn_rect = RoundedRectangle(pos=button.pos, size=button.size, radius=[dp(5)])
+            else:
+                button._btn_rect.pos = button.pos
+                button._btn_rect.size = button.size
+
+        button.bind(pos=update_btn_bg, size=update_btn_bg)
+        update_btn_bg(button, None)
+
+    def _on_quantity_change(self, delta):
+        """处理数量变化"""
+        success = item_service.update_item_quantity(self.item_id, delta)
+        if success:
+            # 触发父级刷新
+            app = MDApp.get_running_app()
+            if hasattr(app, "screen_manager"):
+                items_screen = app.screen_manager.get_screen("items")
+                if items_screen:
+                    items_screen._load_inventory_items()
+
     def on_touch_down(self, touch):
+        # 先让子widget处理事件（按钮）
+        result = super().on_touch_down(touch)
+        if result:
+            return True  # 子widget已处理，不派发卡片的on_release
+        # 如果点击的是卡片本身，派发on_release
         if self.collide_point(*touch.pos):
             self.dispatch('on_release')
             return True
-        return super().on_touch_down(touch)
+        return False
 
     def on_touch_move(self, touch):
         if self.collide_point(*touch.pos):
@@ -964,6 +1063,7 @@ class ItemsScreen(Screen):
             for item_data in items:
                 card = WikiItemCard(item_data)
                 card.bind(on_release=lambda inst, data=item_data: self._on_item_selected(data))
+
                 self._item_list_box.add_widget(card)
                 # 累加高度：每个卡片高度 + 间距(dp(6))
                 self._item_list_box.height += card.height + dp(6)

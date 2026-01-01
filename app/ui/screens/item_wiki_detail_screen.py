@@ -425,6 +425,7 @@ class ItemWikiDetailScreen(Screen):
             app.screen_manager.current = "items"
 
     def _on_edit(self, instance):
+        logger.info(f"编辑按钮点击: item_name={self.item_name}")
         app = MDApp.get_running_app()
         if hasattr(app, "screen_manager"):
             edit_screen = app.screen_manager.get_screen("item_wiki_edit")
