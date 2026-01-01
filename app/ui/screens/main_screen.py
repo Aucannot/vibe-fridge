@@ -26,6 +26,7 @@ from kivymd.uix.button import MDFabButton, MDButton, MDIconButton, MDButtonText
 from kivymd.uix.card import MDCard
 from kivymd.uix.dialog import MDDialog
 from kivymd.uix.textfield import MDTextField
+from kivymd.uix.label import MDIcon
 from datetime import date, timedelta
 import os
 
@@ -187,19 +188,18 @@ class CategoryChip(BoxLayout):
     
     def _setup_ui(self):
         from kivymd.uix.label import MDIcon
-        
+
         icon_name = "filter-variant" if self.is_selected else "filter-outline"
-        
+
         icon = MDIcon(
             icon=icon_name,
-            theme_text_color="Custom",
-            text_color=COLORS['primary'] if self.is_selected else COLORS['text_secondary'],
             size_hint_x=None,
             width=dp(22),
             halign="center",
             valign="middle",
             font_size=dp(18),
         )
+        icon.color = COLORS['primary'] if self.is_selected else COLORS['text_secondary']
         self.add_widget(icon)
         
         label = Label(
@@ -280,13 +280,12 @@ class StatCard(BoxLayout):
 
         self.icon_widget = MDIcon(
             icon=icon,
-            theme_text_color="Custom",
-            text_color=self._stat_color,
             size_hint_x=None,
             width=dp(24),
             halign="center",
             font_size=dp(20),
         )
+        self.icon_widget.color = self._stat_color
 
         self.value_label = Label(
             text=value,
@@ -442,14 +441,15 @@ class ItemListItem(BoxLayout):
             self.days_until_expiry = delta.days
         else:
             self.days_until_expiry = 0
-        
+
         self.quantity = item_data.quantity
         self.status = item_data.status.value
         self.is_consumed = self.status == 'consumed'
-        
+
         self.is_hovering = False
         self.is_pressed = False
         self.checkbox_widget = None
+        self.actions_container = None  # 操作区域容器（包含+/-按钮和复选框）
         self.item_name_label = None
         self.strikethrough_line = None
         self.supporting_label = None
@@ -490,11 +490,9 @@ class ItemListItem(BoxLayout):
         icon_name = icon_map.get(self.category, "package-variant")
         
         icon_color = self._get_status_color()
-        
+
         icon = MDIcon(
             icon=icon_name,
-            theme_text_color="Custom",
-            text_color=icon_color,
             size_hint_x=None,
             width=dp(48),
             size_hint_y=None,
@@ -503,6 +501,7 @@ class ItemListItem(BoxLayout):
             valign="middle",
             font_size=dp(28),
         )
+        icon.color = icon_color
         self.icon_widget = icon
         self.add_widget(icon)
     
@@ -524,11 +523,11 @@ class ItemListItem(BoxLayout):
             size_hint_y=None,
         )
         text_box.bind(minimum_height=lambda inst, val: setattr(inst, "height", val))
-        
+
         headline_text = f"{self.item_name}"
-        if self.quantity > 1:
+        if self.quantity >= 1:
             headline_text += f" ×{self.quantity}"
-        
+
         self.item_name_label = Label(
             text=headline_text,
             size_hint_y=None,
@@ -589,25 +588,226 @@ class ItemListItem(BoxLayout):
     
     def _add_checkbox(self):
         from kivymd.uix.selectioncontrol import MDCheckbox
-        
+        from kivy.uix.behaviors import ButtonBehavior
+        from kivy.uix.anchorlayout import AnchorLayout
+
+        # 快捷操作区域：-1、+1 和消耗按钮横排
+        self.actions_container = BoxLayout(
+            orientation="horizontal",
+            size_hint_x=None,
+            width=dp(100),
+            spacing=dp(6),
+        )
+
+        # +1 按钮 - 使用 ButtonBehavior 确保正确的事件处理
+        class QtyButton(ButtonBehavior, BoxLayout):
+            def __init__(self, **kwargs):
+                super().__init__(**kwargs)
+
+        # -1 按钮
+        minus_btn = QtyButton(
+            size_hint_x=None,
+            width=dp(32),
+            size_hint_y=None,
+            height=dp(32),
+        )
+        self._setup_qty_button_bg(minus_btn, COLORS['warning'])
+        minus_btn.bind(on_press=lambda *args: self._on_quantity_change(-1))
+        self.actions_container.add_widget(minus_btn)
+
+        minus_anchor = AnchorLayout(
+            anchor_x='center',
+            anchor_y='center',
+            size_hint=(1, 1),
+        )
+        minus_icon = MDIcon(
+            icon="minus",
+            size_hint=(None, None),
+            width=dp(16),
+            height=dp(16),
+            font_size=dp(18),
+        )
+        minus_icon.color = COLORS['on_primary']
+        minus_anchor.add_widget(minus_icon)
+        minus_btn.add_widget(minus_anchor)
+
+        # +1 按钮
+        plus_btn = QtyButton(
+            size_hint_x=None,
+            width=dp(32),
+            size_hint_y=None,
+            height=dp(32),
+        )
+        self._setup_qty_button_bg(plus_btn, COLORS['success'])
+        plus_btn.bind(on_press=lambda *args: self._on_quantity_change(1))
+        self.actions_container.add_widget(plus_btn)
+
+        plus_anchor = AnchorLayout(
+            anchor_x='center',
+            anchor_y='center',
+            size_hint=(1, 1),
+        )
+        plus_icon = MDIcon(
+            icon="plus",
+            size_hint=(None, None),
+            width=dp(16),
+            height=dp(16),
+            font_size=dp(18),
+        )
+        plus_icon.color = COLORS['on_primary']
+        plus_anchor.add_widget(plus_icon)
+        plus_btn.add_widget(plus_anchor)
+
+        # 消耗按钮（使用复选框样式）
+        consume_btn = QtyButton(
+            size_hint_x=None,
+            width=dp(32),
+            size_hint_y=None,
+            height=dp(32),
+        )
+        # 根据当前状态设置颜色
+        consume_color = COLORS['primary'] if self.is_consumed else COLORS['text_hint']
+        consume_btn_bg = COLORS['primary'] if self.is_consumed else [0.9, 0.9, 0.9, 1]
+        self._setup_qty_button_bg(consume_btn, consume_btn_bg)
+        consume_btn.bind(on_press=lambda *args: self._on_checkbox_active(consume_btn, not self.is_consumed))
+        self.actions_container.add_widget(consume_btn)
+
+        consume_anchor = AnchorLayout(
+            anchor_x='center',
+            anchor_y='center',
+            size_hint=(1, 1),
+        )
+        consume_icon = MDIcon(
+            icon="check",
+            size_hint=(None, None),
+            width=dp(18),
+            height=dp(18),
+            font_size=dp(20),
+        )
+        consume_icon.color = COLORS['on_primary'] if self.is_consumed else COLORS['text_primary']
+        consume_anchor.add_widget(consume_icon)
+        consume_btn.add_widget(consume_anchor)
+        # 保存图标引用以便更新颜色
+        self.consume_icon = consume_icon
+        self.consume_btn = consume_btn
+
+        # 复选框（隐藏，仅用于状态保持）
         checkbox = MDCheckbox(
             size_hint=(None, None),
             size=(dp(32), dp(32)),
-            pos_hint={'center_y': 0.5},
             active=self.is_consumed,
             color_active=COLORS['primary'],
             color_inactive=COLORS['text_hint'],
         )
-        checkbox.bind(on_active=self._on_checkbox_active)
+        checkbox.bind(on_active=lambda ch, val: self._on_checkbox_active_internal(ch, val))
         self.checkbox_widget = checkbox
-        
-        checkbox_container = BoxLayout(
-            size_hint_x=None,
-            width=dp(48),
-            pos_hint={'center_y': 0.5}
+        # 不添加复选框到容器中
+
+        # 使用 FloatLayout 包裹按钮组，通过 pos_hint 垂直居中
+        actions_float = FloatLayout(
+            size_hint=(None, None),
+            width=dp(120),
+            height=dp(96),  # 与卡片高度相同
         )
-        checkbox_container.add_widget(checkbox)
-        self.add_widget(checkbox_container)
+        self.actions_container.pos_hint = {'right': 1, 'center_y': 0.5}
+        actions_float.add_widget(self.actions_container)
+        self.add_widget(actions_float)
+
+    def _on_checkbox_active_internal(self, checkbox, value):
+        """内部复选框状态变化处理"""
+        if value:
+            if not self.is_consumed:
+                self.is_consumed = True
+                self._mark_as_consumed()
+                # 更新消耗按钮样式
+                if hasattr(self, 'consume_btn'):
+                    self._setup_qty_button_bg(self.consume_btn, COLORS['primary'])
+                if hasattr(self, 'consume_icon'):
+                    self.consume_icon.color = COLORS['on_primary']
+        else:
+            if self.is_consumed:
+                self.is_consumed = False
+                self._restore_from_consumed()
+                # 更新消耗按钮样式
+                if hasattr(self, 'consume_btn'):
+                    self._setup_qty_button_bg(self.consume_btn, [0.9, 0.9, 0.9, 1])
+                if hasattr(self, 'consume_icon'):
+                    self.consume_icon.color = COLORS['text_primary']
+        self.dispatch('on_status_changed')
+
+        # 同步隐藏复选框的状态
+        if self.checkbox_widget:
+            self.checkbox_widget.active = value
+
+    def _on_checkbox_active(self, button, value):
+        """消耗按钮点击"""
+        if value:
+            if not self.is_consumed:
+                self.is_consumed = True
+                self.checkbox_widget.active = True
+                self._on_checkbox_active_internal(self.checkbox_widget, True)
+        else:
+            if self.is_consumed:
+                self.is_consumed = False
+                self.checkbox_widget.active = False
+                self._on_checkbox_active_internal(self.checkbox_widget, False)
+
+    def _setup_qty_button_bg(self, button, btn_color):
+        """设置数量调整按钮背景"""
+        def update_btn_bg(instance, value):
+            if not hasattr(button, '_qty_btn_color'):
+                button.canvas.before.clear()
+                with button.canvas.before:
+                    button._qty_btn_color = Color(*btn_color)
+                    button._qty_btn_rect = RoundedRectangle(pos=button.pos, size=button.size, radius=[dp(3)])
+            else:
+                button._qty_btn_rect.pos = button.pos
+                button._qty_btn_rect.size = button.size
+
+        button.bind(pos=update_btn_bg, size=update_btn_bg)
+        update_btn_bg(button, None)
+
+    def _on_quantity_change(self, delta):
+        """处理数量变化"""
+        from app.services.item_service import item_service
+
+        # 防止数量变为负数，如果是已消耗的状态也不允许改变
+        if self.is_consumed or self.quantity + delta < 0:
+            return
+
+        success = item_service.update_item_quantity(self.item_id, delta)
+        if success:
+            # 更新本地数量显示
+            self.quantity += delta
+
+            # 如果数量减到0，自动标记为已消耗
+            if self.quantity == 0 and delta < 0:
+                self._on_checkbox_active_consume(mark_consumed=True)
+            else:
+                # 更新标题文本
+                headline_text = f"{self.item_name}"
+                if self.quantity >= 1:
+                    headline_text += f" ×{self.quantity}"
+                self.item_name_label.text = headline_text
+
+            # 重新绘制背景
+            self._update_rect()
+
+    def _on_checkbox_active_consume(self, mark_consumed=True):
+        """标记为已消耗（不带参数切换，直接设置状态）"""
+        from app.services.item_service import item_service
+
+        if mark_consumed and not self.is_consumed:
+            self.is_consumed = True
+            self.checkbox_widget.active = True
+            item_service.update_item(self.item_id, status='consumed')
+            self._mark_as_consumed()
+            # 更新消耗按钮样式
+            if hasattr(self, 'consume_btn'):
+                self._setup_qty_button_bg(self.consume_btn, COLORS['primary'])
+            if hasattr(self, 'consume_icon'):
+                self.consume_icon.color = COLORS['on_primary']
+            self.dispatch('on_status_changed')
     
     def _get_status_color(self):
         if self.expiry_date == "无":
@@ -663,7 +863,8 @@ class ItemListItem(BoxLayout):
         elif self.days_until_expiry <= 3:
             return COLORS['warning_container']
         else:
-            return COLORS['surface']
+            # 没有过期且非即将过期的物品使用绿色底色
+            return COLORS['success_container']
     
     def _update_rect(self, *args):
         self.canvas.before.clear()
@@ -681,17 +882,27 @@ class ItemListItem(BoxLayout):
     
     def on_touch_down(self, touch):
         if self.collide_point(*touch.pos):
+            # 先让子widget处理事件（按钮和复选框）
+            result = super().on_touch_down(touch)
+            if result:
+                return True  # 子widget已处理，不继续
+            # 检查复选框
             if self.checkbox_widget and self.checkbox_widget.collide_point(*touch.pos):
                 return self.checkbox_widget.on_touch_down(touch)
             self.is_pressed = True
             self._update_press_effect()
             return True
         return super().on_touch_down(touch) if hasattr(super(), 'on_touch_down') else False
-    
+
     def on_touch_up(self, touch):
         if self.is_pressed and self.collide_point(*touch.pos):
-            if not (self.checkbox_widget and self.checkbox_widget.collide_point(*touch.pos)):
-                self.dispatch('on_release')
+            # 如果点击的是操作区域（按钮或复选框），不派发卡片的on_release
+            if self.actions_container and self.actions_container.collide_point(*touch.pos):
+                self.is_pressed = False
+                self.is_hovering = self.collide_point(*touch.pos)
+                self._update_hover_effect()
+                return super().on_touch_up(touch) if hasattr(super(), 'on_touch_up') else False
+            self.dispatch('on_release')
         self.is_pressed = False
         self.is_hovering = self.collide_point(*touch.pos)
         self._update_hover_effect()
@@ -760,18 +971,33 @@ class ItemListItem(BoxLayout):
         if self.tertiary_label:
             self.tertiary_label.color = COLORS['text_hint']
         if self.icon_widget:
-            self.icon_widget.text_color = COLORS['text_hint']
+            self.icon_widget.color = COLORS['text_hint']
     
     def _hide_consumed_state(self):
-        self.canvas.before.clear()
+        # 如果数量是0，自动设为1
+        if self.quantity == 0:
+            self.quantity = 1
+            # 更新数据库
+            from app.services.item_service import item_service
+            item_service.update_item_quantity(self.item_id, 1)
+
+        # 更新标题文本显示数量
+        headline_text = f"{self.item_name}"
+        if self.quantity > 1:
+            headline_text += f" ×{self.quantity}"
         if self.item_name_label:
+            self.item_name_label.text = headline_text
             self.item_name_label.color = COLORS['text_primary']
+
         if self.supporting_label:
             self.supporting_label.color = self._get_status_color()
         if self.tertiary_label:
             self.tertiary_label.color = self._get_days_color()
         if self.icon_widget:
-            self.icon_widget.text_color = self._get_status_color()
+            self.icon_widget.color = self._get_status_color()
+
+        # 清空并重建背景
+        self.canvas.before.clear()
         self._setup_background()
 
 
@@ -1005,7 +1231,7 @@ class MainScreen(Screen):
 
                 # 更新图标和文字颜色
                 if hasattr(self_self, 'icon_widget'):
-                    self_self.icon_widget.text_color = (1, 1, 1, 1) if is_current_selected else COLORS['primary']
+                    self_self.icon_widget.color = (1, 1, 1, 1) if is_current_selected else COLORS['primary']
                 if hasattr(self_self, 'text_label'):
                     self_self.text_label.color = (1, 1, 1, 1) if is_current_selected else COLORS['text_secondary']
                     self_self.text_label.bold = is_current_selected
@@ -1051,14 +1277,13 @@ class MainScreen(Screen):
         from kivymd.uix.label import MDIcon
         icon = MDIcon(
             icon=icon_name,
-            theme_text_color="Custom",
-            text_color=(1, 1, 1, 1) if is_selected else COLORS['primary'],
             size_hint=(None, None),
             size=(dp(32), dp(32)),
             halign="center",
             valign="center",
             font_size=dp(24),
         )
+        icon.color = (1, 1, 1, 1) if is_selected else COLORS['primary']
         card.icon_widget = icon
         inner_layout.add_widget(icon)
 
@@ -1225,14 +1450,13 @@ class MainScreen(Screen):
         # 图标 - 动态显示
         filter_icon = MDIcon(
             icon="view-grid",
-            theme_text_color="Custom",
-            text_color=COLORS['primary'],
             size_hint=(None, None),
             size=(dp(18), dp(18)),
             halign="center",
             valign="center",
             font_size=dp(16),
         )
+        filter_icon.color = COLORS['primary']
         filter_container.add_widget(filter_icon)
 
         # 文字标签
@@ -1374,77 +1598,209 @@ class MainScreen(Screen):
     def _update_scroll_bg(self, instance, value):
         pass
 
-    def _load_items(self):
-        self.item_list_layout.clear_widgets()
-        
+    def _load_items(self, animate_new=True):
+        if animate_new:
+            self.item_list_layout.clear_widgets()
+
         try:
             items = item_service.get_items(category=self.selected_category)
-            
+
             expiry_stats = statistics_service.get_expiry_stats()
             total_items = len(items)
             expiring_count = expiry_stats.get('soon_expiring', 0)
             expired_count = expiry_stats.get('expired', 0)
-            
+
             self.total_card.update_value(str(total_items))
             self.expiring_card.update_value(str(expiring_count))
             self.expired_card.update_value(str(expired_count))
-            
+
             if not items:
                 self._show_empty_state()
                 return
-            
+
             from datetime import date
-            
+
             if self.selected_filter == 'expiring':
-                items = [item for item in items if item.expiry_date and 
+                items = [item for item in items if item.expiry_date and
                          0 <= (item.expiry_date - date.today()).days <= 3]
             elif self.selected_filter == 'expired':
-                items = [item for item in items if item.expiry_date and 
+                items = [item for item in items if item.expiry_date and
                          (item.expiry_date - date.today()).days < 0]
-            
+
             if not items:
                 self._show_empty_state()
                 return
-            
+
             def sort_key(item):
-                if item.expiry_date:
+                # 优先按状态排序：未消耗的在前，已消耗的在后
+                is_consumed = (item.status.value == 'consumed')
+                status_priority = 1 if is_consumed else 0
+
+                if is_consumed:
+                    # 已消耗物品按消耗时间排序
+                    consumed_time = item.consumed_at.timestamp() if item.consumed_at else 0
+                    return (status_priority, -consumed_time)
+                elif item.expiry_date:
                     days_until = (item.expiry_date - date.today()).days
                     if days_until < 0:
-                        return (0, days_until)
+                        return (status_priority, 0, days_until)
                     elif days_until <= 3:
-                        return (1, days_until)
+                        return (status_priority, 1, days_until)
                     else:
-                        return (2, days_until)
+                        return (status_priority, 2, days_until)
                 else:
-                    return (3, 0)
-            
+                    return (status_priority, 3, 0)
+
             items.sort(key=sort_key)
-            
+
             for i, item in enumerate(items):
                 item_widget = ItemListItem(item)
                 item_widget.bind(
                     on_release=lambda inst, item_id=item.id: self._on_item_click(item_id),
-                    on_status_changed=lambda inst: self._load_items()
+                    on_status_changed=lambda inst: self._refresh_with_animation()
                 )
-                item_widget.opacity = 0
-                item_widget.y -= dp(10)
-                self.item_list_layout.add_widget(item_widget)
-                
-                Clock.schedule_once(
-                    lambda dt, w=item_widget: Animation(
-                        opacity=1,
-                        y=w.y + dp(10),
-                        duration=0.25,
-                        t='out_cubic'
-                    ).start(w),
-                    i * 0.05
-                )
-            
+                # 给每个widget添加 item_id 用于跟踪
+                item_widget.item_id = item.id
+
+                if animate_new:
+                    item_widget.opacity = 0
+                    item_widget.y -= dp(10)
+                    self.item_list_layout.add_widget(item_widget)
+
+                    Clock.schedule_once(
+                        lambda dt, w=item_widget: Animation(
+                            opacity=1,
+                            y=w.y + dp(10),
+                            duration=0.25,
+                            t='out_cubic'
+                        ).start(w),
+                        i * 0.05
+                    )
+                else:
+                    self.item_list_layout.add_widget(item_widget)
+
             self.item_count_label.text = f"{len(items)} 项"
-            
+
         except Exception as e:
             logger.error(f"加载物品失败: {e}")
             self._show_empty_state()
+
+    def _refresh_with_animation(self):
+        """带动画的刷新，重新排序列表并播放移动动画"""
+        # 获取当前所有widget的位置信息（children是反向的，从上到下）
+        current_widgets = list(self.item_list_layout.children)
+
+        # 保存每个widget的位置和widget本身
+        current_data = {}
+        for widget in current_widgets:
+            if hasattr(widget, 'item_id'):
+                current_data[widget.item_id] = {
+                    'widget': widget,
+                    'y': widget.y
+                }
+
+        # 获取要显示的物品数据
+        items = item_service.get_items(category=self.selected_category)
+
+        from datetime import date
+        if self.selected_filter == 'expiring':
+            items = [item for item in items if item.expiry_date and
+                     0 <= (item.expiry_date - date.today()).days <= 3]
+        elif self.selected_filter == 'expired':
+            items = [item for item in items if item.expiry_date and
+                     (item.expiry_date - date.today()).days < 0]
+
+        def sort_key(item):
+            is_consumed = (item.status.value == 'consumed')
+            status_priority = 1 if is_consumed else 0
+            if is_consumed:
+                consumed_time = item.consumed_at.timestamp() if item.consumed_at else 0
+                return (status_priority, -consumed_time)
+            elif item.expiry_date:
+                days_until = (item.expiry_date - date.today()).days
+                if days_until < 0:
+                    return (status_priority, 0, days_until)
+                elif days_until <= 3:
+                    return (status_priority, 1, days_until)
+                else:
+                    return (status_priority, 2, days_until)
+            else:
+                return (status_priority, 3, 0)
+
+        items.sort(key=sort_key)
+
+        # 计算新的位置
+        spacing = dp(6)
+        new_positions = {}
+        current_y = dp(12)  # 底部padding
+
+        # 正序计算位置（BoxLayout是反向布局，第一个元素在最上面）
+        for item in reversed(items):
+            new_positions[item.id] = current_y
+            current_y += dp(96) + spacing  # item高度 + spacing
+
+        # 禁用自动布局一段时间
+        self.item_list_layout.do_layout = False
+
+        # 重新添加widget
+        temp_widgets = []
+
+        # 先移除不在新列表中的widget
+        to_remove = []
+        for widget in self.item_list_layout.children[:]:
+            if hasattr(widget, 'item_id') and widget.item_id not in new_positions:
+                to_remove.append(widget)
+
+        for widget in to_remove:
+            self.item_list_layout.remove_widget(widget)
+
+        # 更新现有widget的位置
+        for widget in self.item_list_layout.children:
+            if hasattr(widget, 'item_id'):
+                target_y = new_positions.get(widget.item_id, widget.y)
+                if target_y != widget.y:
+                    # 保存目标位置
+                    widget._target_y = target_y
+                    temp_widgets.append(widget)
+
+        # 添加新的widget但设为透明，位置设为0
+        for item in items:
+            if item.id not in current_data:
+                item_widget = ItemListItem(item)
+                item_widget.bind(
+                    on_release=lambda inst, item_id=item.id: self._on_item_click(item_id),
+                    on_status_changed=lambda inst: self._refresh_with_animation()
+                )
+                item_widget.item_id = item.id
+                item_widget.pos_hint = None
+                item_widget.size_hint = (1, None)
+                item_widget.y = 0
+                item_widget.opacity = 0
+                item_widget._target_y = new_positions[item.id]
+                self.item_list_layout.add_widget(item_widget)
+                temp_widgets.append(item_widget)
+
+        # 执行动画
+        def run_animations(dt):
+            for widget in temp_widgets:
+                if hasattr(widget, '_target_y'):
+                    Animation(
+                        y=widget._target_y,
+                        opacity=1,
+                        duration=0.35,
+                        t='out_cubic'
+                    ).start(widget)
+
+        Clock.schedule_once(run_animations, 0.05)
+
+        # 恢复布局（在动画后）
+        def restore_layout(dt):
+            self.item_list_layout.do_layout = True
+
+        Clock.schedule_once(restore_layout, 0.5)
+
+        # 更新统计
+        self.item_count_label.text = f"{len(items)} 项"
     
     def _show_empty_state(self):
         empty_container = BoxLayout(
@@ -1453,17 +1809,16 @@ class MainScreen(Screen):
             height=dp(200),
             padding=dp(32),
         )
-        
+
         from kivymd.uix.label import MDIcon
-        
+
         empty_icon = MDIcon(
             icon="fridge-outline",
-            theme_text_color="Custom",
-            text_color=COLORS['text_hint'],
             size_hint_y=None,
             height=dp(64),
             font_size=dp(48),
         )
+        empty_icon.color = COLORS['text_hint']
         empty_container.add_widget(empty_icon)
         
         empty_text = Label(
@@ -1495,7 +1850,7 @@ class MainScreen(Screen):
         self.show_item_detail(item_id)
     
     def _refresh_items(self, dt):
-        self._load_items()
+        self._load_items(animate_new=False)  # 定时刷新不使用动画
     
     def _cleanup_consumed_items(self, dt):
         try:
