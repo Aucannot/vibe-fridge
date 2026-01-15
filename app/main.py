@@ -58,6 +58,7 @@ from app.ui.screens.add_item_screen import AddItemScreen
 from app.ui.screens.add_entry_screen import AddEntryScreen
 from app.ui.screens.recipes_screen import RecipesScreen
 from app.ui.screens.settings_screen import SettingsScreen
+from app.ui.screens.history_screen import HistoryScreen
 from app.services.database import init_database
 from app.utils.logger import setup_logger
 from app.services.item_service import seed_example_items
@@ -185,6 +186,10 @@ class VibeFridgeApp(MDApp):
         # 设置屏幕
         settings_screen = SettingsScreen(name="settings")
         self.screen_manager.add_widget(settings_screen)
+
+        # 历史屏幕
+        history_screen = HistoryScreen(name="history")
+        self.screen_manager.add_widget(history_screen)
 
     # ---------------- 底部导航栏相关 ----------------
     def _create_bottom_nav_bar(self):
@@ -369,9 +374,9 @@ class VibeFridgeApp(MDApp):
         plus_btn.icon = "plus"
         plus_btn._build_content()
 
-        recipes_btn = make_btn("食谱", lambda *_: self.switch_to_screen("recipes"))
-        recipes_btn.icon = "silverware-fork-knife"
-        recipes_btn._build_content()
+        history_btn = make_btn("历史", lambda *_: self.switch_to_screen("history"))
+        history_btn.icon = "history"
+        history_btn._build_content()
 
         settings_btn = make_btn("设置", lambda *_: self.switch_to_screen("settings"))
         settings_btn.icon = "cog-outline"
@@ -385,7 +390,7 @@ class VibeFridgeApp(MDApp):
         center_layout.add_widget(plus_btn)
 
         right_layout = BoxLayout(orientation='horizontal', size_hint_x=0.4)
-        right_layout.add_widget(recipes_btn)
+        right_layout.add_widget(history_btn)
         right_layout.add_widget(settings_btn)
 
         nav.add_widget(left_layout)
@@ -394,7 +399,7 @@ class VibeFridgeApp(MDApp):
 
         self.home_btn = home_btn
         self.items_btn = items_btn
-        self.recipes_btn = recipes_btn
+        self.history_btn = history_btn
         self.settings_btn = settings_btn
 
         self._set_button_highlight(self.home_btn)
@@ -413,15 +418,15 @@ class VibeFridgeApp(MDApp):
         """根据当前屏幕更新底部导航按钮的高亮状态"""
         self._set_button_normal(self.home_btn)
         self._set_button_normal(self.items_btn)
-        self._set_button_normal(self.recipes_btn)
+        self._set_button_normal(self.history_btn)
         self._set_button_normal(self.settings_btn)
-        
+
         if current_screen == "main":
             self._set_button_highlight(self.home_btn)
         elif current_screen == "items":
             self._set_button_highlight(self.items_btn)
-        elif current_screen == "recipes":
-            self._set_button_highlight(self.recipes_btn)
+        elif current_screen == "history":
+            self._set_button_highlight(self.history_btn)
         elif current_screen == "settings":
             self._set_button_highlight(self.settings_btn)
         # 其他屏幕（如 add_entry, add_item, item_detail）不设置任何按钮为高亮

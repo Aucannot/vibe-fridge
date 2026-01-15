@@ -497,6 +497,67 @@ class ItemService:
             return []
 
     @staticmethod
+    def get_history_items(limit: int = 50, offset: int = 0) -> List[Item]:
+        """
+        获取历史物品（已食用 + 已过期）
+
+        Args:
+            limit: 限制数量
+            offset: 偏移量
+
+        Returns:
+            List[Item]: 历史物品列表
+        """
+        try:
+            from sqlalchemy.orm import joinedload
+
+            session = db_service.get_session()
+            try:
+                # 使用joinedload预加载wiki和category关系
+                today = date.today()
+                query = session.query(Item).options(
+                    joinedload(Item.wiki).joinedload(ItemWiki.category)
+                ).filter(
+                    or_(
+                        Item.status == ItemStatus.CONSUMED,  # 已食用
+                        and_(
+                            Item.status != ItemStatus.CONSUMED,
+                            Item.expiry_date.isnot(None),
+                            Item.expiry_date < today
+                        )  # 已过期但未吃过
+                    )
+                )
+
+                # 排序：已食用的按消耗时间倒序排，已过期的按过期日期倒序排
+                items = query.order_by(
+                    Item.status,  # CONSUMED 优先
+                    desc(Item.consumed_at),
+                    desc(Item.expiry_date)
+                ).limit(limit).offset(offset).all()
+
+                # 将所有返回的项目从会话中移除，避免detached错误
+                result = []
+                for item in items:
+                    if item.wiki:
+                        _ = item.wiki.id
+                        _ = item.wiki.name
+                        _ = item.wiki.category_id
+                        _ = item.wiki.category
+                        if item.wiki.category:
+                            _ = item.wiki.category.id
+                            _ = item.wiki.category.name
+                    session.expunge(item)
+                    result.append(item)
+
+                return result
+            finally:
+                session.close()
+
+        except Exception as e:
+            logger.error(f"获取历史物品失败: {str(e)}")
+            return []
+
+    @staticmethod
     def get_items_needing_reminder() -> List[Item]:
         """
         获取需要提醒的物品

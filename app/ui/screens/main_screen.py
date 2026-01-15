@@ -1376,9 +1376,12 @@ class MainScreen(Screen):
 
     def _load_items(self):
         self.item_list_layout.clear_widgets()
-        
+
         try:
-            items = item_service.get_items(category=self.selected_category)
+            items = item_service.get_items(
+                category=self.selected_category,
+                status=ItemStatus.ACTIVE
+            )
             
             expiry_stats = statistics_service.get_expiry_stats()
             total_items = len(items)
