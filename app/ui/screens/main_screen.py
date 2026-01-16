@@ -30,7 +30,7 @@ from datetime import date, timedelta
 import os
 
 from app.services.item_service import item_service, statistics_service
-from app.models.item import ItemStatus
+from app.models.item import Item, ItemStatus
 from app.utils.logger import setup_logger
 from app.utils.font_helper import apply_font_to_widget, CHINESE_FONT_NAME as CHINESE_FONT
 from app.ui.theme.design_tokens import COLOR_PALETTE, DESIGN_TOKENS
@@ -730,23 +730,22 @@ class ItemListItem(BoxLayout):
     def _on_checkbox_active(self, checkbox, value):
         if value:
             if not self.is_consumed:
-                self.is_consumed = True
                 self._mark_as_consumed()
         else:
             if self.is_consumed:
                 self.is_consumed = False
                 self._restore_item()
-    
+
     def _mark_as_consumed(self):
         item_service.mark_as_consumed(self.item_id)
-        self._show_consumed_state()
+        # 无论是数量减少还是完全消耗，都刷新列表显示
         self.dispatch('on_status_changed')
-    
+
     def _restore_item(self):
         item_service.restore_item(self.item_id)
         self._hide_consumed_state()
         self.dispatch('on_status_changed')
-    
+
     def _show_consumed_state(self):
         self.canvas.before.clear()
         with self.canvas.before:
@@ -777,10 +776,11 @@ class ItemListItem(BoxLayout):
 
 class MainScreen(Screen):
     """主屏幕"""
-    
+
     selected_category = ObjectProperty(allownone=True)
     selected_filter = ObjectProperty(allownone=True)
-    
+    show_consumed = BooleanProperty(False)
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.size_hint = (1, 1)  # 确保 Screen 填满父容器
@@ -1294,41 +1294,190 @@ class MainScreen(Screen):
         list_header.add_widget(separator_left)
         list_header.add_widget(filter_container)
 
-        # 物品清单标题 - 居中
-        list_title_container = AnchorLayout(
-            anchor_x='center',
-            anchor_y='center',
-            size_hint=(1, 1),
+        # 中间分隔线（小间距）
+        inner_separator = BoxLayout(
+            size_hint_x=None,
+            width=dp(8),
         )
-        list_title = Label(
-            text="物品清单",
+        list_header.add_widget(inner_separator)
+
+        # 物品清单按钮
+        inventory_toggle_container = BoxLayout(
+            orientation='horizontal',
+            size_hint_x=None,
+            width=dp(85),
+            height=dp(34),
+            spacing=dp(6),
+            padding=(dp(12), 0, dp(12), 0),
+        )
+
+        # 切换图标
+        inventory_icon = MDIcon(
+            icon="clipboard-list",
+            theme_text_color="Custom",
+            text_color=(1, 1, 1, 1),
+            size_hint=(None, None),
+            size=(dp(18), dp(18)),
+            halign="center",
+            valign="center",
             font_size=dp(16),
+        )
+        inventory_toggle_container.add_widget(inventory_icon)
+
+        # 切换标签
+        inventory_text = Label(
+            text="物品清单",
+            font_size=dp(13),
             bold=True,
-            color=COLORS['text_primary'],
+            color=(1, 1, 1, 1),
+            size_hint=(1, 1),
             halign="center",
             valign="middle",
         )
-        list_title.bind(size=lambda inst, val: setattr(inst, "text_size", (None, val[1])))
+        inventory_text.bind(size=lambda inst, val: setattr(inst, "text_size", (None, val[1])))
         if CHINESE_FONT:
-            list_title.font_name = CHINESE_FONT
-        list_title_container.add_widget(list_title)
-        list_header.add_widget(list_title_container)
+            inventory_text.font_name = CHINESE_FONT
+        inventory_toggle_container.add_widget(inventory_text)
 
-        # 右侧分隔线
-        separator_right = BoxLayout(
+        # 切换背景 - 默认激活状态（primary颜色）
+        inventory_toggle_container.toggle_bg_color = None
+        inventory_toggle_container.toggle_bg_rect = None
+
+        def create_inventory_bg(dt=None):
+            # 清除旧的背景
+            if inventory_toggle_container.toggle_bg_rect:
+                inventory_toggle_container.canvas.before.remove(inventory_toggle_container.toggle_bg_color)
+                inventory_toggle_container.canvas.before.remove(inventory_toggle_container.toggle_bg_rect)
+
+            bg_color = Color(*COLORS['primary'])
+            bg_rect = RoundedRectangle(pos=inventory_toggle_container.pos, size=inventory_toggle_container.size, radius=[dp(14)])
+            inventory_toggle_container.canvas.before.add(bg_color)
+            inventory_toggle_container.canvas.before.add(bg_rect)
+
+            inventory_toggle_container.toggle_bg_color = bg_color
+            inventory_toggle_container.toggle_bg_rect = bg_rect
+
+            def update_inventory_bg(instance=None, value=None):
+                inventory_toggle_container.toggle_bg_rect.pos = inventory_toggle_container.pos
+                inventory_toggle_container.toggle_bg_rect.size = inventory_toggle_container.size
+
+            inventory_toggle_container.bind(pos=update_inventory_bg, size=update_inventory_bg)
+
+        Clock.schedule_once(create_inventory_bg, 0.01)
+
+        # 点击事件 - 切换到物品清单
+        def on_inventory_touch(instance, touch):
+            if instance.collide_point(*touch.pos) and touch.button == 'left':
+                if self.show_consumed:
+                    self.show_consumed = False
+                    self._update_toggle_buttons()
+                    self._load_items()
+                return True
+            return False
+
+        inventory_toggle_container.bind(on_touch_up=on_inventory_touch)
+
+        # 保存引用
+        self.inventory_toggle_container = inventory_toggle_container
+        self.inventory_toggle_icon = inventory_icon
+        self.inventory_toggle_text = inventory_text
+
+        list_header.add_widget(inventory_toggle_container)
+
+        # 中间分隔线（小间距）
+        inner_separator2 = BoxLayout(
             size_hint_x=None,
-            width=dp(1),
+            width=dp(8),
         )
-        sep_right_color = Color(0, 0, 0, 0.05)
-        sep_right_rect = Rectangle(pos=separator_right.pos, size=separator_right.size)
-        separator_right.canvas.before.add(sep_right_color)
-        separator_right.canvas.before.add(sep_right_rect)
-        def update_sep_right_pos(instance, value):
-            sep_right_rect.pos = instance.pos
-            sep_right_rect.size = instance.size
-        separator_right.bind(pos=update_sep_right_pos, size=update_sep_right_pos)
-        list_header.add_widget(separator_right)
-        
+        list_header.add_widget(inner_separator2)
+
+        # 已消耗切换按钮
+        consumed_toggle_container = BoxLayout(
+            orientation='horizontal',
+            size_hint_x=None,
+            width=dp(85),
+            height=dp(34),
+            spacing=dp(6),
+            padding=(dp(12), 0, dp(12), 0),
+        )
+
+        # 切换图标
+        toggle_icon = MDIcon(
+            icon="check-circle-outline",
+            theme_text_color="Custom",
+            text_color=COLORS['text_hint'],
+            size_hint=(None, None),
+            size=(dp(18), dp(18)),
+            halign="center",
+            valign="center",
+            font_size=dp(16),
+        )
+        consumed_toggle_container.add_widget(toggle_icon)
+
+        # 切换标签
+        toggle_text = Label(
+            text="已消耗",
+            font_size=dp(13),
+            bold=False,
+            color=COLORS['text_hint'],
+            size_hint=(1, 1),
+            halign="center",
+            valign="middle",
+        )
+        toggle_text.bind(size=lambda inst, val: setattr(inst, "text_size", (None, val[1])))
+        if CHINESE_FONT:
+            toggle_text.font_name = CHINESE_FONT
+        consumed_toggle_container.add_widget(toggle_text)
+
+        # 切换背景
+        consumed_toggle_container.toggle_bg_color = None
+        consumed_toggle_container.toggle_bg_rect = None
+
+        def create_toggle_bg(dt=None):
+            # 清除旧的背景
+            if consumed_toggle_container.toggle_bg_rect:
+                consumed_toggle_container.canvas.before.remove(consumed_toggle_container.toggle_bg_color)
+                consumed_toggle_container.canvas.before.remove(consumed_toggle_container.toggle_bg_rect)
+
+            bg_color = Color(*COLORS['surface_variant'])
+            bg_rect = RoundedRectangle(pos=consumed_toggle_container.pos, size=consumed_toggle_container.size, radius=[dp(14)])
+            consumed_toggle_container.canvas.before.add(bg_color)
+            consumed_toggle_container.canvas.before.add(bg_rect)
+
+            consumed_toggle_container.toggle_bg_color = bg_color
+            consumed_toggle_container.toggle_bg_rect = bg_rect
+
+            def update_toggle_bg(instance=None, value=None):
+                consumed_toggle_container.toggle_bg_rect.pos = consumed_toggle_container.pos
+                consumed_toggle_container.toggle_bg_rect.size = consumed_toggle_container.size
+
+            consumed_toggle_container.bind(pos=update_toggle_bg, size=update_toggle_bg)
+
+        Clock.schedule_once(create_toggle_bg, 0.01)
+
+        # 点击事件 - 切换已消耗状态
+        def on_toggle_touch(instance, touch):
+            if instance.collide_point(*touch.pos) and touch.button == 'left':
+                if not self.show_consumed:
+                    self.show_consumed = True
+                    self._update_toggle_buttons()
+                    self._load_items()
+                return True
+            return False
+
+        consumed_toggle_container.bind(on_touch_up=on_toggle_touch)
+
+        # 保存引用
+        self.consumed_toggle_container = consumed_toggle_container
+        self.consumed_toggle_icon = toggle_icon
+        self.consumed_toggle_text = toggle_text
+
+        list_header.add_widget(consumed_toggle_container)
+
+        # 填充布局
+        spacer = BoxLayout(size_hint_x=1)
+        list_header.add_widget(spacer)
+
         self.item_count_label = Label(
             text="0 项",
             font_size=dp(13),
@@ -1374,55 +1523,183 @@ class MainScreen(Screen):
     def _update_scroll_bg(self, instance, value):
         pass
 
+    def _update_toggle_buttons(self):
+        """更新切换按钮的视觉状态"""
+        # 更新已消耗按钮
+        consumed_container = getattr(self, 'consumed_toggle_container', None)
+        if consumed_container:
+            consumed_container.canvas.before.clear()
+            if self.show_consumed:
+                bg_color = COLORS['primary']
+                text_color = (1, 1, 1, 1)
+                icon_name = "check-circle"
+            else:
+                bg_color = COLORS['surface_variant']
+                text_color = COLORS['text_hint']
+                icon_name = "check-circle-outline"
+
+            with consumed_container.canvas.before:
+                Color(*bg_color)
+                RoundedRectangle(pos=consumed_container.pos, size=consumed_container.size, radius=[dp(14)])
+
+            def update_consumed_bg(instance=None, value=None):
+                consumed_container.canvas.before.clear()
+                current_bg_color = COLORS['primary'] if self.show_consumed else COLORS['surface_variant']
+                with consumed_container.canvas.before:
+                    Color(*current_bg_color)
+                    RoundedRectangle(pos=consumed_container.pos, size=consumed_container.size, radius=[dp(14)])
+
+            consumed_container.unbind(pos=update_consumed_bg, size=update_consumed_bg)
+            consumed_container.bind(pos=update_consumed_bg, size=update_consumed_bg)
+
+            # 更新图标和文字
+            consumed_icon = getattr(self, 'consumed_toggle_icon', None)
+            if consumed_icon:
+                consumed_icon.icon = icon_name
+                consumed_icon.text_color = text_color
+            consumed_text = getattr(self, 'consumed_toggle_text', None)
+            if consumed_text:
+                consumed_text.color = text_color
+                consumed_text.bold = self.show_consumed
+
+        # 更新物品清单按钮
+        inventory_container = getattr(self, 'inventory_toggle_container', None)
+        if inventory_container:
+            inventory_container.canvas.before.clear()
+            if not self.show_consumed:
+                bg_color = COLORS['primary']
+                text_color = (1, 1, 1, 1)
+            else:
+                bg_color = COLORS['surface_variant']
+                text_color = COLORS['text_hint']
+
+            with inventory_container.canvas.before:
+                Color(*bg_color)
+                RoundedRectangle(pos=inventory_container.pos, size=inventory_container.size, radius=[dp(14)])
+
+            def update_inventory_bg(instance=None, value=None):
+                inventory_container.canvas.before.clear()
+                current_bg_color = COLORS['primary'] if not self.show_consumed else COLORS['surface_variant']
+                with inventory_container.canvas.before:
+                    Color(*current_bg_color)
+                    RoundedRectangle(pos=inventory_container.pos, size=inventory_container.size, radius=[dp(14)])
+
+            inventory_container.unbind(pos=update_inventory_bg, size=update_inventory_bg)
+            inventory_container.bind(pos=update_inventory_bg, size=update_inventory_bg)
+
+            # 更新文字
+            inventory_text = getattr(self, 'inventory_toggle_text', None)
+            if inventory_text:
+                inventory_text.color = text_color
+                inventory_text.bold = not self.show_consumed
+
     def _load_items(self):
         self.item_list_layout.clear_widgets()
 
         try:
-            items = item_service.get_items(
-                category=self.selected_category,
-                status=ItemStatus.ACTIVE
-            )
-            
-            expiry_stats = statistics_service.get_expiry_stats()
-            total_items = len(items)
-            expiring_count = expiry_stats.get('soon_expiring', 0)
-            expired_count = expiry_stats.get('expired', 0)
-            
-            self.total_card.update_value(str(total_items))
-            self.expiring_card.update_value(str(expiring_count))
-            self.expired_card.update_value(str(expired_count))
-            
-            if not items:
-                self._show_empty_state()
-                return
-            
-            from datetime import date
-            
-            if self.selected_filter == 'expiring':
-                items = [item for item in items if item.expiry_date and 
-                         0 <= (item.expiry_date - date.today()).days <= 3]
-            elif self.selected_filter == 'expired':
-                items = [item for item in items if item.expiry_date and 
-                         (item.expiry_date - date.today()).days < 0]
-            
-            if not items:
-                self._show_empty_state()
-                return
-            
-            def sort_key(item):
-                if item.expiry_date:
-                    days_until = (item.expiry_date - date.today()).days
-                    if days_until < 0:
-                        return (0, days_until)
-                    elif days_until <= 3:
-                        return (1, days_until)
+            if self.show_consumed:
+                # 已消耗模式：获取已消耗物品
+                from app.services.database import db_service
+                from app.models.item_wiki import ItemWiki, ItemWikiCategory
+                from sqlalchemy.orm import joinedload
+
+                session = db_service.get_session()
+                query = session.query(Item).options(
+                    joinedload(Item.wiki).joinedload(ItemWiki.category)
+                ).filter(Item.status == ItemStatus.CONSUMED)
+
+                # 当需要按分类筛选时
+                if self.selected_category:
+                    query = query.join(
+                        ItemWiki, Item.wiki_id == ItemWiki.id
+                    ).join(
+                        ItemWikiCategory, ItemWiki.category_id == ItemWikiCategory.id
+                    ).filter(
+                        ItemWikiCategory.name == self.selected_category
+                    )
+
+                # 按消耗时间倒序排序（最近消耗的在前面）
+                items = query.order_by(Item.consumed_at.desc()).all()
+
+                # 将所有项目从会话中移除
+                result = []
+                for item in items:
+                    if item.wiki:
+                        if item.wiki.category:
+                            _ = item.wiki.category.id
+                            _ = item.wiki.category.name
+                    session.expunge(item)
+                    result.append(item)
+
+                session.close()
+
+                # 合并同名已消耗物品
+                consumed_groups = {}
+                for item in result:
+                    if item.name in consumed_groups:
+                        consumed_groups[item.name].quantity += item.quantity
+                        # 保留最新的消耗时间
+                        if item.consumed_at and (not consumed_groups[item.name].consumed_at or
+                                                   item.consumed_at > consumed_groups[item.name].consumed_at):
+                            consumed_groups[item.name].consumed_at = item.consumed_at
                     else:
-                        return (2, days_until)
-                else:
-                    return (3, 0)
-            
-            items.sort(key=sort_key)
-            
+                        consumed_groups[item.name] = item
+
+                items = list(consumed_groups.values())
+
+                # 更新统计卡片 - 在已消耗模式下不显示统计数据
+                self.total_card.update_value("-")
+                self.expiring_card.update_value("-")
+                self.expired_card.update_value("-")
+
+            else:
+                # 正常模式：获取未消耗的物品
+                items = item_service.get_items(category=self.selected_category, status=ItemStatus.ACTIVE)
+
+                expiry_stats = statistics_service.get_expiry_stats()
+                total_items = len(items)
+                expiring_count = expiry_stats.get('soon_expiring', 0)
+                expired_count = expiry_stats.get('expired', 0)
+
+                self.total_card.update_value(str(total_items))
+                self.expiring_card.update_value(str(expiring_count))
+                self.expired_card.update_value(str(expired_count))
+
+                if not items:
+                    self._show_empty_state()
+                    return
+
+                from datetime import date
+
+                if self.selected_filter == 'expiring':
+                    items = [item for item in items if item.expiry_date and
+                             0 <= (item.expiry_date - date.today()).days <= 3]
+                elif self.selected_filter == 'expired':
+                    items = [item for item in items if item.expiry_date and
+                             (item.expiry_date - date.today()).days < 0]
+
+                if not items:
+                    self._show_empty_state()
+                    return
+
+                def sort_key(item):
+                    if item.expiry_date:
+                        days_until = (item.expiry_date - date.today()).days
+                        if days_until < 0:
+                            return (0, days_until)
+                        elif days_until <= 3:
+                            return (1, days_until)
+                        else:
+                            return (2, days_until)
+                    else:
+                        return (3, 0)
+
+                items.sort(key=sort_key)
+
+            if not items:
+                self._show_empty_state()
+                return
+
             for i, item in enumerate(items):
                 item_widget = ItemListItem(item)
                 item_widget.bind(
@@ -1432,7 +1709,7 @@ class MainScreen(Screen):
                 item_widget.opacity = 0
                 item_widget.y -= dp(10)
                 self.item_list_layout.add_widget(item_widget)
-                
+
                 Clock.schedule_once(
                     lambda dt, w=item_widget: Animation(
                         opacity=1,
@@ -1442,11 +1719,13 @@ class MainScreen(Screen):
                     ).start(w),
                     i * 0.05
                 )
-            
+
             self.item_count_label.text = f"{len(items)} 项"
-            
+
         except Exception as e:
             logger.error(f"加载物品失败: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             self._show_empty_state()
     
     def _show_empty_state(self):

@@ -217,11 +217,14 @@ class ItemService:
         """
         标记物品为已消耗
 
+        如果物品数量 > 1，则数量减1，并创建一个已消耗状态的新物品（数量为1）
+        如果物品数量 = 1，则标记为已消耗状态
+
         Args:
             item_id: 物品ID
 
         Returns:
-            bool: 是否标记成功
+            bool: True表示物品已完全消耗（状态改变），False表示已创建新的已消耗记录
         """
         try:
             with db_service.session_scope() as session:
@@ -230,10 +233,31 @@ class ItemService:
                     logger.warning(f"物品不存在: {item_id}")
                     return False
 
-                item.status = ItemStatus.CONSUMED
-                item.consumed_at = datetime.utcnow()
-                logger.info(f"物品标记为已消耗: {item.name} (ID: {item_id})")
-                return True
+                # 如果数量大于1，减少数量并创建一个已消耗记录
+                if item.quantity > 1:
+                    item.quantity -= 1
+                    # 创建一个新的已消耗物品（数量为1）
+                    consumed_item = Item(
+                        name=item.name,
+                        wiki_id=item.wiki_id,
+                        quantity=1,
+                        expiry_date=item.expiry_date,
+                        purchase_date=item.purchase_date,
+                        description=item.description,
+                        unit=item.unit,
+                        status=ItemStatus.CONSUMED,
+                        consumed_at=datetime.utcnow(),
+                        reminder_date=item.reminder_date
+                    )
+                    session.add(consumed_item)
+                    logger.info(f"物品数量减少并创建已消耗记录: {item.name} (剩余: {item.quantity})")
+                    return False  # 返回False表示未完全消耗，但已创建已消耗记录
+                else:
+                    # 数量为1，直接标记为已消耗
+                    item.status = ItemStatus.CONSUMED
+                    item.consumed_at = datetime.utcnow()
+                    logger.info(f"物品标记为已消耗: {item.name} (ID: {item_id})")
+                    return True  # 返回True表示已完全消耗
 
         except Exception as e:
             logger.error(f"标记物品为已消耗失败: {str(e)}")
@@ -243,6 +267,9 @@ class ItemService:
     def restore_item(item_id: str) -> bool:
         """
         恢复物品状态为使用中（取消已消耗状态）
+
+        如果存在同名的活跃物品且有相同的过期日期，则增加其数量并删除已消耗物品
+        否则直接更改状态
 
         Args:
             item_id: 物品ID
@@ -257,9 +284,26 @@ class ItemService:
                     logger.warning(f"物品不存在: {item_id}")
                     return False
 
-                item.status = ItemStatus.ACTIVE
-                item.consumed_at = None
-                logger.info(f"物品已恢复为使用中状态: {item.name} (ID: {item_id})")
+                # 查找同名且有相同过期日期的活跃物品
+                from sqlalchemy import and_
+                matching_active = session.query(Item).filter(
+                    and_(
+                        Item.name == item.name,
+                        Item.status == ItemStatus.ACTIVE,
+                        Item.expiry_date == item.expiry_date
+                    )
+                ).first()
+
+                if matching_active and item.expiry_date:
+                    # 找到匹配的活跃物品，增加其数量并删除已消耗物品
+                    matching_active.quantity += item.quantity
+                    session.delete(item)
+                    logger.info(f"已消耗物品数量已合并到活跃物品: {item.name} (增加 {item.quantity})")
+                else:
+                    # 没有匹配的活跃物品，直接恢复状态
+                    item.status = ItemStatus.ACTIVE
+                    item.consumed_at = None
+                    logger.info(f"物品已恢复为使用中状态: {item.name} (ID: {item_id})")
                 return True
 
         except Exception as e:
