@@ -58,6 +58,7 @@ from app.ui.screens.add_item_screen import AddItemScreen
 from app.ui.screens.add_entry_screen import AddEntryScreen
 from app.ui.screens.recipes_screen import RecipesScreen
 from app.ui.screens.settings_screen import SettingsScreen
+from app.ui.screens.history_screen import HistoryScreen
 from app.services.database import init_database
 from app.utils.logger import setup_logger
 from app.services.item_service import seed_example_items
@@ -185,6 +186,10 @@ class VibeFridgeApp(MDApp):
         # 设置屏幕
         settings_screen = SettingsScreen(name="settings")
         self.screen_manager.add_widget(settings_screen)
+
+        # 历史屏幕
+        history_screen = HistoryScreen(name="history")
+        self.screen_manager.add_widget(history_screen)
 
     # ---------------- 底部导航栏相关 ----------------
     def _create_bottom_nav_bar(self):
@@ -369,7 +374,7 @@ class VibeFridgeApp(MDApp):
         plus_btn.icon = "plus"
         plus_btn._build_content()
 
-        recipes_btn = make_btn("食谱", lambda *_: self.switch_to_screen("recipes"))
+        recipes_btn = make_btn("菜谱", lambda *_: self.switch_to_screen("recipes"))
         recipes_btn.icon = "silverware-fork-knife"
         recipes_btn._build_content()
 
@@ -415,7 +420,7 @@ class VibeFridgeApp(MDApp):
         self._set_button_normal(self.items_btn)
         self._set_button_normal(self.recipes_btn)
         self._set_button_normal(self.settings_btn)
-        
+
         if current_screen == "main":
             self._set_button_highlight(self.home_btn)
         elif current_screen == "items":
