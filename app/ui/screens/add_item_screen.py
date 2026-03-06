@@ -10,6 +10,7 @@ from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
 from kivy.uix.scrollview import ScrollView
 from kivy.metrics import dp
+from kivy.graphics import Color, Rectangle
 from kivy.properties import StringProperty
 from kivymd.app import MDApp
 from kivymd.uix.card import MDCard
@@ -93,7 +94,6 @@ class AddItemScreen(Screen):
         """构建UI界面"""
         # 主布局 - 设置白色背景
         main_layout = BoxLayout(orientation='vertical')
-        from kivy.graphics import Color, Rectangle
         with main_layout.canvas.before:
             Color(1, 1, 1, 1)  # 白色背景
             self.bg_rect = Rectangle(pos=main_layout.pos, size=main_layout.size)
@@ -155,7 +155,6 @@ class AddItemScreen(Screen):
         """创建表单滚动区域"""
         scroll_view = ScrollView()
         # 设置滚动视图背景色
-        from kivy.graphics import Color, Rectangle
         with scroll_view.canvas.before:
             Color(1, 1, 1, 1)  # 白色背景
             scroll_bg_rect = Rectangle(pos=scroll_view.pos, size=scroll_view.size)
