@@ -40,6 +40,9 @@ logger = setup_logger(__name__)
 
 COLORS = COLOR_PALETTE
 
+HEADER_CHIP_HEIGHT = dp(36)
+HEADER_TOGGLE_RADIUS = dp(16)
+
 def get_token_color(key):
     return COLORS.get(key, (0.5, 0.5, 0.5, 1))
 
@@ -666,7 +669,6 @@ class ItemListItem(BoxLayout):
             height=dp(36),
         )
         # 根据当前状态设置颜色
-        consume_color = COLORS['primary'] if self.is_consumed else COLORS['text_hint']
         consume_btn_bg = COLORS['primary'] if self.is_consumed else [0.9, 0.9, 0.9, 1]
         self._setup_qty_button_bg(consume_btn, consume_btn_bg)
         consume_btn.bind(on_press=lambda *args: self._on_checkbox_active(consume_btn, not self.is_consumed))
@@ -1440,7 +1442,7 @@ class MainScreen(Screen):
             orientation='horizontal',
             size_hint_x=None,
             width=dp(118),
-            height=dp(36),
+            height=HEADER_CHIP_HEIGHT,
             spacing=dp(6),
             padding=(dp(10), 0, dp(10), 0),
         )
@@ -1485,7 +1487,7 @@ class MainScreen(Screen):
                 filter_container.canvas.before.remove(filter_container.filter_bg_rect)
 
             bg_color = Color(*COLORS['secondary_container'])  # 使用更明显的颜色
-            bg_rect = RoundedRectangle(pos=filter_container.pos, size=filter_container.size, radius=[dp(14)])
+            bg_rect = RoundedRectangle(pos=filter_container.pos, size=filter_container.size, radius=[HEADER_TOGGLE_RADIUS])
             filter_container.canvas.before.add(bg_color)
             filter_container.canvas.before.add(bg_rect)
 
@@ -1530,7 +1532,7 @@ class MainScreen(Screen):
             orientation='horizontal',
             size_hint_x=None,
             width=dp(148),
-            height=dp(34),
+            height=HEADER_CHIP_HEIGHT,
             spacing=dp(6),
             padding=(dp(12), 0, dp(12), 0),
         )
@@ -1574,7 +1576,7 @@ class MainScreen(Screen):
                 inventory_toggle_container.canvas.before.remove(inventory_toggle_container.toggle_bg_rect)
 
             bg_color = Color(*COLORS['primary'])
-            bg_rect = RoundedRectangle(pos=inventory_toggle_container.pos, size=inventory_toggle_container.size, radius=[dp(14)])
+            bg_rect = RoundedRectangle(pos=inventory_toggle_container.pos, size=inventory_toggle_container.size, radius=[HEADER_TOGGLE_RADIUS])
             inventory_toggle_container.canvas.before.add(bg_color)
             inventory_toggle_container.canvas.before.add(bg_rect)
 
@@ -1620,7 +1622,7 @@ class MainScreen(Screen):
             orientation='horizontal',
             size_hint_x=None,
             width=dp(118),
-            height=dp(34),
+            height=HEADER_CHIP_HEIGHT,
             spacing=dp(6),
             padding=(dp(12), 0, dp(12), 0),
         )
@@ -1664,7 +1666,7 @@ class MainScreen(Screen):
                 consumed_toggle_container.canvas.before.remove(consumed_toggle_container.toggle_bg_rect)
 
             bg_color = Color(*COLORS['surface_variant'])
-            bg_rect = RoundedRectangle(pos=consumed_toggle_container.pos, size=consumed_toggle_container.size, radius=[dp(14)])
+            bg_rect = RoundedRectangle(pos=consumed_toggle_container.pos, size=consumed_toggle_container.size, radius=[HEADER_TOGGLE_RADIUS])
             consumed_toggle_container.canvas.before.add(bg_color)
             consumed_toggle_container.canvas.before.add(bg_rect)
 
@@ -1764,14 +1766,14 @@ class MainScreen(Screen):
 
             with consumed_container.canvas.before:
                 Color(*bg_color)
-                RoundedRectangle(pos=consumed_container.pos, size=consumed_container.size, radius=[dp(14)])
+                RoundedRectangle(pos=consumed_container.pos, size=consumed_container.size, radius=[HEADER_TOGGLE_RADIUS])
 
             def update_consumed_bg(instance=None, value=None):
                 consumed_container.canvas.before.clear()
                 current_bg_color = COLORS['primary'] if self.show_consumed else COLORS['surface_variant']
                 with consumed_container.canvas.before:
                     Color(*current_bg_color)
-                    RoundedRectangle(pos=consumed_container.pos, size=consumed_container.size, radius=[dp(14)])
+                    RoundedRectangle(pos=consumed_container.pos, size=consumed_container.size, radius=[HEADER_TOGGLE_RADIUS])
 
             consumed_container.unbind(pos=update_consumed_bg, size=update_consumed_bg)
             consumed_container.bind(pos=update_consumed_bg, size=update_consumed_bg)
@@ -1799,14 +1801,14 @@ class MainScreen(Screen):
 
             with inventory_container.canvas.before:
                 Color(*bg_color)
-                RoundedRectangle(pos=inventory_container.pos, size=inventory_container.size, radius=[dp(14)])
+                RoundedRectangle(pos=inventory_container.pos, size=inventory_container.size, radius=[HEADER_TOGGLE_RADIUS])
 
             def update_inventory_bg(instance=None, value=None):
                 inventory_container.canvas.before.clear()
                 current_bg_color = COLORS['primary'] if not self.show_consumed else COLORS['surface_variant']
                 with inventory_container.canvas.before:
                     Color(*current_bg_color)
-                    RoundedRectangle(pos=inventory_container.pos, size=inventory_container.size, radius=[dp(14)])
+                    RoundedRectangle(pos=inventory_container.pos, size=inventory_container.size, radius=[HEADER_TOGGLE_RADIUS])
 
             inventory_container.unbind(pos=update_inventory_bg, size=update_inventory_bg)
             inventory_container.bind(pos=update_inventory_bg, size=update_inventory_bg)
