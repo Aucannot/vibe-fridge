@@ -1816,12 +1816,12 @@ class MainScreen(Screen):
             if hasattr(self, 'inventory_toggle_text'):
                 self.inventory_toggle_text.text = '清单' if inventory_w < dp(128) else '物品清单'
             if hasattr(self, 'consumed_toggle_text'):
-                if consumed_w < dp(70):
+                if consumed_w < dp(66):
                     self.consumed_toggle_text.text = ''
-                elif consumed_w < dp(92):
-                    self.consumed_toggle_text.text = '已'
-                else:
+                elif consumed_w < dp(84):
                     self.consumed_toggle_text.text = '已消'
+                else:
+                    self.consumed_toggle_text.text = '已消耗'
         else:
             header.padding = (dp(16), dp(8), dp(16), dp(8))
             header.spacing = dp(10)
@@ -1984,10 +1984,12 @@ class MainScreen(Screen):
 
                 items = list(consumed_groups.values())
 
-                # 更新统计卡片 - 在已消耗模式下不显示统计数据
-                self.total_card.update_value("-")
-                self.expiring_card.update_value("-")
-                self.expired_card.update_value("-")
+                # 已消耗模式下仍展示首页统计（与统计卡标题语义保持一致）
+                active_items = item_service.get_items(status=ItemStatus.ACTIVE)
+                expiry_stats = statistics_service.get_expiry_stats()
+                self.total_card.update_value(str(len(active_items)))
+                self.expiring_card.update_value(str(expiry_stats.get('soon_expiring', 0)))
+                self.expired_card.update_value(str(expiry_stats.get('expired', 0)))
 
             else:
                 # 正常模式：获取未消耗的物品
