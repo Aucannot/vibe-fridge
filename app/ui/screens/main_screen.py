@@ -40,6 +40,9 @@ logger = setup_logger(__name__)
 
 COLORS = COLOR_PALETTE
 
+HEADER_CHIP_HEIGHT = dp(36)
+HEADER_TOGGLE_RADIUS = dp(16)
+
 def get_token_color(key):
     return COLORS.get(key, (0.5, 0.5, 0.5, 1))
 
@@ -294,7 +297,7 @@ class StatCard(BoxLayout):
             halign="left",
             valign="bottom",
             color=self._stat_color,
-            font_size=dp(28),
+            font_size=dp(30),
             bold=True,
             font_name=None if not CHINESE_FONT else CHINESE_FONT,
         )
@@ -311,7 +314,7 @@ class StatCard(BoxLayout):
             halign="left",
             valign="top",
             color=COLORS['text_hint'],
-            font_size=dp(11),
+            font_size=dp(12),
             font_name=None if not CHINESE_FONT else CHINESE_FONT,
         )
         title_label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], val[1])))
@@ -499,7 +502,7 @@ class ItemListItem(BoxLayout):
             height=dp(76),
             halign="center",
             valign="middle",
-            font_size=dp(28),
+            font_size=dp(30),
         )
         icon.color = icon_color
         self.icon_widget = icon
@@ -595,8 +598,8 @@ class ItemListItem(BoxLayout):
         self.actions_container = BoxLayout(
             orientation="horizontal",
             size_hint_x=None,
-            width=dp(100),
-            spacing=dp(6),
+            width=dp(120),
+            spacing=dp(8),
         )
 
         # +1 按钮 - 使用 ButtonBehavior 确保正确的事件处理
@@ -607,9 +610,9 @@ class ItemListItem(BoxLayout):
         # -1 按钮
         minus_btn = QtyButton(
             size_hint_x=None,
-            width=dp(32),
+            width=dp(36),
             size_hint_y=None,
-            height=dp(32),
+            height=dp(36),
         )
         self._setup_qty_button_bg(minus_btn, COLORS['warning'])
         minus_btn.bind(on_press=lambda *args: self._on_quantity_change(-1))
@@ -634,9 +637,9 @@ class ItemListItem(BoxLayout):
         # +1 按钮
         plus_btn = QtyButton(
             size_hint_x=None,
-            width=dp(32),
+            width=dp(36),
             size_hint_y=None,
-            height=dp(32),
+            height=dp(36),
         )
         self._setup_qty_button_bg(plus_btn, COLORS['success'])
         plus_btn.bind(on_press=lambda *args: self._on_quantity_change(1))
@@ -661,12 +664,11 @@ class ItemListItem(BoxLayout):
         # 消耗按钮（使用复选框样式）
         consume_btn = QtyButton(
             size_hint_x=None,
-            width=dp(32),
+            width=dp(36),
             size_hint_y=None,
-            height=dp(32),
+            height=dp(36),
         )
         # 根据当前状态设置颜色
-        consume_color = COLORS['primary'] if self.is_consumed else COLORS['text_hint']
         consume_btn_bg = COLORS['primary'] if self.is_consumed else [0.9, 0.9, 0.9, 1]
         self._setup_qty_button_bg(consume_btn, consume_btn_bg)
         consume_btn.bind(on_press=lambda *args: self._on_checkbox_active(consume_btn, not self.is_consumed))
@@ -706,7 +708,7 @@ class ItemListItem(BoxLayout):
         # 使用 FloatLayout 包裹按钮组，通过 pos_hint 垂直居中
         actions_float = FloatLayout(
             size_hint=(None, None),
-            width=dp(120),
+            width=dp(132),
             height=dp(96),  # 与卡片高度相同
         )
         self.actions_container.pos_hint = {'right': 1, 'center_y': 0.5}
@@ -759,7 +761,7 @@ class ItemListItem(BoxLayout):
                 button.canvas.before.clear()
                 with button.canvas.before:
                     button._qty_btn_color = Color(*btn_color)
-                    button._qty_btn_rect = RoundedRectangle(pos=button.pos, size=button.size, radius=[dp(3)])
+                    button._qty_btn_rect = RoundedRectangle(pos=button.pos, size=button.size, radius=[dp(8)])
             else:
                 button._qty_btn_rect.pos = button.pos
                 button._qty_btn_rect.size = button.size
@@ -1309,7 +1311,7 @@ class MainScreen(Screen):
 
         # 点击事件 - 使用 on_touch_up
         def on_card_touch(instance, touch):
-            if instance.collide_point(*touch.pos) and touch.button == 'left':
+            if instance.collide_point(*touch.pos) and getattr(touch, 'button', 'left') == 'left':
                 self._on_category_selected(category_value)
                 self.category_menu.dismiss()
                 return True
@@ -1416,9 +1418,9 @@ class MainScreen(Screen):
         list_header = BoxLayout(
             orientation='horizontal',
             size_hint_y=None,
-            height=dp(40),
-            padding=(dp(16), dp(6), dp(16), dp(6)),
-            spacing=dp(12),
+            height=dp(44),
+            padding=(dp(16), dp(8), dp(16), dp(8)),
+            spacing=dp(10),
         )
 
         # 分隔线
@@ -1439,8 +1441,8 @@ class MainScreen(Screen):
         filter_container = BoxLayout(
             orientation='horizontal',
             size_hint_x=None,
-            width=dp(110),
-            height=dp(34),
+            width=dp(118),
+            height=HEADER_CHIP_HEIGHT,
             spacing=dp(6),
             padding=(dp(10), 0, dp(10), 0),
         )
@@ -1485,7 +1487,7 @@ class MainScreen(Screen):
                 filter_container.canvas.before.remove(filter_container.filter_bg_rect)
 
             bg_color = Color(*COLORS['secondary_container'])  # 使用更明显的颜色
-            bg_rect = RoundedRectangle(pos=filter_container.pos, size=filter_container.size, radius=[dp(14)])
+            bg_rect = RoundedRectangle(pos=filter_container.pos, size=filter_container.size, radius=[HEADER_TOGGLE_RADIUS])
             filter_container.canvas.before.add(bg_color)
             filter_container.canvas.before.add(bg_rect)
 
@@ -1503,7 +1505,7 @@ class MainScreen(Screen):
 
         # 点击事件
         def on_filter_touch(instance, touch):
-            if instance.collide_point(*touch.pos) and touch.button == 'left':
+            if instance.collide_point(*touch.pos) and getattr(touch, 'button', 'left') == 'left':
                 self._show_category_menu()
                 return True
             return False
@@ -1521,7 +1523,7 @@ class MainScreen(Screen):
         # 中间分隔线（小间距）
         inner_separator = BoxLayout(
             size_hint_x=None,
-            width=dp(8),
+            width=dp(4),
         )
         list_header.add_widget(inner_separator)
 
@@ -1529,8 +1531,8 @@ class MainScreen(Screen):
         inventory_toggle_container = BoxLayout(
             orientation='horizontal',
             size_hint_x=None,
-            width=dp(85),
-            height=dp(34),
+            width=dp(148),
+            height=HEADER_CHIP_HEIGHT,
             spacing=dp(6),
             padding=(dp(12), 0, dp(12), 0),
         )
@@ -1574,7 +1576,7 @@ class MainScreen(Screen):
                 inventory_toggle_container.canvas.before.remove(inventory_toggle_container.toggle_bg_rect)
 
             bg_color = Color(*COLORS['primary'])
-            bg_rect = RoundedRectangle(pos=inventory_toggle_container.pos, size=inventory_toggle_container.size, radius=[dp(14)])
+            bg_rect = RoundedRectangle(pos=inventory_toggle_container.pos, size=inventory_toggle_container.size, radius=[HEADER_TOGGLE_RADIUS])
             inventory_toggle_container.canvas.before.add(bg_color)
             inventory_toggle_container.canvas.before.add(bg_rect)
 
@@ -1591,7 +1593,7 @@ class MainScreen(Screen):
 
         # 点击事件 - 切换到物品清单
         def on_inventory_touch(instance, touch):
-            if instance.collide_point(*touch.pos) and touch.button == 'left':
+            if instance.collide_point(*touch.pos) and getattr(touch, 'button', 'left') == 'left':
                 if self.show_consumed:
                     self.show_consumed = False
                     self._update_toggle_buttons()
@@ -1611,7 +1613,7 @@ class MainScreen(Screen):
         # 中间分隔线（小间距）
         inner_separator2 = BoxLayout(
             size_hint_x=None,
-            width=dp(8),
+            width=dp(4),
         )
         list_header.add_widget(inner_separator2)
 
@@ -1619,8 +1621,8 @@ class MainScreen(Screen):
         consumed_toggle_container = BoxLayout(
             orientation='horizontal',
             size_hint_x=None,
-            width=dp(85),
-            height=dp(34),
+            width=dp(118),
+            height=HEADER_CHIP_HEIGHT,
             spacing=dp(6),
             padding=(dp(12), 0, dp(12), 0),
         )
@@ -1664,7 +1666,7 @@ class MainScreen(Screen):
                 consumed_toggle_container.canvas.before.remove(consumed_toggle_container.toggle_bg_rect)
 
             bg_color = Color(*COLORS['surface_variant'])
-            bg_rect = RoundedRectangle(pos=consumed_toggle_container.pos, size=consumed_toggle_container.size, radius=[dp(14)])
+            bg_rect = RoundedRectangle(pos=consumed_toggle_container.pos, size=consumed_toggle_container.size, radius=[HEADER_TOGGLE_RADIUS])
             consumed_toggle_container.canvas.before.add(bg_color)
             consumed_toggle_container.canvas.before.add(bg_rect)
 
@@ -1681,7 +1683,7 @@ class MainScreen(Screen):
 
         # 点击事件 - 切换已消耗状态
         def on_toggle_touch(instance, touch):
-            if instance.collide_point(*touch.pos) and touch.button == 'left':
+            if instance.collide_point(*touch.pos) and getattr(touch, 'button', 'left') == 'left':
                 if not self.show_consumed:
                     self.show_consumed = True
                     self._update_toggle_buttons()
@@ -1707,7 +1709,7 @@ class MainScreen(Screen):
             font_size=dp(13),
             color=COLORS['text_hint'],
             size_hint_x=None,
-            width=dp(60),
+            width=dp(50),
             halign="right",
             valign="middle",
         )
@@ -1715,7 +1717,18 @@ class MainScreen(Screen):
         if CHINESE_FONT:
             self.item_count_label.font_name = CHINESE_FONT
         list_header.add_widget(self.item_count_label)
-        
+
+        # 保存头部组件引用并启用响应式布局（适配窄宽度，避免"已消耗"被截断）
+        self.list_header = list_header
+        self.inventory_toggle_container = inventory_toggle_container
+        self.consumed_toggle_container = consumed_toggle_container
+        self.header_separator_left = separator_left
+        self.header_inner_separator = inner_separator
+        self.header_inner_separator2 = inner_separator2
+
+        list_header.bind(size=self._apply_responsive_header_layout)
+        Clock.schedule_once(self._apply_responsive_header_layout, 0)
+
         parent.add_widget(list_header)
         
         scroll_view = ScrollView(
@@ -1744,6 +1757,56 @@ class MainScreen(Screen):
         scroll_view.add_widget(self.item_list_layout)
         parent.add_widget(scroll_view)
     
+    def _apply_responsive_header_layout(self, *_args):
+        """根据可用宽度动态压缩头部控件，保证在窄屏下"已消耗"可见。"""
+        header = getattr(self, 'list_header', None)
+        if not header:
+            return
+
+        width = header.width
+        compact = width < dp(700)
+        ultra_compact = width < dp(420)
+
+        # 窄屏时同步压缩整体布局参数
+        header.padding = (dp(12), dp(8), dp(12), dp(8)) if compact else (dp(16), dp(8), dp(16), dp(8))
+        header.spacing = dp(4) if compact else dp(10)
+
+        # 分隔占位在窄屏时收缩，最左分隔线在窄屏隐藏
+        if hasattr(self, 'header_separator_left'):
+            self.header_separator_left.width = 0 if compact else dp(1)
+        sep_width = dp(1) if compact else dp(4)
+        if hasattr(self, 'header_inner_separator'):
+            self.header_inner_separator.width = sep_width
+        if hasattr(self, 'header_inner_separator2'):
+            self.header_inner_separator2.width = sep_width
+
+        # 计数标签在紧凑屏下隐藏，为核心切换按钮腾空间
+        if hasattr(self, 'item_count_label'):
+            if compact:
+                self.item_count_label.width = 0
+                self.item_count_label.opacity = 0
+            else:
+                self.item_count_label.width = dp(50)
+                self.item_count_label.opacity = 1
+
+        if hasattr(self, 'filter_btn_container'):
+            self.filter_btn_container.width = dp(84) if compact else dp(118)
+
+        if hasattr(self, 'inventory_toggle_container'):
+            self.inventory_toggle_container.width = dp(110) if compact else dp(148)
+
+        if hasattr(self, 'consumed_toggle_container'):
+            self.consumed_toggle_container.width = dp(74) if compact else dp(118)
+
+        # 文案在窄屏下使用短标签；超窄屏下进一步收敛
+        if hasattr(self, 'inventory_toggle_text'):
+            self.inventory_toggle_text.text = "清单" if compact else "物品清单"
+        if hasattr(self, 'consumed_toggle_text'):
+            if ultra_compact:
+                self.consumed_toggle_text.text = ""
+            else:
+                self.consumed_toggle_text.text = "已消" if compact else "已消耗"
+
     def _update_scroll_bg(self, instance, value):
         pass
 
@@ -1764,14 +1827,14 @@ class MainScreen(Screen):
 
             with consumed_container.canvas.before:
                 Color(*bg_color)
-                RoundedRectangle(pos=consumed_container.pos, size=consumed_container.size, radius=[dp(14)])
+                RoundedRectangle(pos=consumed_container.pos, size=consumed_container.size, radius=[HEADER_TOGGLE_RADIUS])
 
             def update_consumed_bg(instance=None, value=None):
                 consumed_container.canvas.before.clear()
                 current_bg_color = COLORS['primary'] if self.show_consumed else COLORS['surface_variant']
                 with consumed_container.canvas.before:
                     Color(*current_bg_color)
-                    RoundedRectangle(pos=consumed_container.pos, size=consumed_container.size, radius=[dp(14)])
+                    RoundedRectangle(pos=consumed_container.pos, size=consumed_container.size, radius=[HEADER_TOGGLE_RADIUS])
 
             consumed_container.unbind(pos=update_consumed_bg, size=update_consumed_bg)
             consumed_container.bind(pos=update_consumed_bg, size=update_consumed_bg)
@@ -1799,14 +1862,14 @@ class MainScreen(Screen):
 
             with inventory_container.canvas.before:
                 Color(*bg_color)
-                RoundedRectangle(pos=inventory_container.pos, size=inventory_container.size, radius=[dp(14)])
+                RoundedRectangle(pos=inventory_container.pos, size=inventory_container.size, radius=[HEADER_TOGGLE_RADIUS])
 
             def update_inventory_bg(instance=None, value=None):
                 inventory_container.canvas.before.clear()
                 current_bg_color = COLORS['primary'] if not self.show_consumed else COLORS['surface_variant']
                 with inventory_container.canvas.before:
                     Color(*current_bg_color)
-                    RoundedRectangle(pos=inventory_container.pos, size=inventory_container.size, radius=[dp(14)])
+                    RoundedRectangle(pos=inventory_container.pos, size=inventory_container.size, radius=[HEADER_TOGGLE_RADIUS])
 
             inventory_container.unbind(pos=update_inventory_bg, size=update_inventory_bg)
             inventory_container.bind(pos=update_inventory_bg, size=update_inventory_bg)

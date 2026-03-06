@@ -10,21 +10,18 @@ from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
 from kivy.uix.scrollview import ScrollView
 from kivy.metrics import dp
-from kivy.properties import StringProperty, ObjectProperty
+from kivy.graphics import Color, Rectangle
+from kivy.properties import StringProperty
 from kivymd.app import MDApp
 from kivymd.uix.card import MDCard
-from kivymd.uix.button import (
-    MDButton, MDIconButton, MDButtonText
-)
-from kivymd.uix.dialog import MDDialog
+from kivymd.uix.button import MDButton, MDIconButton, MDButtonText
 from kivymd.uix.pickers import MDModalDatePicker
 from kivymd.uix.selectioncontrol import MDCheckbox
 from kivymd.uix.list import MDListItem, MDListItemHeadlineText
-from kivy.properties import StringProperty
-from datetime import date, datetime
-import os
+from datetime import date
 
 from app.services.item_service import item_service
+from app.ui.theme.design_tokens import COLOR_PALETTE
 
 from app.utils.logger import setup_logger
 from app.utils.font_helper import apply_font_to_widget, CHINESE_FONT_NAME as CHINESE_FONT
@@ -33,6 +30,7 @@ logger = setup_logger(__name__)
 
 # 获取中文字体名称
 CHINESE_FONT = CHINESE_FONT
+COLORS = COLOR_PALETTE
 
 
 class OneLineListItem(MDListItem):
@@ -96,7 +94,6 @@ class AddItemScreen(Screen):
         """构建UI界面"""
         # 主布局 - 设置白色背景
         main_layout = BoxLayout(orientation='vertical')
-        from kivy.graphics import Color, Rectangle
         with main_layout.canvas.before:
             Color(1, 1, 1, 1)  # 白色背景
             self.bg_rect = Rectangle(pos=main_layout.pos, size=main_layout.size)
@@ -124,6 +121,13 @@ class AddItemScreen(Screen):
     def _create_header(self) -> BoxLayout:
         """创建头部栏"""
         header = BoxLayout(size_hint_y=None, height=dp(56))
+        with header.canvas.before:
+            Color(*COLORS['surface'])
+            self.header_bg_rect = Rectangle(pos=header.pos, size=header.size)
+        header.bind(
+            pos=lambda inst, val: setattr(self.header_bg_rect, 'pos', inst.pos),
+            size=lambda inst, val: setattr(self.header_bg_rect, 'size', inst.size),
+        )
 
         # 返回按钮
         back_btn = MDIconButton(
@@ -138,8 +142,11 @@ class AddItemScreen(Screen):
             text="添加物品",
             size_hint_x=0.8,
             font_size=dp(20),
-            bold=True
+            bold=True,
+            color=COLORS['text_primary'],
         )
+        if CHINESE_FONT:
+            title_label.font_name = CHINESE_FONT
         header.add_widget(title_label)
 
         return header
@@ -148,7 +155,6 @@ class AddItemScreen(Screen):
         """创建表单滚动区域"""
         scroll_view = ScrollView()
         # 设置滚动视图背景色
-        from kivy.graphics import Color, Rectangle
         with scroll_view.canvas.before:
             Color(1, 1, 1, 1)  # 白色背景
             scroll_bg_rect = Rectangle(pos=scroll_view.pos, size=scroll_view.size)
@@ -192,7 +198,9 @@ class AddItemScreen(Screen):
             size_hint_y=None,
             height=dp(200),
             padding=dp(16),
-            radius=[dp(8), dp(8), dp(8), dp(8)]
+            radius=[dp(12), dp(12), dp(12), dp(12)],
+            style="elevated",
+            md_bg_color=COLORS['surface'],
         )
 
         layout = BoxLayout(orientation='vertical', spacing=dp(8))
@@ -264,7 +272,9 @@ class AddItemScreen(Screen):
             size_hint_y=None,
             height=dp(120),
             padding=dp(16),
-            radius=[dp(8), dp(8), dp(8), dp(8)]
+            radius=[dp(12), dp(12), dp(12), dp(12)],
+            style="elevated",
+            md_bg_color=COLORS['surface'],
         )
 
         layout = GridLayout(cols=2, rows=2, spacing=dp(8))
@@ -326,7 +336,9 @@ class AddItemScreen(Screen):
             size_hint_y=None,
             height=dp(160),
             padding=dp(16),
-            radius=[dp(8), dp(8), dp(8), dp(8)]
+            radius=[dp(12), dp(12), dp(12), dp(12)],
+            style="elevated",
+            md_bg_color=COLORS['surface'],
         )
 
         layout = GridLayout(cols=1, rows=3, spacing=dp(8))
@@ -392,20 +404,22 @@ class AddItemScreen(Screen):
             size_hint_y=None,
             height=dp(120),
             padding=dp(16),
-            radius=[dp(8), dp(8), dp(8), dp(8)]
+            radius=[dp(12), dp(12), dp(12), dp(12)],
+            style="elevated",
+            md_bg_color=COLORS['surface'],
         )
 
         layout = BoxLayout(orientation='vertical', spacing=dp(8))
 
         # 提醒开关
         reminder_layout = BoxLayout(size_hint_y=None, height=dp(40))
-        reminder_checkbox = MDCheckbox(
+        self.reminder_checkbox = MDCheckbox(
             size_hint_x=None,
             width=dp(40),
             active=True,
             on_active=self._on_reminder_toggle
         )
-        reminder_layout.add_widget(reminder_checkbox)
+        reminder_layout.add_widget(self.reminder_checkbox)
         reminder_layout.add_widget(Label(
             text="启用过期提醒",
             color=(0.4, 0.4, 0.4, 1)
@@ -444,6 +458,7 @@ class AddItemScreen(Screen):
 
         # 取消按钮
         cancel_btn = MDButton(
+            style="text",
             on_release=self._on_cancel_click
         )
         # 创建按钮文本部件（新的KivyMD API需要这样）
@@ -878,6 +893,10 @@ class AddItemScreen(Screen):
         if hasattr(self, "category_label"):
             self.category_label.text = "食品"
 
+        # 重置提醒 checkbox，修复表单重置后 UI 状态与数据不一致问题
+        if hasattr(self, "reminder_checkbox"):
+            self.reminder_checkbox.active = True
+
         # 聚焦到名称输入框
         self.name_input.focus = True
 
@@ -896,7 +915,11 @@ class AddItemScreen(Screen):
         """离开屏幕时调用"""
         # 关闭日期选择器
         if self.date_picker:
-            self.date_picker.dismiss()
+            try:
+                self.date_picker.dismiss()
+            except Exception:
+                pass
+            self.date_picker = None
 
 
 # 测试代码
