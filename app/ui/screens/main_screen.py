@@ -1766,41 +1766,73 @@ class MainScreen(Screen):
 
         width = header.width
         compact = width < dp(980)
-        ultra_compact = width < dp(760)
 
-        header.padding = (dp(8), dp(8), dp(8), dp(8)) if compact else (dp(16), dp(8), dp(16), dp(8))
-        header.spacing = dp(2) if compact else dp(10)
-
-        if hasattr(self, 'header_separator_left'):
-            self.header_separator_left.width = 0 if compact else dp(1)
-
-        sep_width = dp(1) if compact else dp(4)
-        if hasattr(self, 'header_inner_separator'):
-            self.header_inner_separator.width = sep_width
-        if hasattr(self, 'header_inner_separator2'):
-            self.header_inner_separator2.width = sep_width
-
-        # 紧凑模式：按比例分配 chip 宽度；常规模式：恢复固定宽度
         if compact:
+            pad_h = dp(8)
+            sep_width = dp(1)
+            header.padding = (pad_h, dp(8), pad_h, dp(8))
+            header.spacing = dp(2)
+
+            # 统一隐藏非核心占位
+            if hasattr(self, 'header_separator_left'):
+                self.header_separator_left.width = 0
+            if hasattr(self, 'header_inner_separator'):
+                self.header_inner_separator.width = sep_width
+            if hasattr(self, 'header_inner_separator2'):
+                self.header_inner_separator2.width = sep_width
+
+            # 用可用宽度做比例计算（而不是固定值/阈值）
+            available = max(dp(220), width - pad_h * 2)
+            # 去掉两个分隔占位
+            available -= sep_width * 2
+
+            filter_w = max(dp(72), min(dp(118), available * 0.24))
+            inventory_w = max(dp(100), min(dp(148), available * 0.46))
+            consumed_w = max(dp(62), min(dp(118), available * 0.30))
+
+            used = filter_w + inventory_w + consumed_w + sep_width * 2
+            extra = max(0, available - used)
+
             if hasattr(self, 'filter_btn_container'):
-                self.filter_btn_container.size_hint_x = 0.9
-                self.filter_btn_container.width = 0
+                self.filter_btn_container.size_hint_x = None
+                self.filter_btn_container.width = filter_w
             if hasattr(self, 'inventory_toggle_container'):
-                self.inventory_toggle_container.size_hint_x = 1.25
-                self.inventory_toggle_container.width = 0
+                self.inventory_toggle_container.size_hint_x = None
+                self.inventory_toggle_container.width = inventory_w
             if hasattr(self, 'consumed_toggle_container'):
-                self.consumed_toggle_container.size_hint_x = 0.78
-                self.consumed_toggle_container.width = 0
+                self.consumed_toggle_container.size_hint_x = None
+                self.consumed_toggle_container.width = consumed_w
 
             if hasattr(self, 'header_spacer'):
-                self.header_spacer.size_hint_x = 0
-                self.header_spacer.width = 0
+                self.header_spacer.size_hint_x = None
+                self.header_spacer.width = extra
 
             if hasattr(self, 'item_count_label'):
-                self.item_count_label.size_hint_x = 0
+                self.item_count_label.size_hint_x = None
                 self.item_count_label.width = 0
                 self.item_count_label.opacity = 0
+
+            # 文案按实际宽度自适应
+            if hasattr(self, 'inventory_toggle_text'):
+                self.inventory_toggle_text.text = '清单' if inventory_w < dp(128) else '物品清单'
+            if hasattr(self, 'consumed_toggle_text'):
+                if consumed_w < dp(70):
+                    self.consumed_toggle_text.text = ''
+                elif consumed_w < dp(92):
+                    self.consumed_toggle_text.text = '已'
+                else:
+                    self.consumed_toggle_text.text = '已消'
         else:
+            header.padding = (dp(16), dp(8), dp(16), dp(8))
+            header.spacing = dp(10)
+
+            if hasattr(self, 'header_separator_left'):
+                self.header_separator_left.width = dp(1)
+            if hasattr(self, 'header_inner_separator'):
+                self.header_inner_separator.width = dp(4)
+            if hasattr(self, 'header_inner_separator2'):
+                self.header_inner_separator2.width = dp(4)
+
             if hasattr(self, 'filter_btn_container'):
                 self.filter_btn_container.size_hint_x = None
                 self.filter_btn_container.width = dp(118)
@@ -1810,23 +1842,18 @@ class MainScreen(Screen):
             if hasattr(self, 'consumed_toggle_container'):
                 self.consumed_toggle_container.size_hint_x = None
                 self.consumed_toggle_container.width = dp(118)
-
             if hasattr(self, 'header_spacer'):
                 self.header_spacer.size_hint_x = 1
                 self.header_spacer.width = 0
-
             if hasattr(self, 'item_count_label'):
                 self.item_count_label.size_hint_x = None
                 self.item_count_label.width = dp(50)
                 self.item_count_label.opacity = 1
 
-        if hasattr(self, 'inventory_toggle_text'):
-            self.inventory_toggle_text.text = "清单" if compact else "物品清单"
-        if hasattr(self, 'consumed_toggle_text'):
-            if ultra_compact:
-                self.consumed_toggle_text.text = ""
-            else:
-                self.consumed_toggle_text.text = "已" if compact else "已消耗"
+            if hasattr(self, 'inventory_toggle_text'):
+                self.inventory_toggle_text.text = '物品清单'
+            if hasattr(self, 'consumed_toggle_text'):
+                self.consumed_toggle_text.text = '已消耗'
 
     def _update_scroll_bg(self, instance, value):
         pass
