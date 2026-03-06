@@ -177,11 +177,6 @@ class CategoryChip(BoxLayout):
             width = self._name_label.width if self._name_label.width > 0 else 100
             self._name_label.text_size = (width - dp(8), None)
 
-    def _update_label_size(self):
-        if self._name_label:
-            width = self._name_label.width if self._name_label.width > 0 else 100
-            self._name_label.text_size = (width - dp(8), None)
-
     def _update_canvas(self, instance, value):
         """更新背景 Canvas 的位置和大小"""
         if self._bg_rect:
