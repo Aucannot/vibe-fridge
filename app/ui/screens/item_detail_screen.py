@@ -498,11 +498,8 @@ class ItemDetailScreen(Screen):
             on_release=self._on_delete_click
         )
         # 创建按钮文本部件（新的KivyMD API需要这样）
-        delete_text = MDButtonText(
-            text="删除",
-            theme_text_color="Custom",
-            text_color=(0.9, 0.3, 0.3, 1)
-        )
+        delete_text = MDButtonText(text="删除")
+        delete_text.color = (0.9, 0.3, 0.3, 1)
         try:
             import app.main as main_module
             chinese_font = getattr(main_module, 'CHINESE_FONT_NAME', None)

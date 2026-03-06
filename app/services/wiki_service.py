@@ -22,6 +22,7 @@ class WikiService:
     @staticmethod
     def create_wiki(
         name: str,
+        icon: str = None,
         description: str = None,
         default_unit: str = None,
         suggested_expiry_days: int = None,
@@ -34,6 +35,7 @@ class WikiService:
 
         Args:
             name: 物品名称
+            icon: 物品图标名称
             description: 描述
             default_unit: 默认单位
             suggested_expiry_days: 建议保质期（天）
@@ -48,6 +50,7 @@ class WikiService:
             with db_service.session_scope() as session:
                 wiki = ItemWiki(
                     name=name,
+                    icon=icon,
                     description=description,
                     default_unit=default_unit,
                     suggested_expiry_days=suggested_expiry_days,
@@ -62,6 +65,7 @@ class WikiService:
                 result = {
                     'id': wiki.id,
                     'name': wiki.name,
+                    'icon': wiki.icon,
                     'category_id': wiki.category_id,
                     'category_name': wiki.category.name if wiki.category else None,
                     'description': wiki.description,
@@ -97,13 +101,14 @@ class WikiService:
                 wiki = session.query(ItemWiki).options(
                     joinedload(ItemWiki.category)
                 ).filter(ItemWiki.id == wiki_id).first()
-                
+
                 if not wiki:
                     return None
-                
+
                 result = {
                     'id': wiki.id,
                     'name': wiki.name,
+                    'icon': wiki.icon,
                     'category_id': wiki.category_id,
                     'category_name': wiki.category.name if wiki.category else None,
                     'description': wiki.description,
@@ -139,13 +144,14 @@ class WikiService:
                 ).filter(
                     func.lower(ItemWiki.name) == func.lower(name)
                 ).first()
-                
+
                 if not wiki:
                     return None
-                
+
                 result = {
                     'id': wiki.id,
                     'name': wiki.name,
+                    'icon': wiki.icon,
                     'category_id': wiki.category_id,
                     'category_name': wiki.category.name if wiki.category else None,
                     'description': wiki.description,

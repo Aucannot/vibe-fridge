@@ -48,11 +48,11 @@ class OneLineListItem(MDListItem):
         self.text = text
 
         # 使用自定义颜色，确保在浅色背景上可见
-        headline = MDListItemHeadlineText(
-            text=text,
-            theme_text_color="Custom",
-            text_color=(0, 0, 0, 1),
-        )
+        headline = MDListItemHeadlineText(text=text)
+        try:
+            headline.color = (0, 0, 0, 1)
+        except AttributeError:
+            pass
         if CHINESE_FONT:
             headline.font_name = CHINESE_FONT
         self.add_widget(headline)
