@@ -1764,12 +1764,13 @@ class MainScreen(Screen):
             return
 
         width = header.width
-        compact = width < dp(700)
-        ultra_compact = width < dp(420)
+        # 桌面窗口看起来较宽，但可用宽度仍可能不足；阈值上调避免"已消耗"被裁切
+        compact = width < dp(920)
+        ultra_compact = width < dp(760)
 
         # 窄屏时同步压缩整体布局参数
-        header.padding = (dp(12), dp(8), dp(12), dp(8)) if compact else (dp(16), dp(8), dp(16), dp(8))
-        header.spacing = dp(4) if compact else dp(10)
+        header.padding = (dp(8), dp(8), dp(8), dp(8)) if compact else (dp(16), dp(8), dp(16), dp(8))
+        header.spacing = dp(2) if compact else dp(10)
 
         # 分隔占位在窄屏时收缩，最左分隔线在窄屏隐藏
         if hasattr(self, 'header_separator_left'):
@@ -1790,13 +1791,13 @@ class MainScreen(Screen):
                 self.item_count_label.opacity = 1
 
         if hasattr(self, 'filter_btn_container'):
-            self.filter_btn_container.width = dp(84) if compact else dp(118)
+            self.filter_btn_container.width = dp(78) if compact else dp(118)
 
         if hasattr(self, 'inventory_toggle_container'):
-            self.inventory_toggle_container.width = dp(110) if compact else dp(148)
+            self.inventory_toggle_container.width = dp(104) if compact else dp(148)
 
         if hasattr(self, 'consumed_toggle_container'):
-            self.consumed_toggle_container.width = dp(74) if compact else dp(118)
+            self.consumed_toggle_container.width = dp(68) if compact else dp(118)
 
         # 文案在窄屏下使用短标签；超窄屏下进一步收敛
         if hasattr(self, 'inventory_toggle_text'):
@@ -1805,7 +1806,7 @@ class MainScreen(Screen):
             if ultra_compact:
                 self.consumed_toggle_text.text = ""
             else:
-                self.consumed_toggle_text.text = "已消" if compact else "已消耗"
+                self.consumed_toggle_text.text = "已" if compact else "已消耗"
 
     def _update_scroll_bg(self, instance, value):
         pass
