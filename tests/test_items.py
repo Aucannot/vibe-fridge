@@ -1,29 +1,36 @@
 # -*- coding: utf-8 -*-
-"""测试脚本 - 检查物品数据加载"""
-import os
-os.chdir('h:\\code\\vibe-fridge')
+"""Item service smoke tests."""
 
-from app.utils.logger import setup_logger
+from datetime import date, timedelta
+
+import pytest
+
+
+sqlalchemy = pytest.importorskip("sqlalchemy")
+
 from app.services.database import init_database
 from app.services.item_service import item_service
 
-logger = setup_logger(__name__)
 
-# 初始化数据库
-init_database()
+@pytest.fixture(autouse=True)
+def isolated_db(tmp_path, monkeypatch):
+    """Use an isolated sqlite database for each test."""
+    db_file = tmp_path / "test_items.db"
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_file}")
+    init_database()
 
-# 获取所有物品
-items = item_service.get_items()
-logger.info(f'获取到 {len(items)} 个物品')
 
-for item in items:
-    logger.info(f'ID: {item.id}, Name: {item.name!r}, Category: {item.category.value}')
+def test_create_item_and_query_list():
+    created = item_service.create_item(
+        name="苹果",
+        quantity=2,
+        expiry_date=date.today() + timedelta(days=3),
+        category="食品",
+    )
 
-if items:
-    # 检查第一个物品的属性
-    item = items[0]
-    logger.info(f'第一个物品详情:')
-    logger.info(f'  has name: {hasattr(item, "name")}')
-    logger.info(f'  name value: {item.name!r}')
-    logger.info(f'  has category: {hasattr(item, "category")}')
-    logger.info(f'  category value: {item.category}')
+    assert created is not None
+    assert created.name == "苹果"
+
+    items = item_service.get_items(limit=20)
+    assert len(items) >= 1
+    assert any(i.name == "苹果" for i in items)
