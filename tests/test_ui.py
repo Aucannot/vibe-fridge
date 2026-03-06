@@ -1,61 +1,61 @@
 # -*- coding: utf-8 -*-
-"""测试脚本 - 检查 ItemListItem UI 组件"""
-import os
-os.chdir('h:\\code\\vibe-fridge')
+"""UI-adjacent data formatting tests (no GUI dependency)."""
 
-from app.utils.logger import setup_logger
-from app.services.database import init_database
-from app.services.item_service import item_service
+from dataclasses import dataclass
+from datetime import date, timedelta
 
-logger = setup_logger(__name__)
+import pytest
 
-# 初始化数据库
-init_database()
 
-# 获取所有物品
-items = item_service.get_items()
-logger.info(f'获取到 {len(items)} 个物品')
+@dataclass
+class ItemViewModel:
+    name: str
+    quantity: int
+    expiry_date: date | None
 
-if items:
-    item = items[0]
-    logger.info(f'测试 ItemListItem 组件:')
-    logger.info(f'  item.id = {item.id!r}')
-    logger.info(f'  item.name = {item.name!r}')
-    logger.info(f'  item.category = {item.category!r}')
-    logger.info(f'  item.category.value = {item.category.value!r}')
-    logger.info(f'  item.expiry_date = {item.expiry_date!r}')
-    logger.info(f'  item.quantity = {item.quantity!r}')
-    logger.info(f'  item.status = {item.status!r}')
 
-    # 模拟 ItemListItem 的初始化逻辑
-    item_name = item.name
-    category = item.category.value
-    expiry_date = item.expiry_date.strftime('%Y-%m-%d') if item.expiry_date else '无'
+def build_headline_text(item: ItemViewModel) -> str:
+    text = item.name
+    if item.quantity > 1:
+        text += f" ×{item.quantity}"
+    return text
 
-    if item.expiry_date:
-        from datetime import date
-        today = date.today()
-        delta = item.expiry_date - today
-        days_until_expiry = delta.days
-    else:
-        days_until_expiry = 0
 
-    quantity = item.quantity
-    status = item.status.value
-    is_consumed = status == 'consumed'
+def compute_status_text(item: ItemViewModel) -> str:
+    if item.expiry_date is None:
+        return "无过期"
 
-    logger.info(f'模拟 ItemListItem 初始化:')
-    logger.info(f'  item_name = {item_name!r}')
-    logger.info(f'  category = {category!r}')
-    logger.info(f'  expiry_date = {expiry_date!r}')
-    logger.info(f'  days_until_expiry = {days_until_expiry}')
-    logger.info(f'  quantity = {quantity!r}')
-    logger.info(f'  status = {status!r}')
-    logger.info(f'  is_consumed = {is_consumed}')
+    delta = (item.expiry_date - date.today()).days
+    if delta < 0:
+        return "已过期"
+    if delta <= 3:
+        return "即将过期"
+    return "正常"
 
-    # 构建 headline_text
-    headline_text = f"{item_name}"
-    if quantity > 1:
-        headline_text += f" ×{quantity}"
 
-    logger.info(f'  headline_text = {headline_text!r}')
+@pytest.mark.parametrize(
+    ("quantity", "expected"),
+    [
+        (1, "牛奶"),
+        (3, "牛奶 ×3"),
+    ],
+)
+def test_headline_text(quantity, expected):
+    item = ItemViewModel(name="牛奶", quantity=quantity, expiry_date=None)
+    assert build_headline_text(item) == expected
+
+
+@pytest.mark.parametrize(
+    ("days", "expected"),
+    [
+        (None, "无过期"),
+        (-1, "已过期"),
+        (0, "即将过期"),
+        (2, "即将过期"),
+        (4, "正常"),
+    ],
+)
+def test_status_text(days, expected):
+    expiry_date = None if days is None else date.today() + timedelta(days=days)
+    item = ItemViewModel(name="鸡蛋", quantity=1, expiry_date=expiry_date)
+    assert compute_status_text(item) == expected
