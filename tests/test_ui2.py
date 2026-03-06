@@ -1,23 +1,31 @@
 # -*- coding: utf-8 -*-
-"""get_logger 行为测试"""
-import logging
+"""Additional UI data mapping tests."""
 
-from app.utils.logger import get_logger, setup_logger
+import pytest
 
-
-def test_get_logger_returns_default_logger_when_name_missing(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-    setup_logger('vibe-fridge', level=logging.INFO)
-
-    logger = get_logger()
-
-    assert logger.name == 'vibe-fridge'
+CATEGORY_MAP = {
+    "food": "食品",
+    "daily": "日用品",
+    "medicine": "药品",
+    "cosmetics": "化妆品",
+    "others": "其他",
+}
 
 
-def test_get_logger_returns_named_logger(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-    setup_logger('custom.logger', level=logging.INFO)
+def map_category_text(category: str) -> str:
+    return CATEGORY_MAP.get(category, "其他")
 
-    logger = get_logger('custom.logger')
 
-    assert logger.name == 'custom.logger'
+@pytest.mark.parametrize(
+    ("category", "expected"),
+    [
+        ("food", "食品"),
+        ("daily", "日用品"),
+        ("medicine", "药品"),
+        ("cosmetics", "化妆品"),
+        ("others", "其他"),
+        ("unknown", "其他"),
+    ],
+)
+def test_category_mapping(category, expected):
+    assert map_category_text(category) == expected

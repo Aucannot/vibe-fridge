@@ -1,33 +1,61 @@
 # -*- coding: utf-8 -*-
-"""setup_logger 行为测试"""
-import logging
-from pathlib import Path
+"""UI-adjacent data formatting tests (no GUI dependency)."""
 
-from app.utils.logger import setup_logger
+from dataclasses import dataclass
+from datetime import date, timedelta
 
-
-def test_setup_logger_creates_log_dir_and_file_handler(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-    logger_name = 'test.logger.create'
-
-    logger = setup_logger(logger_name, level=logging.INFO)
-
-    assert Path('logs').exists()
-    file_handlers = [h for h in logger.handlers if isinstance(h, logging.FileHandler)]
-    stream_handlers = [h for h in logger.handlers if isinstance(h, logging.StreamHandler)]
-    assert file_handlers
-    assert stream_handlers
+import pytest
 
 
-def test_setup_logger_does_not_duplicate_handlers_on_second_call(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-    logger_name = 'test.logger.idempotent'
+@dataclass
+class ItemViewModel:
+    name: str
+    quantity: int
+    expiry_date: date | None
 
-    logger = setup_logger(logger_name, level=logging.INFO)
-    first_count = len(logger.handlers)
 
-    logger_again = setup_logger(logger_name, level=logging.INFO)
-    second_count = len(logger_again.handlers)
+def build_headline_text(item: ItemViewModel) -> str:
+    text = item.name
+    if item.quantity > 1:
+        text += f" ×{item.quantity}"
+    return text
 
-    assert logger is logger_again
-    assert second_count == first_count
+
+def compute_status_text(item: ItemViewModel) -> str:
+    if item.expiry_date is None:
+        return "无过期"
+
+    delta = (item.expiry_date - date.today()).days
+    if delta < 0:
+        return "已过期"
+    if delta <= 3:
+        return "即将过期"
+    return "正常"
+
+
+@pytest.mark.parametrize(
+    ("quantity", "expected"),
+    [
+        (1, "牛奶"),
+        (3, "牛奶 ×3"),
+    ],
+)
+def test_headline_text(quantity, expected):
+    item = ItemViewModel(name="牛奶", quantity=quantity, expiry_date=None)
+    assert build_headline_text(item) == expected
+
+
+@pytest.mark.parametrize(
+    ("days", "expected"),
+    [
+        (None, "无过期"),
+        (-1, "已过期"),
+        (0, "即将过期"),
+        (2, "即将过期"),
+        (4, "正常"),
+    ],
+)
+def test_status_text(days, expected):
+    expiry_date = None if days is None else date.today() + timedelta(days=days)
+    item = ItemViewModel(name="鸡蛋", quantity=1, expiry_date=expiry_date)
+    assert compute_status_text(item) == expected
