@@ -6,9 +6,11 @@ from datetime import date, timedelta
 import pytest
 
 
-sqlalchemy = pytest.importorskip("sqlalchemy")
+pytest.importorskip("sqlalchemy")
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
-from app.services.database import init_database
+from app.services.database import db_service, init_database
 from app.services.item_service import item_service
 
 
@@ -16,8 +18,18 @@ from app.services.item_service import item_service
 def isolated_db(tmp_path, monkeypatch):
     """Use an isolated sqlite database for each test."""
     db_file = tmp_path / "test_items.db"
-    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_file}")
+    db_url = f"sqlite:///{db_file}"
+    monkeypatch.setenv("DATABASE_URL", db_url)
+
+    # `db_service` is created at import time, so we must rebind its engine/session
+    # after overriding DATABASE_URL. Otherwise tests may accidentally hit real data.
+    engine = create_engine(db_url)
+    monkeypatch.setattr(db_service, "engine", engine)
+    monkeypatch.setattr(db_service, "SessionLocal", sessionmaker(bind=engine))
+
     init_database()
+    yield
+    engine.dispose()
 
 
 def test_create_item_and_query_list():
@@ -30,6 +42,7 @@ def test_create_item_and_query_list():
 
     assert created is not None
     assert created.name == "苹果"
+    assert created.quantity == 2
 
     items = item_service.get_items(limit=20)
     assert len(items) >= 1

@@ -4,6 +4,8 @@
 from dataclasses import dataclass
 from datetime import date, timedelta
 
+import pytest
+
 
 @dataclass
 class ItemViewModel:
@@ -31,11 +33,29 @@ def compute_status_text(item: ItemViewModel) -> str:
     return "正常"
 
 
-def test_headline_text_with_quantity():
-    item = ItemViewModel(name="牛奶", quantity=3, expiry_date=None)
-    assert build_headline_text(item) == "牛奶 ×3"
+@pytest.mark.parametrize(
+    ("quantity", "expected"),
+    [
+        (1, "牛奶"),
+        (3, "牛奶 ×3"),
+    ],
+)
+def test_headline_text(quantity, expected):
+    item = ItemViewModel(name="牛奶", quantity=quantity, expiry_date=None)
+    assert build_headline_text(item) == expected
 
 
-def test_status_text_expiring_soon():
-    item = ItemViewModel(name="鸡蛋", quantity=1, expiry_date=date.today() + timedelta(days=2))
-    assert compute_status_text(item) == "即将过期"
+@pytest.mark.parametrize(
+    ("days", "expected"),
+    [
+        (None, "无过期"),
+        (-1, "已过期"),
+        (0, "即将过期"),
+        (2, "即将过期"),
+        (4, "正常"),
+    ],
+)
+def test_status_text(days, expected):
+    expiry_date = None if days is None else date.today() + timedelta(days=days)
+    item = ItemViewModel(name="鸡蛋", quantity=1, expiry_date=expiry_date)
+    assert compute_status_text(item) == expected
