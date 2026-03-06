@@ -1521,7 +1521,7 @@ class MainScreen(Screen):
         # 中间分隔线（小间距）
         inner_separator = BoxLayout(
             size_hint_x=None,
-            width=dp(8),
+            width=dp(4),
         )
         list_header.add_widget(inner_separator)
 
@@ -1529,7 +1529,7 @@ class MainScreen(Screen):
         inventory_toggle_container = BoxLayout(
             orientation='horizontal',
             size_hint_x=None,
-            width=dp(85),
+            width=dp(148),
             height=dp(34),
             spacing=dp(6),
             padding=(dp(12), 0, dp(12), 0),
@@ -1611,7 +1611,7 @@ class MainScreen(Screen):
         # 中间分隔线（小间距）
         inner_separator2 = BoxLayout(
             size_hint_x=None,
-            width=dp(8),
+            width=dp(4),
         )
         list_header.add_widget(inner_separator2)
 
@@ -1619,7 +1619,7 @@ class MainScreen(Screen):
         consumed_toggle_container = BoxLayout(
             orientation='horizontal',
             size_hint_x=None,
-            width=dp(85),
+            width=dp(118),
             height=dp(34),
             spacing=dp(6),
             padding=(dp(12), 0, dp(12), 0),
@@ -1707,7 +1707,7 @@ class MainScreen(Screen):
             font_size=dp(13),
             color=COLORS['text_hint'],
             size_hint_x=None,
-            width=dp(60),
+            width=dp(50),
             halign="right",
             valign="middle",
         )
