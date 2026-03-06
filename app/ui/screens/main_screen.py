@@ -294,7 +294,7 @@ class StatCard(BoxLayout):
             halign="left",
             valign="bottom",
             color=self._stat_color,
-            font_size=dp(28),
+            font_size=dp(30),
             bold=True,
             font_name=None if not CHINESE_FONT else CHINESE_FONT,
         )
@@ -311,7 +311,7 @@ class StatCard(BoxLayout):
             halign="left",
             valign="top",
             color=COLORS['text_hint'],
-            font_size=dp(11),
+            font_size=dp(12),
             font_name=None if not CHINESE_FONT else CHINESE_FONT,
         )
         title_label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], val[1])))
@@ -499,7 +499,7 @@ class ItemListItem(BoxLayout):
             height=dp(76),
             halign="center",
             valign="middle",
-            font_size=dp(28),
+            font_size=dp(30),
         )
         icon.color = icon_color
         self.icon_widget = icon
@@ -595,8 +595,8 @@ class ItemListItem(BoxLayout):
         self.actions_container = BoxLayout(
             orientation="horizontal",
             size_hint_x=None,
-            width=dp(100),
-            spacing=dp(6),
+            width=dp(120),
+            spacing=dp(8),
         )
 
         # +1 按钮 - 使用 ButtonBehavior 确保正确的事件处理
@@ -607,9 +607,9 @@ class ItemListItem(BoxLayout):
         # -1 按钮
         minus_btn = QtyButton(
             size_hint_x=None,
-            width=dp(32),
+            width=dp(36),
             size_hint_y=None,
-            height=dp(32),
+            height=dp(36),
         )
         self._setup_qty_button_bg(minus_btn, COLORS['warning'])
         minus_btn.bind(on_press=lambda *args: self._on_quantity_change(-1))
@@ -634,9 +634,9 @@ class ItemListItem(BoxLayout):
         # +1 按钮
         plus_btn = QtyButton(
             size_hint_x=None,
-            width=dp(32),
+            width=dp(36),
             size_hint_y=None,
-            height=dp(32),
+            height=dp(36),
         )
         self._setup_qty_button_bg(plus_btn, COLORS['success'])
         plus_btn.bind(on_press=lambda *args: self._on_quantity_change(1))
@@ -661,9 +661,9 @@ class ItemListItem(BoxLayout):
         # 消耗按钮（使用复选框样式）
         consume_btn = QtyButton(
             size_hint_x=None,
-            width=dp(32),
+            width=dp(36),
             size_hint_y=None,
-            height=dp(32),
+            height=dp(36),
         )
         # 根据当前状态设置颜色
         consume_color = COLORS['primary'] if self.is_consumed else COLORS['text_hint']
@@ -706,7 +706,7 @@ class ItemListItem(BoxLayout):
         # 使用 FloatLayout 包裹按钮组，通过 pos_hint 垂直居中
         actions_float = FloatLayout(
             size_hint=(None, None),
-            width=dp(120),
+            width=dp(132),
             height=dp(96),  # 与卡片高度相同
         )
         self.actions_container.pos_hint = {'right': 1, 'center_y': 0.5}
@@ -759,7 +759,7 @@ class ItemListItem(BoxLayout):
                 button.canvas.before.clear()
                 with button.canvas.before:
                     button._qty_btn_color = Color(*btn_color)
-                    button._qty_btn_rect = RoundedRectangle(pos=button.pos, size=button.size, radius=[dp(3)])
+                    button._qty_btn_rect = RoundedRectangle(pos=button.pos, size=button.size, radius=[dp(8)])
             else:
                 button._qty_btn_rect.pos = button.pos
                 button._qty_btn_rect.size = button.size
@@ -1309,7 +1309,7 @@ class MainScreen(Screen):
 
         # 点击事件 - 使用 on_touch_up
         def on_card_touch(instance, touch):
-            if instance.collide_point(*touch.pos) and touch.button == 'left':
+            if instance.collide_point(*touch.pos) and getattr(touch, 'button', 'left') == 'left':
                 self._on_category_selected(category_value)
                 self.category_menu.dismiss()
                 return True
@@ -1416,9 +1416,9 @@ class MainScreen(Screen):
         list_header = BoxLayout(
             orientation='horizontal',
             size_hint_y=None,
-            height=dp(40),
-            padding=(dp(16), dp(6), dp(16), dp(6)),
-            spacing=dp(12),
+            height=dp(44),
+            padding=(dp(16), dp(8), dp(16), dp(8)),
+            spacing=dp(10),
         )
 
         # 分隔线
@@ -1439,8 +1439,8 @@ class MainScreen(Screen):
         filter_container = BoxLayout(
             orientation='horizontal',
             size_hint_x=None,
-            width=dp(110),
-            height=dp(34),
+            width=dp(118),
+            height=dp(36),
             spacing=dp(6),
             padding=(dp(10), 0, dp(10), 0),
         )
@@ -1503,7 +1503,7 @@ class MainScreen(Screen):
 
         # 点击事件
         def on_filter_touch(instance, touch):
-            if instance.collide_point(*touch.pos) and touch.button == 'left':
+            if instance.collide_point(*touch.pos) and getattr(touch, 'button', 'left') == 'left':
                 self._show_category_menu()
                 return True
             return False
@@ -1591,7 +1591,7 @@ class MainScreen(Screen):
 
         # 点击事件 - 切换到物品清单
         def on_inventory_touch(instance, touch):
-            if instance.collide_point(*touch.pos) and touch.button == 'left':
+            if instance.collide_point(*touch.pos) and getattr(touch, 'button', 'left') == 'left':
                 if self.show_consumed:
                     self.show_consumed = False
                     self._update_toggle_buttons()
@@ -1681,7 +1681,7 @@ class MainScreen(Screen):
 
         # 点击事件 - 切换已消耗状态
         def on_toggle_touch(instance, touch):
-            if instance.collide_point(*touch.pos) and touch.button == 'left':
+            if instance.collide_point(*touch.pos) and getattr(touch, 'button', 'left') == 'left':
                 if not self.show_consumed:
                     self.show_consumed = True
                     self._update_toggle_buttons()
