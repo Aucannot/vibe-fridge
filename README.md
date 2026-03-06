@@ -47,3 +47,19 @@ python app/main.py
 
 
 > 说明：目前功能还在快速迭代中，这里只提供最基本的环境配置和启动方式，后续稳定后再补充详细文档。
+
+
+### 🤖 QQ 混合机器人（maibot + openclaw）
+
+仓库内新增了一个可运行的 QQ 机器人 MVP（`app/bot/`），目标是兼顾：
+
+- maibot 风格的拟人对话
+- openclaw 风格的工具调用与扩展能力
+
+快速体验：
+
+```bash
+python scripts/run_qq_bot_demo.py
+```
+
+详细方案见：`docs_qq_hybrid_bot.md`。
