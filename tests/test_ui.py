@@ -1,61 +1,33 @@
 # -*- coding: utf-8 -*-
-"""测试脚本 - 检查 ItemListItem UI 组件"""
-import os
-os.chdir('h:\\code\\vibe-fridge')
+"""setup_logger 行为测试"""
+import logging
+from pathlib import Path
 
 from app.utils.logger import setup_logger
-from app.services.database import init_database
-from app.services.item_service import item_service
 
-logger = setup_logger(__name__)
 
-# 初始化数据库
-init_database()
+def test_setup_logger_creates_log_dir_and_file_handler(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    logger_name = 'test.logger.create'
 
-# 获取所有物品
-items = item_service.get_items()
-logger.info(f'获取到 {len(items)} 个物品')
+    logger = setup_logger(logger_name, level=logging.INFO)
 
-if items:
-    item = items[0]
-    logger.info(f'测试 ItemListItem 组件:')
-    logger.info(f'  item.id = {item.id!r}')
-    logger.info(f'  item.name = {item.name!r}')
-    logger.info(f'  item.category = {item.category!r}')
-    logger.info(f'  item.category.value = {item.category.value!r}')
-    logger.info(f'  item.expiry_date = {item.expiry_date!r}')
-    logger.info(f'  item.quantity = {item.quantity!r}')
-    logger.info(f'  item.status = {item.status!r}')
+    assert Path('logs').exists()
+    file_handlers = [h for h in logger.handlers if isinstance(h, logging.FileHandler)]
+    stream_handlers = [h for h in logger.handlers if isinstance(h, logging.StreamHandler)]
+    assert file_handlers
+    assert stream_handlers
 
-    # 模拟 ItemListItem 的初始化逻辑
-    item_name = item.name
-    category = item.category.value
-    expiry_date = item.expiry_date.strftime('%Y-%m-%d') if item.expiry_date else '无'
 
-    if item.expiry_date:
-        from datetime import date
-        today = date.today()
-        delta = item.expiry_date - today
-        days_until_expiry = delta.days
-    else:
-        days_until_expiry = 0
+def test_setup_logger_does_not_duplicate_handlers_on_second_call(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    logger_name = 'test.logger.idempotent'
 
-    quantity = item.quantity
-    status = item.status.value
-    is_consumed = status == 'consumed'
+    logger = setup_logger(logger_name, level=logging.INFO)
+    first_count = len(logger.handlers)
 
-    logger.info(f'模拟 ItemListItem 初始化:')
-    logger.info(f'  item_name = {item_name!r}')
-    logger.info(f'  category = {category!r}')
-    logger.info(f'  expiry_date = {expiry_date!r}')
-    logger.info(f'  days_until_expiry = {days_until_expiry}')
-    logger.info(f'  quantity = {quantity!r}')
-    logger.info(f'  status = {status!r}')
-    logger.info(f'  is_consumed = {is_consumed}')
+    logger_again = setup_logger(logger_name, level=logging.INFO)
+    second_count = len(logger_again.handlers)
 
-    # 构建 headline_text
-    headline_text = f"{item_name}"
-    if quantity > 1:
-        headline_text += f" ×{quantity}"
-
-    logger.info(f'  headline_text = {headline_text!r}')
+    assert logger is logger_again
+    assert second_count == first_count

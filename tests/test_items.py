@@ -1,29 +1,44 @@
 # -*- coding: utf-8 -*-
-"""测试脚本 - 检查物品数据加载"""
-import os
-os.chdir('h:\\code\\vibe-fridge')
+"""logger formatter 行为测试"""
+import logging
 
-from app.utils.logger import setup_logger
-from app.services.database import init_database
-from app.services.item_service import item_service
+from app.utils.logger import ColoredFormatter
 
-logger = setup_logger(__name__)
 
-# 初始化数据库
-init_database()
+def test_colored_formatter_wraps_message_with_level_color_and_reset():
+    formatter = ColoredFormatter('%(levelname)s:%(message)s')
+    record = logging.LogRecord(
+        name='test',
+        level=logging.WARNING,
+        pathname=__file__,
+        lineno=1,
+        msg='hello',
+        args=(),
+        exc_info=None,
+    )
 
-# 获取所有物品
-items = item_service.get_items()
-logger.info(f'获取到 {len(items)} 个物品')
+    output = formatter.format(record)
 
-for item in items:
-    logger.info(f'ID: {item.id}, Name: {item.name!r}, Category: {item.category.value}')
+    assert output.startswith(ColoredFormatter.COLORS['WARNING'])
+    assert output.endswith(ColoredFormatter.COLORS['RESET'])
+    assert 'WARNING:hello' in output
 
-if items:
-    # 检查第一个物品的属性
-    item = items[0]
-    logger.info(f'第一个物品详情:')
-    logger.info(f'  has name: {hasattr(item, "name")}')
-    logger.info(f'  name value: {item.name!r}')
-    logger.info(f'  has category: {hasattr(item, "category")}')
-    logger.info(f'  category value: {item.category}')
+
+def test_colored_formatter_uses_reset_color_for_unknown_levelname():
+    formatter = ColoredFormatter('%(levelname)s:%(message)s')
+    record = logging.LogRecord(
+        name='test',
+        level=logging.INFO,
+        pathname=__file__,
+        lineno=1,
+        msg='world',
+        args=(),
+        exc_info=None,
+    )
+    record.levelname = 'CUSTOM'
+
+    output = formatter.format(record)
+
+    assert output.startswith(ColoredFormatter.COLORS['RESET'])
+    assert output.endswith(ColoredFormatter.COLORS['RESET'])
+    assert 'CUSTOM:world' in output
