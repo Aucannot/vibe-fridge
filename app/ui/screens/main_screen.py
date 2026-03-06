@@ -1747,34 +1747,6 @@ class MainScreen(Screen):
     def _update_scroll_bg(self, instance, value):
         pass
 
-    def _load_items(self, animate_new=True):
-        if animate_new:
-            self.item_list_layout.clear_widgets()
-
-        try:
-            items = item_service.get_items(category=self.selected_category)
-
-            expiry_stats = statistics_service.get_expiry_stats()
-            total_items = len(items)
-            expiring_count = expiry_stats.get('soon_expiring', 0)
-            expired_count = expiry_stats.get('expired', 0)
-
-            self.total_card.update_value(str(total_items))
-            self.expiring_card.update_value(str(expiring_count))
-            self.expired_card.update_value(str(expired_count))
-
-            if not items:
-                self._show_empty_state()
-                return
-
-            from datetime import date
-
-            if self.selected_filter == 'expiring':
-                items = [item for item in items if item.expiry_date and
-                         0 <= (item.expiry_date - date.today()).days <= 3]
-            elif self.selected_filter == 'expired':
-                items = [item for item in items if item.expiry_date and
-                         (item.expiry_date - date.today()).days < 0]
     def _update_toggle_buttons(self):
         """更新切换按钮的视觉状态"""
         # 更新已消耗按钮
@@ -1845,10 +1817,12 @@ class MainScreen(Screen):
                 inventory_text.color = text_color
                 inventory_text.bold = not self.show_consumed
 
-    def _load_items(self):
+    def _load_items(self, animate_new=True):
         self.item_list_layout.clear_widgets()
 
         try:
+            from datetime import date
+
             if self.show_consumed:
                 # 已消耗模式：获取已消耗物品
                 from app.services.database import db_service
@@ -1856,34 +1830,34 @@ class MainScreen(Screen):
                 from sqlalchemy.orm import joinedload
 
                 session = db_service.get_session()
-                query = session.query(Item).options(
-                    joinedload(Item.wiki).joinedload(ItemWiki.category)
-                ).filter(Item.status == ItemStatus.CONSUMED)
+                try:
+                    query = session.query(Item).options(
+                        joinedload(Item.wiki).joinedload(ItemWiki.category)
+                    ).filter(Item.status == ItemStatus.CONSUMED)
 
-                # 当需要按分类筛选时
-                if self.selected_category:
-                    query = query.join(
-                        ItemWiki, Item.wiki_id == ItemWiki.id
-                    ).join(
-                        ItemWikiCategory, ItemWiki.category_id == ItemWikiCategory.id
-                    ).filter(
-                        ItemWikiCategory.name == self.selected_category
-                    )
+                    # 当需要按分类筛选时
+                    if self.selected_category:
+                        query = query.join(
+                            ItemWiki, Item.wiki_id == ItemWiki.id
+                        ).join(
+                            ItemWikiCategory, ItemWiki.category_id == ItemWikiCategory.id
+                        ).filter(
+                            ItemWikiCategory.name == self.selected_category
+                        )
 
-                # 按消耗时间倒序排序（最近消耗的在前面）
-                items = query.order_by(Item.consumed_at.desc()).all()
+                    # 按消耗时间倒序排序（最近消耗的在前面）
+                    items = query.order_by(Item.consumed_at.desc()).all()
 
-                # 将所有项目从会话中移除
-                result = []
-                for item in items:
-                    if item.wiki:
-                        if item.wiki.category:
+                    # 将所有项目从会话中移除
+                    result = []
+                    for item in items:
+                        if item.wiki and item.wiki.category:
                             _ = item.wiki.category.id
                             _ = item.wiki.category.name
-                    session.expunge(item)
-                    result.append(item)
-
-                session.close()
+                        session.expunge(item)
+                        result.append(item)
+                finally:
+                    session.close()
 
                 # 合并同名已消耗物品
                 consumed_groups = {}
@@ -1920,8 +1894,6 @@ class MainScreen(Screen):
                 if not items:
                     self._show_empty_state()
                     return
-
-                from datetime import date
 
                 if self.selected_filter == 'expiring':
                     items = [item for item in items if item.expiry_date and
@@ -1999,19 +1971,6 @@ class MainScreen(Screen):
                     )
                 else:
                     self.item_list_layout.add_widget(item_widget)
-                item_widget.opacity = 0
-                item_widget.y -= dp(10)
-                self.item_list_layout.add_widget(item_widget)
-
-                Clock.schedule_once(
-                    lambda dt, w=item_widget: Animation(
-                        opacity=1,
-                        y=w.y + dp(10),
-                        duration=0.25,
-                        t='out_cubic'
-                    ).start(w),
-                    i * 0.05
-                )
 
             self.item_count_label.text = f"{len(items)} 项"
 
