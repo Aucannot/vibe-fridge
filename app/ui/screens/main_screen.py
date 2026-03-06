@@ -1702,6 +1702,7 @@ class MainScreen(Screen):
 
         # 填充布局
         spacer = BoxLayout(size_hint_x=1)
+        self.header_spacer = spacer
         list_header.add_widget(spacer)
 
         self.item_count_label = Label(
@@ -1758,48 +1759,67 @@ class MainScreen(Screen):
         parent.add_widget(scroll_view)
     
     def _apply_responsive_header_layout(self, *_args):
-        """根据可用宽度动态压缩头部控件，保证在窄屏下"已消耗"可见。"""
+        """根据分辨率按比例分配头部空间，避免窄屏裁切。"""
         header = getattr(self, 'list_header', None)
         if not header:
             return
 
         width = header.width
-        # 桌面窗口看起来较宽，但可用宽度仍可能不足；阈值上调避免"已消耗"被裁切
-        compact = width < dp(920)
+        compact = width < dp(980)
         ultra_compact = width < dp(760)
 
-        # 窄屏时同步压缩整体布局参数
         header.padding = (dp(8), dp(8), dp(8), dp(8)) if compact else (dp(16), dp(8), dp(16), dp(8))
         header.spacing = dp(2) if compact else dp(10)
 
-        # 分隔占位在窄屏时收缩，最左分隔线在窄屏隐藏
         if hasattr(self, 'header_separator_left'):
             self.header_separator_left.width = 0 if compact else dp(1)
+
         sep_width = dp(1) if compact else dp(4)
         if hasattr(self, 'header_inner_separator'):
             self.header_inner_separator.width = sep_width
         if hasattr(self, 'header_inner_separator2'):
             self.header_inner_separator2.width = sep_width
 
-        # 计数标签在紧凑屏下隐藏，为核心切换按钮腾空间
-        if hasattr(self, 'item_count_label'):
-            if compact:
+        # 紧凑模式：按比例分配 chip 宽度；常规模式：恢复固定宽度
+        if compact:
+            if hasattr(self, 'filter_btn_container'):
+                self.filter_btn_container.size_hint_x = 0.9
+                self.filter_btn_container.width = 0
+            if hasattr(self, 'inventory_toggle_container'):
+                self.inventory_toggle_container.size_hint_x = 1.25
+                self.inventory_toggle_container.width = 0
+            if hasattr(self, 'consumed_toggle_container'):
+                self.consumed_toggle_container.size_hint_x = 0.78
+                self.consumed_toggle_container.width = 0
+
+            if hasattr(self, 'header_spacer'):
+                self.header_spacer.size_hint_x = 0
+                self.header_spacer.width = 0
+
+            if hasattr(self, 'item_count_label'):
+                self.item_count_label.size_hint_x = 0
                 self.item_count_label.width = 0
                 self.item_count_label.opacity = 0
-            else:
+        else:
+            if hasattr(self, 'filter_btn_container'):
+                self.filter_btn_container.size_hint_x = None
+                self.filter_btn_container.width = dp(118)
+            if hasattr(self, 'inventory_toggle_container'):
+                self.inventory_toggle_container.size_hint_x = None
+                self.inventory_toggle_container.width = dp(148)
+            if hasattr(self, 'consumed_toggle_container'):
+                self.consumed_toggle_container.size_hint_x = None
+                self.consumed_toggle_container.width = dp(118)
+
+            if hasattr(self, 'header_spacer'):
+                self.header_spacer.size_hint_x = 1
+                self.header_spacer.width = 0
+
+            if hasattr(self, 'item_count_label'):
+                self.item_count_label.size_hint_x = None
                 self.item_count_label.width = dp(50)
                 self.item_count_label.opacity = 1
 
-        if hasattr(self, 'filter_btn_container'):
-            self.filter_btn_container.width = dp(78) if compact else dp(118)
-
-        if hasattr(self, 'inventory_toggle_container'):
-            self.inventory_toggle_container.width = dp(104) if compact else dp(148)
-
-        if hasattr(self, 'consumed_toggle_container'):
-            self.consumed_toggle_container.width = dp(68) if compact else dp(118)
-
-        # 文案在窄屏下使用短标签；超窄屏下进一步收敛
         if hasattr(self, 'inventory_toggle_text'):
             self.inventory_toggle_text.text = "清单" if compact else "物品清单"
         if hasattr(self, 'consumed_toggle_text'):
