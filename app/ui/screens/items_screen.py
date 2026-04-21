@@ -9,8 +9,9 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
 from kivy.metrics import dp
+from kivy.clock import Clock
 from kivy.properties import StringProperty, NumericProperty, ObjectProperty, BooleanProperty, ListProperty
-from kivy.graphics import Color, RoundedRectangle, Ellipse
+from kivy.graphics import Color, RoundedRectangle, Ellipse, Rectangle, Line
 from kivy.animation import Animation
 from kivymd.app import MDApp
 from kivymd.uix.label import MDIcon
@@ -21,41 +22,42 @@ from app.models.item import ItemStatus
 from app.models.item_wiki import ItemWikiCategory
 from app.utils.logger import setup_logger
 from app.utils.font_helper import apply_font_to_widget, CHINESE_FONT_NAME as CHINESE_FONT
-from app.ui.theme.design_tokens import COLOR_PALETTE, DESIGN_TOKENS
+from app.ui.theme.design_tokens import COLOR_PALETTE, get_card_style, get_font_size
 
 logger = setup_logger(__name__)
 
 COLORS = COLOR_PALETTE
+LIST_CARD = get_card_style("list")
+SECTION_CARD = get_card_style("section")
 
-# 自定义更鲜艳的颜色
 BRIGHT_COLORS = {
-    'primary': [0.39, 0.40, 0.95, 1],
-    'primary_light': [0.51, 0.55, 0.97, 1],
-    'success': [0.13, 0.77, 0.37, 1],
-    'warning': [0.96, 0.35, 0.07, 1],
-    'error': [0.94, 0.27, 0.27, 1],
-    'surface': [1, 1, 1, 1],
-    'surface_variant': [0.96, 0.96, 0.96, 1],
-    'background': [0.98, 0.98, 0.99, 1],
-    'text_primary': [0.15, 0.15, 0.15, 1],
-    'text_secondary': [0.50, 0.50, 0.50, 1],
-    'selected_bg': [0.39, 0.40, 0.95, 1],
-    'selected_text': [1, 1, 1, 1],
-    'hover_bg': [0.92, 0.92, 0.98, 1],
-    'card_bg': [1, 1, 1, 1],
-    'accent_orange': [1, 0.60, 0.20, 1],
-    'accent_purple': [0.60, 0.40, 0.95, 1],
-    'accent_green': [0.20, 0.78, 0.45, 1],
+    'primary': COLORS['primary'],
+    'primary_light': COLORS['primary_light'],
+    'success': COLORS['success'],
+    'warning': COLORS['warning'],
+    'error': COLORS['error'],
+    'surface': COLORS['surface'],
+    'surface_variant': COLORS['surface_variant'],
+    'background': COLORS['background'],
+    'text_primary': COLORS['text_primary'],
+    'text_secondary': COLORS['text_secondary'],
+    'selected_bg': COLORS['primary_container'],
+    'selected_text': COLORS['on_primary_container'],
+    'hover_bg': COLORS['surface_tint'],
+    'card_bg': COLORS['surface_elevated'],
+    'accent_orange': COLORS['accent'],
+    'accent_purple': COLORS['secondary'],
+    'accent_green': COLORS['success'],
 }
 
 # 分类图标和颜色映射
 CATEGORY_CONFIG = {
     "全部": {"icon": "view-grid", "color": BRIGHT_COLORS['primary']},
-    "食品": {"icon": "food-apple", "color": [0.95, 0.35, 0.35, 1]},
-    "日用品": {"icon": "home", "color": [0.25, 0.60, 0.95, 1]},
-    "药品": {"icon": "medical-bag", "color": [0.20, 0.75, 0.50, 1]},
-    "化妆品": {"icon": "face-woman", "color": [0.95, 0.45, 0.75, 1]},
-    "其他": {"icon": "package-variant", "color": [0.60, 0.60, 0.70, 1]},
+    "食品": {"icon": "food-apple", "color": COLORS['accent']},
+    "日用品": {"icon": "home", "color": COLORS['secondary']},
+    "药品": {"icon": "medical-bag", "color": COLORS['success']},
+    "化妆品": {"icon": "face-woman", "color": COLORS['accent_light']},
+    "其他": {"icon": "package-variant", "color": COLORS['text_secondary']},
 }
 
 CATEGORY_ICON_MAP = {
@@ -71,6 +73,14 @@ STATUS_COLORS = {
     'expiring': BRIGHT_COLORS['warning'],
     'expired': BRIGHT_COLORS['error'],
 }
+
+
+def _bind_label_text(widget, horizontal_padding=0):
+    widget.bind(
+        size=lambda inst, val: setattr(
+            inst, "text_size", (max(0, val[0] - horizontal_padding), None)
+        )
+    )
 
 
 class CategoryChip(BoxLayout):
@@ -92,16 +102,20 @@ class CategoryChip(BoxLayout):
         self.icon = icon_name
         self.count = count
         self._hovered = False
+        self._radius = dp(14)
 
         self.orientation = "horizontal"
         self.size_hint_y = None
         self.size_hint_x = 1
-        self.height = dp(48)
-        self.padding = (dp(14), dp(8), dp(14), dp(8))
+        self.height = dp(44)
+        self.padding = (dp(12), dp(6), dp(12), dp(6))
+        self.spacing = dp(8)
 
         # Canvas 指令引用
         self._bg_color = None
         self._bg_rect = None
+        self._border_color = None
+        self._border_line = None
         self._count_badge_bg_color = None
         self._count_badge_rect = None
         self._count_badge = None
@@ -115,13 +129,11 @@ class CategoryChip(BoxLayout):
     def _setup_ui(self):
         self._icon_widget = MDIcon(
             icon=self.icon,
-            size_hint_x=None,
-            width=dp(28),
-            size_hint_y=None,
-            height=dp(32),
+            size_hint=(None, None),
+            size=(dp(20), dp(20)),
             halign="center",
             valign="middle",
-            font_size=dp(20),
+            font_size=dp(18),
         )
         self._icon_widget.color = self._get_icon_color()
         self.add_widget(self._icon_widget)
@@ -129,13 +141,15 @@ class CategoryChip(BoxLayout):
         self._name_label = Label(
             text=self.category_name,
             size_hint_x=1,
-            size_hint_y=None,
-            height=dp(32),
+            size_hint_y=1,
             halign="left",
             valign="middle",
             color=self._get_text_color(),
-            font_size=dp(15),
+            font_size=dp(14),
             bold=True,
+            shorten=True,
+            shorten_from="right",
+            max_lines=1,
         )
         self._name_label.bind(
             size=lambda inst, val: self._update_label_size(),
@@ -175,13 +189,21 @@ class CategoryChip(BoxLayout):
     def _update_label_size(self):
         if self._name_label:
             width = self._name_label.width if self._name_label.width > 0 else 100
-            self._name_label.text_size = (width - dp(8), None)
+            self._name_label.text_size = (max(0, width - dp(4)), self.height)
 
     def _update_canvas(self, instance, value):
         """更新背景 Canvas 的位置和大小"""
         if self._bg_rect:
             self._bg_rect.pos = self.pos
             self._bg_rect.size = self.size
+        if self._border_line:
+            self._border_line.rounded_rectangle = (
+                self.x,
+                self.y,
+                self.width,
+                self.height,
+                self._radius,
+            )
 
     def _update_count_badge_canvas(self, instance, value):
         """更新 count badge Canvas 的位置和大小"""
@@ -206,8 +228,8 @@ class CategoryChip(BoxLayout):
 
     def _get_badge_bg_color(self):
         if self.is_selected:
-            return [1, 1, 1, 0.25]
-        return BRIGHT_COLORS['primary'][:3] + [0.1]
+            return BRIGHT_COLORS['surface']
+        return COLORS['primary_container']
 
     def _get_background_color(self):
         if self.is_selected:
@@ -221,17 +243,27 @@ class CategoryChip(BoxLayout):
         if self._bg_color is None:
             with self.canvas.before:
                 self._bg_color = Color(*self._get_background_color())
-                self._bg_rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(14)])
+                self._bg_rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[self._radius])
+            with self.canvas.after:
+                self._border_color = Color(*COLORS['divider'])
+                self._border_line = Line(
+                    width=dp(1),
+                    rounded_rectangle=(self.x, self.y, self.width, self.height, self._radius)
+                )
             # 立即设置正确的位置和大小
             self._bg_rect.pos = self.pos
             self._bg_rect.size = self.size
         else:
             # 只更新颜色
             self._bg_color.rgba = self._get_background_color()
+        if self._border_color:
+            self._border_color.rgba = COLORS['divider']
+        self._update_canvas(self, None)
 
         # 更新 count badge 颜色
         if self._count_badge_bg_color:
             self._count_badge_bg_color.rgba = self._get_badge_bg_color()
+            self._update_count_badge_canvas(self._count_badge, None)
 
         if self._icon_widget:
             self._icon_widget.color = self._get_icon_color()
@@ -252,8 +284,8 @@ class CategoryChip(BoxLayout):
 
     def _animate_selection(self):
         if self.is_selected:
-            anim = Animation(height=dp(50), duration=0.12)
-            anim.bind(on_complete=lambda *args: Animation(height=dp(48), duration=0.12).start(self))
+            anim = Animation(height=dp(46), duration=0.12)
+            anim.bind(on_complete=lambda *args: Animation(height=dp(44), duration=0.12).start(self))
             anim.start(self)
         self._update_visual_state()
 
@@ -310,6 +342,12 @@ class WikiItemCard(BoxLayout):
         self.height = dp(60)
         self.padding = (dp(14), dp(8), dp(14), dp(8))
         self.spacing = dp(12)  # 图标和文字之间的间距
+        self._bg_color = None
+        self._bg_rect = None
+        self._border_color = None
+        self._border_line = None
+
+        self.bind(pos=self._update_canvas, size=self._update_canvas)
 
         self._setup_ui()
 
@@ -465,10 +503,35 @@ class WikiItemCard(BoxLayout):
         return BRIGHT_COLORS['surface']
 
     def _update_background(self):
-        self.canvas.before.clear()
-        with self.canvas.before:
-            Color(*self._get_background_color())
-            RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(10)])
+        radius = dp(14)
+        if self._bg_color is None:
+            with self.canvas.before:
+                self._bg_color = Color(*self._get_background_color())
+                self._bg_rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[radius])
+            with self.canvas.after:
+                self._border_color = Color(*COLORS['divider'])
+                self._border_line = Line(
+                    width=dp(1),
+                    rounded_rectangle=(self.x, self.y, self.width, self.height, radius)
+                )
+        else:
+            self._bg_color.rgba = self._get_background_color()
+        self._update_canvas()
+
+    def _update_canvas(self, *_args):
+        radius = dp(14)
+        if self._bg_rect:
+            self._bg_rect.pos = self.pos
+            self._bg_rect.size = self.size
+            self._bg_rect.radius = [radius]
+        if self._border_line:
+            self._border_line.rounded_rectangle = (
+                self.x,
+                self.y,
+                self.width,
+                self.height,
+                radius,
+            )
 
     def set_selected(self, selected: bool):
         self.is_selected = selected
@@ -744,7 +807,14 @@ class InventoryRecordCard(BoxLayout):
         self.canvas.before.clear()
         with self.canvas.before:
             Color(*self._get_background_color())
-            RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(8)])
+            RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(14)])
+        self.canvas.after.clear()
+        with self.canvas.after:
+            Color(*COLORS['divider'])
+            Line(
+                width=dp(1),
+                rounded_rectangle=(self.x, self.y, self.width, self.height, dp(14))
+            )
 
     def _setup_button_bg(self, button, btn_color):
         """设置按钮背景"""
@@ -815,8 +885,8 @@ class SectionHeader(BoxLayout):
         self.subtitle = subtitle
         self.orientation = "vertical"
         self.size_hint_y = None
-        self.height = dp(44)
-        self.padding = (dp(4), dp(4), dp(4), dp(4))
+        self.height = dp(40 if subtitle else 28)
+        self.padding = (dp(2), dp(2), dp(2), dp(2))
 
         title_label = Label(
             text=self.title,
@@ -825,10 +895,10 @@ class SectionHeader(BoxLayout):
             halign="left",
             valign="middle",
             color=BRIGHT_COLORS['text_primary'],
-            font_size=dp(16),
+            font_size=dp(get_font_size("title_small")),
             bold=True,
         )
-        title_label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
+        _bind_label_text(title_label)
         if CHINESE_FONT:
             title_label.font_name = CHINESE_FONT
         self.add_widget(title_label)
@@ -837,13 +907,13 @@ class SectionHeader(BoxLayout):
             subtitle_label = Label(
                 text=self.subtitle,
                 size_hint_y=None,
-                height=dp(16),
+                height=dp(14),
                 halign="left",
                 valign="middle",
                 color=BRIGHT_COLORS['text_secondary'],
-                font_size=dp(12),
+                font_size=dp(get_font_size("label_small")),
             )
-            subtitle_label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
+            _bind_label_text(subtitle_label)
             if CHINESE_FONT:
                 subtitle_label.font_name = CHINESE_FONT
             self.add_widget(subtitle_label)
@@ -867,13 +937,22 @@ class ItemsScreen(Screen):
 
     def _build_ui(self):
         root = BoxLayout(orientation="horizontal", size_hint=(1, 1), spacing=dp(0), padding=dp(0))
+        with root.canvas.before:
+            Color(*BRIGHT_COLORS['background'])
+            self._root_bg = Rectangle(pos=root.pos, size=root.size)
+        root.bind(
+            pos=lambda inst, _val: setattr(self._root_bg, "pos", inst.pos),
+            size=lambda inst, _val: setattr(self._root_bg, "size", inst.size),
+        )
 
         left_panel = BoxLayout(
             orientation="vertical",
-            size_hint_x=0.3,
-            padding=(dp(8), dp(8), dp(4), dp(8)),
+            size_hint_x=0.34,
+            padding=(dp(8), dp(10), dp(6), dp(10)),
             spacing=dp(6),
         )
+        self._decorate_panel(left_panel)
+        left_panel.add_widget(SectionHeader("分类", "按类别筛选"))
 
         category_scroll = ScrollView(
             size_hint_y=1,
@@ -896,11 +975,18 @@ class ItemsScreen(Screen):
 
         divider_v = BoxLayout(size_hint_x=None, width=dp(1), size_hint_y=1)
         with divider_v.canvas.before:
-            Color(*BRIGHT_COLORS['surface_variant'][:3] + [0.5])
+            Color(*COLORS['divider'])
             RoundedRectangle(pos=divider_v.pos, size=divider_v.size, radius=[dp(0.5)])
         root.add_widget(divider_v)
 
-        right_panel = BoxLayout(orientation="vertical", size_hint_x=0.7, padding=(dp(8), dp(8), dp(8), dp(8)), spacing=dp(6))
+        right_panel = BoxLayout(
+            orientation="vertical",
+            size_hint_x=0.66,
+            padding=(dp(6), dp(10), dp(10), dp(10)),
+            spacing=dp(8),
+        )
+        self._decorate_panel(right_panel)
+        right_panel.add_widget(SectionHeader("物品目录", "点击条目查看物品 Wiki"))
 
         item_scroll = ScrollView(
             size_hint_y=1,
@@ -922,6 +1008,28 @@ class ItemsScreen(Screen):
         root.add_widget(right_panel)
 
         self.add_widget(root)
+
+    def _decorate_panel(self, widget):
+        radius = dp(SECTION_CARD["radius"])
+        with widget.canvas.before:
+            Color(*BRIGHT_COLORS['surface'])
+            widget._panel_bg = RoundedRectangle(pos=widget.pos, size=widget.size, radius=[radius])
+        with widget.canvas.after:
+            Color(*COLORS['divider'])
+            widget._panel_outline = Line(
+                width=dp(1),
+                rounded_rectangle=(widget.x, widget.y, widget.width, widget.height, radius)
+            )
+
+        def _update_panel(instance, _value):
+            widget._panel_bg.pos = instance.pos
+            widget._panel_bg.size = instance.size
+            widget._panel_outline.rounded_rectangle = (
+                instance.x, instance.y, instance.width, instance.height, radius
+            )
+
+        widget.bind(pos=_update_panel, size=_update_panel)
+        _update_panel(widget, None)
 
     def _load_categories(self):
         """从数据库加载物品分类信息"""
@@ -966,7 +1074,7 @@ class ItemsScreen(Screen):
         # 添加"全部"按钮
         all_btn = CategoryChip(
             category_key="全部",
-            category_name="全部物品",
+            category_name="全部",
             icon_name="format-list-bulleted",
             count=0,
         )
@@ -986,8 +1094,12 @@ class ItemsScreen(Screen):
             self._category_box.add_widget(btn)
             self._category_buttons[category.name] = btn
 
-        # 默认选中"全部"
-        self._on_category_selected("全部")
+        target_category = (
+            self.selected_category
+            if self.selected_category in self._category_buttons
+            else "全部"
+        )
+        self._on_category_selected(target_category)
 
     def _on_category_selected(self, category_key: str):
         self.selected_category = category_key
@@ -1115,6 +1227,7 @@ class ItemsScreen(Screen):
     def on_enter(self):
         self._load_categories()
         self._load_wiki_items()
+        Clock.schedule_once(lambda *_: self._refresh_category_button_visuals(), 0)
         try:
             import app.main as main_module
             font = getattr(main_module, "CHINESE_FONT_NAME", None)
@@ -1126,3 +1239,9 @@ class ItemsScreen(Screen):
     def refresh_data(self):
         self._load_categories()
         self._load_wiki_items()
+        Clock.schedule_once(lambda *_: self._refresh_category_button_visuals(), 0)
+
+    def _refresh_category_button_visuals(self):
+        for key, btn in self._category_buttons.items():
+            btn.set_selected(key == self.selected_category)
+            btn._update_visual_state()

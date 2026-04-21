@@ -1,188 +1,200 @@
 # -*- coding: utf-8 -*-
 """
-设置屏幕 - 应用配置和个性化设置
-Modernized with Material Design 3 principles
+设置屏幕
 """
 
-from kivy.uix.screenmanager import Screen
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.floatlayout import FloatLayout
-from kivy.uix.label import Label
-from kivy.uix.button import Button
-from kivy.uix.switch import Switch
+from kivy.graphics import Color, Line, Rectangle, RoundedRectangle
 from kivy.metrics import dp
-from kivy.animation import Animation
-from kivy.properties import ColorProperty, BooleanProperty, StringProperty
-from kivy.clock import Clock
-from kivy.graphics import Color, Rectangle, RoundedRectangle
+from kivy.properties import BooleanProperty
+from kivy.uix.behaviors import ButtonBehavior
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.label import Label
+from kivy.uix.screenmanager import Screen
+from kivy.uix.scrollview import ScrollView
+from kivymd.uix.label import MDIcon
 
-from app.utils.font_helper import apply_font_to_widget, CHINESE_FONT_NAME as CHINESE_FONT
-from app.ui.theme.design_tokens import COLOR_PALETTE, DESIGN_TOKENS
+from app.ui.theme.design_tokens import COLOR_PALETTE, get_card_style, get_font_size
+from app.utils.font_helper import CHINESE_FONT_NAME as CHINESE_FONT
+from app.utils.font_helper import apply_font_to_widget
 
 COLORS = COLOR_PALETTE
+SECTION_CARD = get_card_style("section")
+LIST_CARD = get_card_style("list")
 
 
-class AnimatedCard(BoxLayout):
-    bg_color = ColorProperty((1, 1, 1, 1))
+def _bind_label_text(widget, horizontal_padding=0):
+    widget.bind(
+        size=lambda inst, val: setattr(
+            inst, "text_size", (max(0, val[0] - horizontal_padding), None)
+        )
+    )
 
-    def __init__(self, **kwargs):
+
+class SettingsSectionHeader(Label):
+    def __init__(self, text, **kwargs):
         super().__init__(**kwargs)
-        self.orientation = "vertical"
-        self.padding = dp(16)
-        self.spacing = dp(12)
+        self.text = text
         self.size_hint_y = None
-        self.height = dp(100)
-        self.bg_color = COLORS["surface"]
-        self.bind(size=self._update_canvas, pos=self._update_canvas)
+        self.height = dp(26)
+        self.halign = "left"
+        self.valign = "middle"
+        self.font_size = dp(get_font_size("label_large"))
+        self.color = COLORS["primary"]
+        _bind_label_text(self)
+        if CHINESE_FONT:
+            self.font_name = CHINESE_FONT
 
-    def _update_canvas(self, *args):
+
+class ThemedSwitch(ButtonBehavior, BoxLayout):
+    active = BooleanProperty(False)
+
+    def __init__(self, active=False, **kwargs):
+        super().__init__(**kwargs)
+        self.orientation = "horizontal"
+        self.size_hint = (None, None)
+        self.size = (dp(56), dp(32))
+        self.active = active
+        self.bind(pos=self._redraw, size=self._redraw, active=self._redraw)
+        self._redraw()
+
+    def _redraw(self, *_args):
+        radius = self.height / 2
+        inset = dp(3)
+        knob_size = self.height - inset * 2
+        knob_x = self.right - inset - knob_size if self.active else self.x + inset
+        track_color = COLORS["primary"] if self.active else COLORS["surface_variant"]
+        border_color = None if self.active else COLORS["divider"]
+
         self.canvas.before.clear()
+        self.canvas.after.clear()
         with self.canvas.before:
-            Color(*self.bg_color)
-            RoundedRectangle(
-                size=self.size,
-                pos=self.pos,
-                radius=[dp(16)]
-            )
-
-    def on_touch_down(self, touch):
-        if self.collide_point(*touch.pos):
-            anim = Animation(scale_x=0.97, scale_y=0.97, duration=0.08, t="out_quad")
-            anim.bind(on_complete=lambda *_: Animation(
-                scale_x=1.0, scale_y=1.0, duration=0.12, t="in_out_quad"
-            ).start(self))
-            anim.start(self)
-        return super().on_touch_down(touch)
-
-
-class SettingsSection(BoxLayout):
-    def __init__(self, title="", **kwargs):
-        super().__init__(**kwargs)
-        self.orientation = "vertical"
-        self.size_hint_y = None
-        self.padding = (dp(16), dp(8), dp(16), dp(8))
-        self.spacing = dp(8)
-
-        section_title = Label(
-            text=title,
-            font_size=dp(14),
-            bold=True,
-            color=COLORS["text_secondary"],
-            size_hint_y=None,
-            height=dp(20),
-        )
-        self.add_widget(section_title)
-
-
-class SettingsItem(BoxLayout):
-    def __init__(self, icon="", title="", subtitle="", show_switch=False, **kwargs):
-        super().__init__(**kwargs)
-        self.orientation = "horizontal"
-        self.size_hint_y = None
-        self.height = dp(56)
-        self.padding = dp(12)
-        self.spacing = dp(12)
-
-        with self.canvas.before:
+            Color(*track_color)
+            RoundedRectangle(pos=self.pos, size=self.size, radius=[radius])
+        with self.canvas.after:
+            if border_color:
+                Color(*border_color)
+                Line(
+                    width=dp(1),
+                    rounded_rectangle=(self.x, self.y, self.width, self.height, radius),
+                )
             Color(*COLORS["surface"])
-            bg_rect = RoundedRectangle(size=self.size, pos=self.pos, radius=[dp(12)])
-        self.bind(size=lambda ins, val: setattr(bg_rect, 'size', val))
-        self.bind(pos=lambda ins, val: setattr(bg_rect, 'pos', val))
-
-        if icon:
-            from kivymd.uix.label import MDIcon
-            icon_lbl = MDIcon(
-                icon=icon,
-                font_size=dp(22),
-                theme_icon_color="Custom",
-                icon_color=COLORS["primary"],
-                size_hint_x=None,
-                width=dp(32),
+            RoundedRectangle(
+                pos=(knob_x, self.y + inset),
+                size=(knob_size, knob_size),
+                radius=[knob_size / 2],
             )
-            self.add_widget(icon_lbl)
 
-        text_layout = BoxLayout(orientation="vertical", size_hint_x=1)
-        title_lbl = Label(
-            text=title,
-            font_size=dp(15),
-            color=COLORS["text_primary"],
-            size_hint_y=None,
-            height=dp(20),
-            halign="left",
-            valign="middle",
-        )
-        title_lbl.bind(size=lambda ins, val: setattr(ins, 'text_size', val))
-
-        if subtitle:
-            subtitle_lbl = Label(
-                text=subtitle,
-                font_size=dp(12),
-                color=COLORS["text_hint"],
-                size_hint_y=None,
-                height=dp(16),
-                halign="left",
-                valign="top",
-            )
-            subtitle_lbl.bind(size=lambda ins, val: setattr(ins, 'text_size', val))
-            text_layout.add_widget(title_lbl)
-            text_layout.add_widget(subtitle_lbl)
-        else:
-            text_layout.add_widget(title_lbl)
-
-        self.add_widget(text_layout)
-
-        if show_switch:
-            switch = Switch(active=False, size_hint_x=None, width=dp(44))
-            switch.bind(active=self._on_switch)
-            self.add_widget(switch)
-
-    def _on_switch(self, instance, value):
-        anim = Animation(
-            scale_x=0.9 if value else 1.0,
-            scale_y=0.9 if value else 1.0,
-            duration=0.1,
-        )
-        anim.start(instance)
+    def on_release(self, *_args):
+        self.active = not self.active
 
 
-class SettingsActionButton(BoxLayout):
-    def __init__(self, text="", icon="", danger=False, **kwargs):
+class SettingsRow(BoxLayout):
+    def __init__(self, icon, title, subtitle="", show_switch=False, danger=False, **kwargs):
         super().__init__(**kwargs)
         self.orientation = "horizontal"
         self.size_hint_y = None
-        self.height = dp(52)
-        self.padding = dp(16)
+        self.height = dp(82)
+        self.padding = (dp(14), dp(12), dp(14), dp(12))
         self.spacing = dp(12)
+        self._danger = danger
+        self._build_ui(icon, title, subtitle, show_switch)
+        self.bind(pos=self._redraw, size=self._redraw)
+        self._redraw()
 
-        with self.canvas.before:
-            Color(*COLORS["error"] if danger else COLORS["surface"])
-            rect = RoundedRectangle(size=self.size, pos=self.pos, radius=[dp(12)])
-        self.bind(size=lambda ins, val: setattr(rect, 'size', val))
-        self.bind(pos=lambda ins, val: setattr(rect, 'pos', val))
-
-        if icon:
-            from kivymd.uix.label import MDIcon
-            icon_lbl = MDIcon(
-                icon=icon,
-                font_size=dp(22),
-                theme_icon_color="Custom",
-                icon_color=COLORS["error"] if danger else COLORS["text_primary"],
-                size_hint_x=None,
-                width=dp(28),
+    def _build_ui(self, icon, title, subtitle, show_switch):
+        icon_shell = BoxLayout(
+            orientation="vertical",
+            size_hint=(None, None),
+            width=dp(42),
+            height=dp(42),
+            padding=dp(9),
+        )
+        with icon_shell.canvas.before:
+            Color(
+                *(
+                    COLORS["error_container"]
+                    if self._danger
+                    else COLORS["surface_tint"]
+                )
             )
-            self.add_widget(icon_lbl)
+            self._icon_bg = RoundedRectangle(
+                pos=icon_shell.pos, size=icon_shell.size, radius=[dp(14)]
+            )
+        icon_shell.bind(
+            pos=lambda inst, _val: setattr(self._icon_bg, "pos", inst.pos),
+            size=lambda inst, _val: setattr(self._icon_bg, "size", inst.size),
+        )
+        icon_shell.add_widget(
+            MDIcon(
+                icon=icon,
+                theme_text_color="Custom",
+                text_color=COLORS["error"] if self._danger else COLORS["primary"],
+                halign="center",
+                valign="middle",
+                font_size=dp(22),
+            )
+        )
+        self.add_widget(icon_shell)
 
-        text_lbl = Label(
-            text=text,
-            font_size=dp(15),
-            color=COLORS["error"] if danger else COLORS["text_primary"],
+        text_box = BoxLayout(orientation="vertical", spacing=dp(2))
+
+        title_label = Label(
+            text=title,
             size_hint_y=None,
             height=dp(22),
             halign="left",
             valign="middle",
+            font_size=dp(get_font_size("title_small")),
+            bold=True,
+            color=COLORS["error"] if self._danger else COLORS["text_primary"],
         )
-        text_lbl.bind(size=lambda ins, val: setattr(ins, 'text_size', val))
-        self.add_widget(text_lbl)
+        _bind_label_text(title_label)
+        if CHINESE_FONT:
+            title_label.font_name = CHINESE_FONT
+        text_box.add_widget(title_label)
+
+        if subtitle:
+            subtitle_label = Label(
+                text=subtitle,
+                halign="left",
+                valign="top",
+                font_size=dp(get_font_size("body_small")),
+                color=COLORS["text_secondary"],
+            )
+            _bind_label_text(subtitle_label)
+            if CHINESE_FONT:
+                subtitle_label.font_name = CHINESE_FONT
+            text_box.add_widget(subtitle_label)
+
+        self.add_widget(text_box)
+
+        if show_switch:
+            switch = ThemedSwitch(active=False)
+            self.add_widget(switch)
+        else:
+            chevron = MDIcon(
+                icon="chevron-right",
+                theme_text_color="Custom",
+                text_color=COLORS["text_hint"],
+                size_hint=(None, None),
+                size=(dp(18), dp(18)),
+                font_size=dp(18),
+            )
+            self.add_widget(chevron)
+
+    def _redraw(self, *_args):
+        radius = dp(LIST_CARD["radius"])
+        self.canvas.before.clear()
+        self.canvas.after.clear()
+        with self.canvas.before:
+            Color(*COLORS["surface"])
+            RoundedRectangle(pos=self.pos, size=self.size, radius=[radius])
+        with self.canvas.after:
+            Color(*COLORS["divider"])
+            Line(
+                width=dp(1),
+                rounded_rectangle=(self.x, self.y, self.width, self.height, radius),
+            )
 
 
 class SettingsScreen(Screen):
@@ -190,156 +202,148 @@ class SettingsScreen(Screen):
         super().__init__(**kwargs)
         self.name = "settings"
         self._build_ui()
-        Clock.schedule_once(lambda *_: self._animate_entrance(), 0.1)
 
     def _build_ui(self):
-        from kivymd.uix.label import MDIcon
-        from kivy.uix.scrollview import ScrollView
-        from kivy.uix.gridlayout import GridLayout
-        from kivy.core.window import Window
-
-        root = FloatLayout()
-        bg_label = Label(
-            size_hint_y=None,
-            height=Window.size[1] if hasattr(Window, 'size') else dp(640),
-            pos_hint={'x': 0, 'y': 0},
-            color=(0, 0, 0, 0),
-        )
-        with bg_label.canvas.before:
+        root = BoxLayout(orientation="vertical")
+        with root.canvas.before:
             Color(*COLORS["background"])
-            bg_rect = Rectangle(size=bg_label.size, pos=bg_label.pos)
-        bg_label.bind(size=lambda ins, val: setattr(bg_rect, 'size', val))
-        bg_label.bind(pos=lambda ins, val: setattr(bg_rect, 'pos', val))
-        root.add_widget(bg_label)
-
-        header = BoxLayout(
-            orientation="vertical",
-            size_hint_y=None,
-            height=dp(100),
-            padding=(dp(20), dp(16), dp(20), dp(8)),
-            pos_hint={'top': 1},
+            self._bg_rect = Rectangle(pos=root.pos, size=root.size)
+        root.bind(
+            pos=lambda inst, _val: setattr(self._bg_rect, "pos", inst.pos),
+            size=lambda inst, _val: setattr(self._bg_rect, "size", inst.size),
         )
-        header.add_widget(Label(
-            text="设置",
-            font_size=dp(26),
-            bold=True,
-            color=COLORS["text_primary"],
-            size_hint_y=None,
-            height=dp(36),
-        ))
-        header.add_widget(Label(
-            text="个性化配置和偏好设置",
-            font_size=dp(14),
-            color=COLORS["text_secondary"],
-            size_hint_y=None,
-            height=dp(20),
-        ))
-        root.add_widget(header)
+
+        root.add_widget(self._create_header())
 
         scroll = ScrollView(
-            size_hint=(1, 0.85),
-            pos_hint={'y': 0.05},
-            bar_width=dp(4),
-            scroll_type=['content'],
+            do_scroll_x=False,
+            bar_width=dp(3),
+            bar_color=(*COLORS["primary"][:3], 0.25),
+            bar_inactive_color=(*COLORS["primary"][:3], 0.1),
         )
-
-        content = GridLayout(
-            cols=1,
+        content = BoxLayout(
+            orientation="vertical",
             size_hint_y=None,
-            height=dp(800),
-            spacing=dp(4),
+            padding=(dp(16), dp(14), dp(16), dp(24)),
+            spacing=dp(12),
+        )
+        content.bind(minimum_height=content.setter("height"))
+
+        self._add_section(
+            content,
+            "通知与提醒",
+            [
+                ("bell-ring-outline", "过期提醒", "提前推送即将过期物品", True, False),
+                ("cart-outline", "购物提醒", "库存不足时提醒补货", True, False),
+            ],
+        )
+        self._add_section(
+            content,
+            "显示与阅读",
+            [
+                ("palette-outline", "主题颜色", "当前主题：fresh utility", False, False),
+                ("format-size", "字体大小", "当前使用默认字号", False, False),
+            ],
+        )
+        self._add_section(
+            content,
+            "数据管理",
+            [
+                ("cloud-sync-outline", "数据同步", "当前仅保存在本机", False, False),
+                ("database-export-outline", "数据备份", "导出本地备份文件", False, False),
+                ("restore", "恢复数据", "从备份文件恢复库存和 Wiki", False, False),
+            ],
+        )
+        self._add_section(
+            content,
+            "关于与支持",
+            [
+                ("information-outline", "关于 vibe-fridge", "版本 1.0.0", False, False),
+                ("lifebuoy", "帮助与反馈", "查看常见问题和支持入口", False, False),
+            ],
         )
 
-        content.add_widget(SettingsSection(title="账户"))
-        content.add_widget(SettingsItem(
-            icon="account",
-            title="个人资料",
-            subtitle="管理您的账户信息",
-        ))
-        content.add_widget(SettingsItem(
-            icon="sync",
-            title="数据同步",
-            subtitle="跨设备同步冰箱数据",
-            show_switch=True,
-        ))
-
-        content.add_widget(SettingsSection(title="通知"))
-        content.add_widget(SettingsItem(
-            icon="bell",
-            title="过期提醒",
-            subtitle="物品即将过期时通知我",
-            show_switch=True,
-        ))
-        content.add_widget(SettingsItem(
-            icon="cart",
-            title="购物提醒",
-            subtitle="库存不足时提醒购买",
-            show_switch=True,
-        ))
-
-        content.add_widget(SettingsSection(title="外观"))
-        content.add_widget(SettingsItem(
-            icon="palette",
-            title="主题颜色",
-            subtitle="选择应用主题色",
-        ))
-        content.add_widget(SettingsItem(
-            icon="format-size",
-            title="字体大小",
-            subtitle="调整界面文字大小",
-        ))
-
-        content.add_widget(SettingsSection(title="数据"))
-        content.add_widget(SettingsItem(
-            icon="database",
-            title="数据备份",
-            subtitle="备份到本地存储",
-        ))
-        content.add_widget(SettingsItem(
-            icon="restore",
-            title="恢复数据",
-            subtitle="从备份恢复",
-        ))
-
-        content.add_widget(SettingsSection(title="关于"))
-        content.add_widget(SettingsItem(
-            icon="information",
-            title="关于我们",
-            subtitle="vibe-fridge v1.0.0",
-        ))
-        content.add_widget(SettingsItem(
-            icon="help-circle",
-            title="帮助与反馈",
-            subtitle="常见问题和技术支持",
-        ))
-
-        danger_zone = SettingsSection(title="危险操作")
-        content.add_widget(danger_zone)
-        content.add_widget(SettingsActionButton(
-            text="清除所有数据",
-            icon="delete",
-            danger=True,
-        ))
+        danger_header = SettingsSectionHeader("危险操作")
+        content.add_widget(danger_header)
+        content.add_widget(
+            SettingsRow(
+                icon="delete-outline",
+                title="清除所有数据",
+                subtitle="仅保留在显式确认后执行",
+                danger=True,
+            )
+        )
 
         scroll.add_widget(content)
         root.add_widget(scroll)
-
         self.add_widget(root)
 
-    def _animate_entrance(self):
-        for i, child in enumerate(self.children):
-            if isinstance(child, FloatLayout):
-                for j, subchild in enumerate(child.children):
-                    anim = Animation(
-                        opacity=1,
-                        y=subchild.y + dp(20) if hasattr(subchild, 'y') else 0,
-                        duration=0.3,
-                        t="out_quad"
-                    )
-                    anim.start(subchild)
+    def _create_header(self):
+        header = BoxLayout(
+            orientation="vertical",
+            size_hint_y=None,
+            height=dp(92),
+            padding=(dp(20), dp(18), dp(20), dp(12)),
+            spacing=dp(2),
+        )
+        with header.canvas.before:
+            Color(*COLORS["surface"])
+            self._header_bg = Rectangle(pos=header.pos, size=header.size)
+        with header.canvas.after:
+            Color(*COLORS["divider"])
+            self._header_divider = Line(points=[])
+        header.bind(
+            pos=lambda inst, _val: setattr(self._header_bg, "pos", inst.pos),
+            size=lambda inst, _val: setattr(self._header_bg, "size", inst.size),
+        )
+        header.bind(pos=self._update_header_divider, size=self._update_header_divider)
+
+        title = Label(
+            text="设置",
+            size_hint_y=None,
+            height=dp(28),
+            halign="left",
+            valign="middle",
+            font_size=dp(get_font_size("headline_small")),
+            bold=True,
+            color=COLORS["text_primary"],
+        )
+        _bind_label_text(title)
+        if CHINESE_FONT:
+            title.font_name = CHINESE_FONT
+        header.add_widget(title)
+
+        subtitle = Label(
+            text="管理提醒、显示方式和数据入口。",
+            size_hint_y=None,
+            height=dp(18),
+            halign="left",
+            valign="middle",
+            font_size=dp(get_font_size("body_medium")),
+            color=COLORS["text_secondary"],
+        )
+        _bind_label_text(subtitle)
+        if CHINESE_FONT:
+            subtitle.font_name = CHINESE_FONT
+        header.add_widget(subtitle)
+        return header
+
+    def _add_section(self, parent, title, rows):
+        parent.add_widget(SettingsSectionHeader(title))
+        for icon, row_title, subtitle, show_switch, danger in rows:
+            parent.add_widget(
+                SettingsRow(
+                    icon=icon,
+                    title=row_title,
+                    subtitle=subtitle,
+                    show_switch=show_switch,
+                    danger=danger,
+                )
+            )
+
+    def _update_header_divider(self, instance, _value):
+        self._header_divider.points = [instance.x, instance.y, instance.right, instance.y]
 
     def on_enter(self):
         if CHINESE_FONT:
             apply_font_to_widget(self, CHINESE_FONT)
-
-

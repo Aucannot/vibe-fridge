@@ -25,18 +25,18 @@ from app.ui.theme.design_tokens import COLOR_PALETTE
 
 COLORS = COLOR_PALETTE
 
-# 鲜艳配色
+# 兼容旧变量名，实际使用当前主题色板
 BRIGHT_COLORS = {
-    'primary': [0.39, 0.40, 0.95, 1],
-    'success': [0.13, 0.77, 0.37, 1],
-    'warning': [0.96, 0.35, 0.07, 1],
-    'error': [0.94, 0.27, 0.27, 1],
-    'surface': [1, 1, 1, 1],
-    'surface_variant': [0.96, 0.96, 0.96, 1],
-    'background': [0.98, 0.98, 0.99, 1],
-    'text_primary': [0.15, 0.15, 0.15, 1],
-    'text_secondary': [0.50, 0.50, 0.50, 1],
-    'accent': [0.40, 0.20, 0.80, 1],
+    'primary': COLORS['primary'],
+    'success': COLORS['success'],
+    'warning': COLORS['warning'],
+    'error': COLORS['error'],
+    'surface': COLORS['surface'],
+    'surface_variant': COLORS['surface_variant'],
+    'background': COLORS['background'],
+    'text_primary': COLORS['text_primary'],
+    'text_secondary': COLORS['text_secondary'],
+    'accent': COLORS['accent'],
 }
 
 # 常用图标列表 - 使用 Material Design 确认存在的图标名称
@@ -129,23 +129,23 @@ class IconCard(ButtonBehavior, BoxLayout):
 
     def _get_bg_color(self):
         if self.is_selected:
-            return [0.95, 0.88, 1, 1]  # 选中：淡紫色背景
-        return [0.98, 0.98, 0.99, 1]  # 默认：浅灰背景
+            return COLORS['primary_container']
+        return COLORS['surface']
 
     def _get_border_color(self):
         if self.is_selected:
-            return [0.60, 0.30, 0.95, 1]  # 选中：紫色边框
-        return [0.90, 0.90, 0.95, 0.3]  # 默认：浅灰边框
+            return COLORS['primary']
+        return COLORS['divider']
 
     def _get_icon_color(self):
         if self.is_selected:
-            return [0.60, 0.30, 0.95, 1]  # 选中：紫色图标
-        return BRIGHT_COLORS['text_primary']  # 默认：深灰色图标
+            return COLORS['primary']
+        return BRIGHT_COLORS['text_primary']
 
     def _get_text_color(self):
         if self.is_selected:
-            return [0.60, 0.30, 0.95, 1]  # 选中：紫色文字
-        return BRIGHT_COLORS['text_secondary']  # 默认：灰色文字
+            return COLORS['primary']
+        return BRIGHT_COLORS['text_secondary']
 
     def _update_background(self, instance=None, value=None):
         self.canvas.before.clear()
@@ -225,7 +225,7 @@ class HeaderBar(BoxLayout):
         # 左侧装饰
         deco = BoxLayout(size_hint_x=None, width=dp(4))
         with deco.canvas.before:
-            Color(*[0.60, 0.30, 0.95, 1])
+            Color(*COLORS['primary'])
             self._deco_rect = Rectangle(pos=deco.pos, size=deco.size)
         deco.bind(pos=lambda i, v: self._update_deco_pos(v), size=lambda i, v: self._update_deco_size(v))
         self.add_widget(deco)
@@ -284,7 +284,7 @@ class SelectedPreview(BoxLayout):
 
         # 背景卡片
         with self.canvas.before:
-            Color(*[0.96, 0.96, 1, 1])
+            Color(*COLORS['surface'])
             self._bg_rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(12)])
         self.bind(pos=lambda i, v: self._update_bg_pos(v), size=lambda i, v: self._update_bg_size(v))
 
@@ -294,7 +294,7 @@ class SelectedPreview(BoxLayout):
             padding=dp(0)
         )
         with self._icon_display.canvas.before:
-            Color(*[0.60, 0.30, 0.95, 0.12])
+            Color(*COLORS['primary_container'])
             self._icon_bg = Ellipse(pos=self._icon_display.pos, size=self._icon_display.size)
         self._icon_display.bind(pos=lambda i, v: self._update_icon_bg_pos(v), size=lambda i, v: self._update_icon_bg_size(v))
         self.add_widget(self._icon_display)
@@ -307,7 +307,7 @@ class SelectedPreview(BoxLayout):
             halign="center",
             valign="middle",
         )
-        self._icon_widget.color = [0.60, 0.30, 0.95, 1]
+        self._icon_widget.color = COLORS['primary']
         self._icon_display.add_widget(self._icon_widget)
 
         # 更新图标显示
@@ -383,9 +383,9 @@ class IconPickerActionBar(BoxLayout):
         )
         cancel._bg_rect = None
         with cancel.canvas.before:
-            Color(*[0.95, 0.95, 0.97, 1])
+            Color(*COLORS['surface_variant'])
             cancel._bg_rect = RoundedRectangle(pos=cancel.pos, size=cancel.size, radius=[dp(12)])
-            Color(*[0.50, 0.50, 0.55, 0.3])
+            Color(*COLORS['divider'])
             Line(width=dp(1.5), rounded_rectangle=(
                 cancel.x, cancel.y, cancel.width, cancel.height, dp(12)
             ))
@@ -431,7 +431,7 @@ class IconPickerActionBar(BoxLayout):
         )
         confirm._bg_rect = None
         with confirm.canvas.before:
-            Color(*[0.60, 0.30, 0.95, 1])
+            Color(*COLORS['primary'])
             confirm._bg_rect = RoundedRectangle(pos=confirm.pos, size=confirm.size, radius=[dp(12)])
         confirm.bind(pos=lambda i, v: self._update_confirm_bg_pos(v),
                    size=lambda i, v: self._update_confirm_bg_size(v))
@@ -451,7 +451,7 @@ class IconPickerActionBar(BoxLayout):
         # 点击效果
         def on_confirm_touch_down(t):
             if confirm.collide_point(*t.pos):
-                setattr(confirm_label, 'color', [0.90, 0.50, 0.90, 1])
+                setattr(confirm_label, 'color', [0.88, 0.97, 0.95, 1])
                 return True
             return False
 
@@ -482,9 +482,9 @@ class IconPickerActionBar(BoxLayout):
             btn = self._cancel_btn
             btn.canvas.before.clear()
             with btn.canvas.before:
-                Color(*[0.95, 0.95, 0.97, 1])
+                Color(*COLORS['surface_variant'])
                 RoundedRectangle(pos=btn.pos, size=btn.size, radius=[dp(12)])
-                Color(*[0.50, 0.50, 0.55, 0.3])
+                Color(*COLORS['divider'])
                 Line(width=dp(1.5), rounded_rectangle=(
                     btn.x, btn.y, btn.width, btn.height, dp(12)
                 ))
@@ -502,7 +502,7 @@ class IconPickerActionBar(BoxLayout):
             btn = self._confirm_btn
             btn.canvas.before.clear()
             with btn.canvas.before:
-                Color(*[0.60, 0.30, 0.95, 1])
+                Color(*COLORS['primary'])
                 RoundedRectangle(pos=btn.pos, size=btn.size, radius=[dp(12)])
 
 
@@ -521,7 +521,7 @@ class IconPicker(ModalView):
     def _build_ui(self):
         self.size_hint = (0.85, 0.75)
         self.pos_hint = {'center_x': 0.5, 'center_y': 0.5}
-        self.background_color = [1, 1, 1, 1]
+        self.background_color = COLORS['surface']
         self.auto_dismiss = False
 
         # 主容器

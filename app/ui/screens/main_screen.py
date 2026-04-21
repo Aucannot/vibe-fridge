@@ -34,17 +34,34 @@ from app.services.item_service import item_service, statistics_service
 from app.models.item import Item, ItemStatus
 from app.utils.logger import setup_logger
 from app.utils.font_helper import apply_font_to_widget, CHINESE_FONT_NAME as CHINESE_FONT
-from app.ui.theme.design_tokens import COLOR_PALETTE, DESIGN_TOKENS
+from app.ui.theme.design_tokens import COLOR_PALETTE, DESIGN_TOKENS, get_card_style, get_font_size
 
 logger = setup_logger(__name__)
 
 COLORS = COLOR_PALETTE
+HERO_CARD = get_card_style("hero")
+LIST_CARD = get_card_style("list")
 
 HEADER_CHIP_HEIGHT = dp(36)
 HEADER_TOGGLE_RADIUS = dp(16)
 
 def get_token_color(key):
     return COLORS.get(key, (0.5, 0.5, 0.5, 1))
+
+
+def _bind_label_text(widget, horizontal_padding=0):
+    widget.bind(
+        size=lambda inst, val: setattr(
+            inst, "text_size", (max(0, val[0] - horizontal_padding), None)
+        )
+    )
+
+
+def _bind_auto_height(widget, min_height, horizontal_padding=0):
+    _bind_label_text(widget, horizontal_padding)
+    widget.bind(
+        texture_size=lambda inst, val: setattr(inst, "height", max(min_height, val[1]))
+    )
 
 
 class AnimatedCard(MDCard):
@@ -268,78 +285,114 @@ class StatCard(BoxLayout):
         super().__init__(**kwargs)
         self.orientation = 'vertical'
         self.size_hint = (1, 1)
-        self.padding = dp(16)
-        self.spacing = dp(6)
+        self.padding = (dp(14), dp(10), dp(14), dp(10))
+        self.spacing = dp(2)
         self._stat_color = color
         self._stat_accent = accent_color
         self._is_selected = False
+        self._is_pressed = False
         self._build_ui(title, value, icon)
         self._setup_touch_events()
 
     def _build_ui(self, title, value, icon):
         from kivymd.uix.label import MDIcon
 
-        icon_row = BoxLayout(size_hint_y=None, height=dp(28), spacing=dp(8))
+        top_row = BoxLayout(size_hint_y=None, height=dp(36))
+        self._top_row = top_row
+
+        icon_shell = FloatLayout(
+            size_hint=(None, None),
+            size=(dp(36), dp(36)),
+        )
+        self._icon_shell = icon_shell
+        with icon_shell.canvas.before:
+            Color(*COLORS["surface_tint"])
+            self._icon_shell_bg = RoundedRectangle(
+                pos=icon_shell.pos,
+                size=icon_shell.size,
+                radius=[dp(12)],
+            )
+        icon_shell.bind(
+            pos=lambda inst, _val: setattr(self._icon_shell_bg, "pos", inst.pos),
+            size=lambda inst, _val: setattr(self._icon_shell_bg, "size", inst.size),
+        )
 
         self.icon_widget = MDIcon(
             icon=icon,
-            size_hint_x=None,
-            width=dp(24),
+            size_hint=(None, None),
+            size=(dp(18), dp(18)),
             halign="center",
-            font_size=dp(20),
+            valign="middle",
+            font_size=dp(18),
+            theme_text_color="Custom",
+            text_color=self._stat_color,
         )
-        self.icon_widget.color = self._stat_color
+        self.icon_widget.bind(size=lambda inst, val: setattr(inst, "text_size", val))
+        icon_shell.add_widget(self.icon_widget)
+        icon_shell.bind(pos=self._update_stat_icon, size=self._update_stat_icon)
+        self.icon_widget.bind(size=self._update_stat_icon)
+        top_row.add_widget(icon_shell)
+        top_row.add_widget(BoxLayout())
+        self.add_widget(top_row)
 
         self.value_label = Label(
             text=value,
             size_hint_y=None,
-            height=dp(32),
+            height=dp(28),
             halign="left",
-            valign="bottom",
+            valign="middle",
             color=self._stat_color,
-            font_size=dp(30),
+            font_size=dp(get_font_size("title_large")),
             bold=True,
             font_name=None if not CHINESE_FONT else CHINESE_FONT,
         )
-        self.value_label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], val[1])))
+        _bind_auto_height(self.value_label, dp(28))
+        self.add_widget(self.value_label)
 
-        icon_row.add_widget(self.icon_widget)
-        icon_row.add_widget(self.value_label)
-        self.add_widget(icon_row)
-
-        title_label = Label(
+        self.title_label = Label(
             text=title,
             size_hint_y=None,
-            height=dp(20),
+            height=dp(16),
             halign="left",
-            valign="top",
-            color=COLORS['text_hint'],
-            font_size=dp(12),
+            valign="middle",
+            color=COLORS['text_secondary'],
+            font_size=dp(get_font_size("label_medium")),
             font_name=None if not CHINESE_FONT else CHINESE_FONT,
         )
-        title_label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], val[1])))
+        _bind_auto_height(self.title_label, dp(16))
 
         self._draw_background()
+
+        self.add_widget(self.title_label)
 
         accent_bar = BoxLayout(
             size_hint_y=None,
             height=dp(3),
-            size_hint_x=1,
-            padding=(0, dp(3), 0, 0),
+            size_hint_x=None,
+            width=dp(22),
         )
+        self._accent_bar = accent_bar
         with accent_bar.canvas.before:
             Color(*self._stat_color[:4])
             RoundedRectangle(
                 pos=accent_bar.pos,
-                size=(accent_bar.width * 0.15, accent_bar.height),
+                size=accent_bar.size,
                 radius=[dp(2)]
             )
-        accent_bar.bind(pos=lambda inst, val: self._update_accent_bar(inst), size=lambda inst, val: self._update_accent_bar(inst))
+        accent_bar.bind(
+            pos=lambda inst, _val: self._update_accent_bar(inst),
+            size=lambda inst, _val: self._update_accent_bar(inst),
+        )
+        self.add_widget(accent_bar)
 
-        container = BoxLayout(orientation='vertical', spacing=dp(4))
-        container.add_widget(title_label)
-        container.add_widget(accent_bar)
-        self.add_widget(container)
+    def _update_stat_icon(self, *_args):
+        if not hasattr(self, "_icon_shell") or not hasattr(self, "icon_widget"):
+            return
+        self.icon_widget.text_size = self.icon_widget.size
+        self.icon_widget.pos = (
+            self._icon_shell.x + (self._icon_shell.width - self.icon_widget.width) / 2,
+            self._icon_shell.y + (self._icon_shell.height - self.icon_widget.height) / 2 - dp(1),
+        )
 
     def _update_accent_bar(self, instance):
         instance.canvas.before.clear()
@@ -347,27 +400,41 @@ class StatCard(BoxLayout):
             Color(*self._stat_color[:4])
             RoundedRectangle(
                 pos=instance.pos,
-                size=(instance.width * 0.15, instance.height),
+                size=instance.size,
                 radius=[dp(2)]
             )
 
     def _draw_background(self):
         with self.canvas.before:
-            Color(*COLORS['surface'])
-            RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(20)])
+            Color(*COLORS['surface_elevated'])
+            self._bg_rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(HERO_CARD["radius"])])
+        with self.canvas.after:
+            Color(*COLORS['divider'])
+            self._border_line = Line(
+                width=dp(1),
+                rounded_rectangle=(self.x, self.y, self.width, self.height, dp(HERO_CARD["radius"]))
+            )
         self._update_selection_border()
 
         self.bind(pos=self._update_bg, size=self._update_bg)
 
     def _update_bg(self, *args):
-        self.canvas.before.clear()
         if self._is_selected:
-            bg_color = (self._stat_color[0], self._stat_color[1], self._stat_color[2], 0.15)
+            bg_color = (self._stat_color[0], self._stat_color[1], self._stat_color[2], 0.14)
+        elif self._is_pressed:
+            bg_color = (self._stat_color[0], self._stat_color[1], self._stat_color[2], 0.08)
         else:
-            bg_color = COLORS['surface']
+            bg_color = COLORS['surface_elevated']
+        self._bg_rect.pos = self.pos
+        self._bg_rect.size = self.size
+        self.canvas.before.clear()
         with self.canvas.before:
             Color(*bg_color)
-            RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(20)])
+            self._bg_rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(HERO_CARD["radius"])])
+        if hasattr(self, "_border_line"):
+            self._border_line.rounded_rectangle = (
+                self.x, self.y, self.width, self.height, dp(HERO_CARD["radius"])
+            )
     
     def _update_selection_border(self):
         self._update_bg()
@@ -404,16 +471,7 @@ class StatCard(BoxLayout):
         return super().on_touch_up(touch) if hasattr(super(), 'on_touch_up') else False
     
     def _update_press_effect(self):
-        self.canvas.before.clear()
-        if self._is_pressed:
-            bg_color = (self._stat_color[0], self._stat_color[1], self._stat_color[2], 0.3)
-        elif self._is_selected:
-            bg_color = (self._stat_color[0], self._stat_color[1], self._stat_color[2], 0.15)
-        else:
-            bg_color = COLORS['surface']
-        with self.canvas.before:
-            Color(*bg_color)
-            RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(20)])
+        self._update_bg()
     
     def on_release(self, *args):
         pass
@@ -462,9 +520,9 @@ class ItemListItem(BoxLayout):
         self.orientation = "horizontal"
         self.size_hint_y = None
         self.size_hint_x = 1
-        self.height = dp(96)
-        self.padding = (dp(16), dp(10), dp(8), dp(10))
-        self.spacing = dp(14)
+        self.height = dp(112)
+        self.padding = (dp(16), dp(14), dp(10), dp(14))
+        self.spacing = dp(12)
         
         self._setup_ui()
         self._setup_background()
@@ -494,19 +552,36 @@ class ItemListItem(BoxLayout):
         
         icon_color = self._get_status_color()
 
+        icon_box = FloatLayout(
+            size_hint_x=None,
+            width=dp(56),
+            size_hint_y=None,
+            height=dp(56),
+        )
+        with icon_box.canvas.before:
+            Color(*COLORS['surface_tint'])
+            icon_box._bg_rect = RoundedRectangle(pos=icon_box.pos, size=icon_box.size, radius=[dp(18)])
+        icon_box.bind(
+            pos=lambda inst, _val: setattr(inst._bg_rect, "pos", inst.pos),
+            size=lambda inst, _val: setattr(inst._bg_rect, "size", inst.size),
+        )
+
         icon = MDIcon(
             icon=icon_name,
-            size_hint_x=None,
-            width=dp(48),
-            size_hint_y=None,
-            height=dp(76),
+            size_hint=(None, None),
+            size=(dp(24), dp(24)),
             halign="center",
             valign="middle",
-            font_size=dp(30),
+            font_size=dp(24),
         )
+        icon.bind(size=lambda inst, val: setattr(inst, "text_size", val))
         icon.color = icon_color
         self.icon_widget = icon
-        self.add_widget(icon)
+        icon_box.add_widget(icon)
+        icon_box.bind(pos=self._update_leading_icon, size=self._update_leading_icon)
+        icon.bind(size=self._update_leading_icon)
+        self.icon_box = icon_box
+        self.add_widget(icon_box)
     
     def _add_text_content(self):
         from kivy.uix.anchorlayout import AnchorLayout
@@ -520,12 +595,13 @@ class ItemListItem(BoxLayout):
         
         text_box = BoxLayout(
             orientation="vertical",
-            padding=(dp(4), dp(2)),
-            spacing=dp(6),
+            padding=(0, dp(2)),
+            spacing=dp(4),
             size_hint_x=1,
             size_hint_y=None,
         )
         text_box.bind(minimum_height=lambda inst, val: setattr(inst, "height", val))
+        self.text_box = text_box
 
         headline_text = f"{self.item_name}"
         if self.quantity >= 1:
@@ -534,7 +610,7 @@ class ItemListItem(BoxLayout):
         self.item_name_label = Label(
             text=headline_text,
             size_hint_y=None,
-            height=dp(28),
+            height=dp(26),
             halign="left",
             valign="middle",
             color=COLORS['text_primary'],
@@ -542,7 +618,7 @@ class ItemListItem(BoxLayout):
             bold=True,
             font_name=None if not CHINESE_FONT else CHINESE_FONT,
         )
-        self.item_name_label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
+        _bind_auto_height(self.item_name_label, dp(26))
         text_box.add_widget(self.item_name_label)
         
         category_text = self.category
@@ -550,37 +626,37 @@ class ItemListItem(BoxLayout):
         status_color = self._get_status_color()
         status_text = self._get_status_text()
         
-        supporting_text = f"{category_text}  ·  {status_text}"
+        supporting_text = f"{category_text} · {status_text}"
         supporting_label = Label(
             text=supporting_text,
             size_hint_y=None,
-            height=dp(22),
+            height=dp(18),
             halign="left",
-            valign="middle",
+            valign="top",
             color=status_color,
-            font_size=dp(14),
+            font_size=dp(13),
         )
-        supporting_label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
+        _bind_auto_height(supporting_label, dp(18))
         if CHINESE_FONT:
             supporting_label.font_name = CHINESE_FONT
         self.supporting_label = supporting_label
         text_box.add_widget(supporting_label)
-        
+
         if self.expiry_date != "无":
             days_text = self._get_days_text()
-            tertiary_text = f"{self.expiry_date}  ·  {days_text}"
+            tertiary_text = f"{self.expiry_date} · {days_text}"
             tertiary_color = self._get_days_color()
-            
+
             tertiary_label = Label(
                 text=tertiary_text,
                 size_hint_y=None,
-                height=dp(22),
+                height=dp(18),
                 halign="left",
-                valign="middle",
+                valign="top",
                 color=tertiary_color,
-                font_size=dp(13),
+                font_size=dp(12),
             )
-            tertiary_label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
+            _bind_auto_height(tertiary_label, dp(18))
             if CHINESE_FONT:
                 tertiary_label.font_name = CHINESE_FONT
             self.tertiary_label = tertiary_label
@@ -598,8 +674,8 @@ class ItemListItem(BoxLayout):
         self.actions_container = BoxLayout(
             orientation="horizontal",
             size_hint_x=None,
-            width=dp(120),
-            spacing=dp(8),
+            width=dp(114),
+            spacing=dp(6),
         )
 
         # +1 按钮 - 使用 ButtonBehavior 确保正确的事件处理
@@ -610,9 +686,9 @@ class ItemListItem(BoxLayout):
         # -1 按钮
         minus_btn = QtyButton(
             size_hint_x=None,
-            width=dp(36),
+            width=dp(34),
             size_hint_y=None,
-            height=dp(36),
+            height=dp(34),
         )
         self._setup_qty_button_bg(minus_btn, COLORS['warning'])
         minus_btn.bind(on_press=lambda *args: self._on_quantity_change(-1))
@@ -637,9 +713,9 @@ class ItemListItem(BoxLayout):
         # +1 按钮
         plus_btn = QtyButton(
             size_hint_x=None,
-            width=dp(36),
+            width=dp(34),
             size_hint_y=None,
-            height=dp(36),
+            height=dp(34),
         )
         self._setup_qty_button_bg(plus_btn, COLORS['success'])
         plus_btn.bind(on_press=lambda *args: self._on_quantity_change(1))
@@ -664,12 +740,12 @@ class ItemListItem(BoxLayout):
         # 消耗按钮（使用复选框样式）
         consume_btn = QtyButton(
             size_hint_x=None,
-            width=dp(36),
+            width=dp(34),
             size_hint_y=None,
-            height=dp(36),
+            height=dp(34),
         )
         # 根据当前状态设置颜色
-        consume_btn_bg = COLORS['primary'] if self.is_consumed else [0.9, 0.9, 0.9, 1]
+        consume_btn_bg = COLORS['primary'] if self.is_consumed else COLORS['surface_variant']
         self._setup_qty_button_bg(consume_btn, consume_btn_bg)
         consume_btn.bind(on_press=lambda *args: self._on_checkbox_active(consume_btn, not self.is_consumed))
         self.actions_container.add_widget(consume_btn)
@@ -686,7 +762,7 @@ class ItemListItem(BoxLayout):
             height=dp(18),
             font_size=dp(20),
         )
-        consume_icon.color = COLORS['on_primary'] if self.is_consumed else COLORS['text_primary']
+        consume_icon.color = COLORS['on_primary'] if self.is_consumed else COLORS['text_secondary']
         consume_anchor.add_widget(consume_icon)
         consume_btn.add_widget(consume_anchor)
         # 保存图标引用以便更新颜色
@@ -708,12 +784,22 @@ class ItemListItem(BoxLayout):
         # 使用 FloatLayout 包裹按钮组，通过 pos_hint 垂直居中
         actions_float = FloatLayout(
             size_hint=(None, None),
-            width=dp(132),
-            height=dp(96),  # 与卡片高度相同
+            width=dp(114),
+            height=self.height,
         )
+        self.actions_float = actions_float
         self.actions_container.pos_hint = {'right': 1, 'center_y': 0.5}
         actions_float.add_widget(self.actions_container)
         self.add_widget(actions_float)
+
+    def _update_leading_icon(self, *_args):
+        if not hasattr(self, "icon_box") or not hasattr(self, "icon_widget"):
+            return
+        self.icon_widget.text_size = self.icon_widget.size
+        self.icon_widget.pos = (
+            self.icon_box.x + (self.icon_box.width - self.icon_widget.width) / 2,
+            self.icon_box.y + (self.icon_box.height - self.icon_widget.height) / 2 - dp(1),
+        )
 
     def _on_checkbox_active_internal(self, checkbox, value):
         """内部复选框状态变化处理"""
@@ -732,9 +818,9 @@ class ItemListItem(BoxLayout):
                 self._restore_from_consumed()
                 # 更新消耗按钮样式
                 if hasattr(self, 'consume_btn'):
-                    self._setup_qty_button_bg(self.consume_btn, [0.9, 0.9, 0.9, 1])
+                    self._setup_qty_button_bg(self.consume_btn, COLORS['surface_variant'])
                 if hasattr(self, 'consume_icon'):
-                    self.consume_icon.color = COLORS['text_primary']
+                    self.consume_icon.color = COLORS['text_secondary']
         self.dispatch('on_status_changed')
 
         # 同步隐藏复选框的状态
@@ -763,6 +849,7 @@ class ItemListItem(BoxLayout):
                     button._qty_btn_color = Color(*btn_color)
                     button._qty_btn_rect = RoundedRectangle(pos=button.pos, size=button.size, radius=[dp(8)])
             else:
+                button._qty_btn_color.rgba = btn_color
                 button._qty_btn_rect.pos = button.pos
                 button._qty_btn_rect.size = button.size
 
@@ -865,15 +952,21 @@ class ItemListItem(BoxLayout):
         elif self.days_until_expiry <= 3:
             return COLORS['warning_container']
         else:
-            # 没有过期且非即将过期的物品使用绿色底色
-            return COLORS['success_container']
+            return COLORS['surface_elevated']
     
     def _update_rect(self, *args):
         self.canvas.before.clear()
         bg_color = self._get_bg_color()
         with self.canvas.before:
             Color(*bg_color)
-            RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(16)])
+            RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(LIST_CARD["radius"])])
+        self.canvas.after.clear()
+        with self.canvas.after:
+            Color(*COLORS['divider'])
+            Line(
+                width=dp(1),
+                rounded_rectangle=(self.x, self.y, self.width, self.height, dp(LIST_CARD["radius"]))
+            )
     
     def on_touch_move(self, touch):
         is_hovering = self.collide_point(*touch.pos)
@@ -930,7 +1023,7 @@ class ItemListItem(BoxLayout):
                 return (base[0] * 0.94, base[1] * 0.94, base[2] * 0.94, 1)
             return base
         elif self.is_hovering:
-            return COLORS['surface']
+            return COLORS['surface_tint']
         return base
     
     def _update_press_effect(self):
@@ -1100,6 +1193,13 @@ class MainScreen(Screen):
             with content_box.canvas.before:
                 Color(*COLORS['surface_elevated'])
                 RoundedRectangle(size=content_box.size, pos=content_box.pos, radius=[dp(24)])
+            content_box.canvas.after.clear()
+            with content_box.canvas.after:
+                Color(*COLORS['divider'])
+                Line(
+                    width=dp(1),
+                    rounded_rectangle=(content_box.x, content_box.y, content_box.width, content_box.height, dp(24))
+                )
 
         update_modal_background()
         content_box.bind(pos=update_modal_background, size=update_modal_background)
@@ -1178,7 +1278,7 @@ class MainScreen(Screen):
             height=dp(44),
             font_size=dp(15),
             bold=True,
-            background_color=COLORS['surface_variant'],
+            background_color=COLORS['surface_tint'],
             background_normal='',
             border=(0, 0, 0, 0),
             color=COLORS['text_secondary'],
@@ -1188,7 +1288,7 @@ class MainScreen(Screen):
             btn = close_btn
             btn.canvas.before.clear()
             with btn.canvas.before:
-                Color(*COLORS['surface_variant'])
+                Color(*COLORS['surface_tint'])
                 RoundedRectangle(pos=btn.pos, size=btn.size, radius=[dp(12)])
 
         close_btn.canvas.before.clear()
@@ -1233,21 +1333,21 @@ class MainScreen(Screen):
 
                 # 更新图标和文字颜色
                 if hasattr(self_self, 'icon_widget'):
-                    self_self.icon_widget.color = (1, 1, 1, 1) if is_current_selected else COLORS['primary']
+                    self_self.icon_widget.color = COLORS['on_primary_container'] if is_current_selected else COLORS['primary']
                 if hasattr(self_self, 'text_label'):
-                    self_self.text_label.color = (1, 1, 1, 1) if is_current_selected else COLORS['text_secondary']
+                    self_self.text_label.color = COLORS['on_primary_container'] if is_current_selected else COLORS['text_secondary']
                     self_self.text_label.bold = is_current_selected
 
                 # 更新背景
                 self_self.canvas.before.clear()
                 with self_self.canvas.before:
                     if is_current_selected:
-                        Color(*COLORS['primary'])
+                        Color(*COLORS['primary_container'])
                         RoundedRectangle(pos=self_self.pos, size=self_self.size, radius=[dp(16)])
                     else:
                         Color(*COLORS['surface'])
                         RoundedRectangle(pos=self_self.pos, size=self_self.size, radius=[dp(16)])
-                        Color(0, 0, 0, 0.05)
+                        Color(*COLORS['divider'])
                         Line(width=dp(1), rounded_rectangle=(
                             self_self.x, self_self.y, self_self.width, self_self.height, dp(16)))
             return update_updater
@@ -1285,7 +1385,7 @@ class MainScreen(Screen):
             valign="center",
             font_size=dp(24),
         )
-        icon.color = (1, 1, 1, 1) if is_selected else COLORS['primary']
+        icon.color = COLORS['on_primary_container'] if is_selected else COLORS['primary']
         card.icon_widget = icon
         inner_layout.add_widget(icon)
 
@@ -1296,7 +1396,7 @@ class MainScreen(Screen):
             height=dp(20),
             font_size=dp(15),
             bold=is_selected,
-            color=(1, 1, 1, 1) if is_selected else COLORS['text_secondary'],
+            color=COLORS['on_primary_container'] if is_selected else COLORS['text_secondary'],
             halign="left",
             valign="middle",
         )
@@ -1372,11 +1472,11 @@ class MainScreen(Screen):
         stats_container = BoxLayout(
             orientation='vertical',
             size_hint_y=None,
-            height=dp(96),
+            height=dp(140),
             padding=(dp(16), dp(12), dp(16), dp(12)),
         )
         
-        cards_row = BoxLayout(size_hint_y=None, height=dp(84), spacing=dp(12))
+        cards_row = BoxLayout(size_hint_y=None, height=dp(116), spacing=dp(12))
         
         self.total_card = StatCard(
             "总物品",

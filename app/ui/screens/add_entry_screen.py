@@ -1,22 +1,207 @@
 # -*- coding: utf-8 -*-
 """
-选择添加方式屏幕 - 展示三种添加物品的入口（仅展示，不实现逻辑）
-1. 从订单截图自动批量导入
-2. 拍照识别生产日期 + 手动选择物品类别
-3. 手动添加
+选择添加方式屏幕
 """
 
-from kivy.uix.screenmanager import Screen
+from kivy.graphics import Color, Line, Rectangle, RoundedRectangle
+from kivy.metrics import dp
+from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
-from kivy.metrics import dp
+from kivy.uix.screenmanager import Screen
 from kivymd.app import MDApp
-from kivymd.uix.card import MDCard
-from kivymd.uix.button import MDButton, MDIconButton, MDButtonText
+from kivymd.uix.label import MDIcon
 
-from app.utils.font_helper import apply_font_to_widget, CHINESE_FONT_NAME
+from app.ui.theme.design_tokens import COLOR_PALETTE, get_card_style, get_font_size
+from app.utils.font_helper import CHINESE_FONT_NAME as CHINESE_FONT
 
-CHINESE_FONT = CHINESE_FONT_NAME
+COLORS = COLOR_PALETTE
+LIST_CARD = get_card_style("list")
+
+
+def _bind_label_text(widget, horizontal_padding=0):
+    widget.bind(
+        size=lambda inst, val: setattr(
+            inst, "text_size", (max(0, val[0] - horizontal_padding), None)
+        )
+    )
+
+
+class EntryActionCard(ButtonBehavior, BoxLayout):
+    """Single entry option card."""
+
+    __events__ = ("on_release",)
+
+    def __init__(self, title, subtitle, icon, cta_text, accent, enabled, **kwargs):
+        super().__init__(**kwargs)
+        self.orientation = "horizontal"
+        self.size_hint_y = None
+        self.height = dp(128)
+        self.padding = dp(LIST_CARD["padding"])
+        self.spacing = dp(14)
+        self.enabled = enabled
+        self._accent = accent
+        self._pressed = False
+        self._icon_bg = None
+        self._build_ui(title, subtitle, icon, cta_text)
+        self.bind(pos=self._redraw, size=self._redraw)
+        self._redraw()
+
+    def _build_ui(self, title, subtitle, icon, cta_text):
+        icon_shell = BoxLayout(
+            orientation="vertical",
+            size_hint=(None, None),
+            width=dp(56),
+            height=dp(56),
+            padding=dp(12),
+        )
+        self._icon_bg = icon_shell
+        with icon_shell.canvas.before:
+            Color(
+                *(COLORS["surface_tint"] if self.enabled else COLORS["surface_variant"])
+            )
+            self._icon_bg_rect = RoundedRectangle(
+                pos=icon_shell.pos,
+                size=icon_shell.size,
+                radius=[dp(18)],
+            )
+        icon_shell.bind(
+            pos=lambda inst, _val: setattr(self._icon_bg_rect, "pos", inst.pos),
+            size=lambda inst, _val: setattr(self._icon_bg_rect, "size", inst.size),
+        )
+        icon_shell.add_widget(
+            MDIcon(
+                icon=icon,
+                theme_text_color="Custom",
+                text_color=self._accent if self.enabled else COLORS["text_hint"],
+                halign="center",
+                valign="middle",
+                font_size=dp(26),
+            )
+        )
+        self.add_widget(icon_shell)
+
+        body = BoxLayout(orientation="vertical", spacing=dp(6))
+
+        title_label = Label(
+            text=title,
+            size_hint_y=None,
+            height=dp(24),
+            halign="left",
+            valign="middle",
+            font_size=dp(get_font_size("title_medium")),
+            bold=True,
+            color=COLORS["text_primary"],
+        )
+        _bind_label_text(title_label)
+        if CHINESE_FONT:
+            title_label.font_name = CHINESE_FONT
+        body.add_widget(title_label)
+
+        subtitle_label = Label(
+            text=subtitle,
+            halign="left",
+            valign="top",
+            font_size=dp(get_font_size("body_medium")),
+            color=COLORS["text_secondary"],
+        )
+        _bind_label_text(subtitle_label)
+        if CHINESE_FONT:
+            subtitle_label.font_name = CHINESE_FONT
+        body.add_widget(subtitle_label)
+        self.add_widget(body)
+
+        status_box = BoxLayout(
+            orientation="vertical",
+            size_hint=(None, 1),
+            width=dp(92),
+            spacing=dp(8),
+        )
+
+        self._status_chip = Label(
+            text="已就绪" if self.enabled else "规划中",
+            size_hint_y=None,
+            height=dp(28),
+            halign="center",
+            valign="middle",
+            font_size=dp(get_font_size("label_medium")),
+            color=self._accent if self.enabled else COLORS["text_hint"],
+        )
+        self._status_chip.bind(
+            size=lambda inst, val: setattr(inst, "text_size", (val[0], val[1]))
+        )
+        if CHINESE_FONT:
+            self._status_chip.font_name = CHINESE_FONT
+        status_box.add_widget(self._status_chip)
+
+        self._cta = Label(
+            text=cta_text,
+            size_hint_y=None,
+            height=dp(24),
+            halign="center",
+            valign="middle",
+            font_size=dp(get_font_size("label_large")),
+            bold=self.enabled,
+            color=self._accent if self.enabled else COLORS["text_hint"],
+        )
+        self._cta.bind(size=lambda inst, val: setattr(inst, "text_size", val))
+        if CHINESE_FONT:
+            self._cta.font_name = CHINESE_FONT
+        status_box.add_widget(self._cta)
+
+        self.add_widget(status_box)
+
+    def _redraw(self, *_args):
+        radius = dp(LIST_CARD["radius"])
+        bg_color = COLORS["surface_elevated"] if self.enabled else COLORS["surface"]
+        if self._pressed and self.enabled:
+            bg_color = COLORS["surface_tint"]
+
+        self.canvas.before.clear()
+        self.canvas.after.clear()
+        with self.canvas.before:
+            Color(*bg_color)
+            RoundedRectangle(pos=self.pos, size=self.size, radius=[radius])
+        with self.canvas.after:
+            Color(*(self._accent if self.enabled else COLORS["divider"]))
+            Line(
+                width=dp(1),
+                rounded_rectangle=(self.x, self.y, self.width, self.height, radius),
+            )
+
+        self._status_chip.canvas.before.clear()
+        with self._status_chip.canvas.before:
+            Color(
+                *(
+                    COLORS["primary_container"]
+                    if self.enabled
+                    else COLORS["surface_variant"]
+                )
+            )
+            RoundedRectangle(
+                pos=self._status_chip.pos,
+                size=self._status_chip.size,
+                radius=[dp(14)],
+            )
+
+    def on_touch_down(self, touch):
+        if self.enabled and self.collide_point(*touch.pos):
+            self._pressed = True
+            self._redraw()
+            return True
+        return super().on_touch_down(touch)
+
+    def on_touch_up(self, touch):
+        should_dispatch = self._pressed and self.collide_point(*touch.pos)
+        self._pressed = False
+        self._redraw()
+        if should_dispatch:
+            self.dispatch("on_release")
+            return True
+        return super().on_touch_up(touch)
+
+    def on_release(self, *_args):
+        pass
 
 
 class AddEntryScreen(Screen):
@@ -28,161 +213,163 @@ class AddEntryScreen(Screen):
         self._build_ui()
 
     def _build_ui(self):
-        root = BoxLayout(orientation="vertical", padding=dp(16), spacing=dp(16))
-
-        # 头部
-        header = BoxLayout(size_hint_y=None, height=dp(56), spacing=dp(8))
-
-        back_btn = MDIconButton(
-            icon="arrow-left",
-            on_release=self._on_back_click,
-            font_name="Roboto",
+        root = BoxLayout(orientation="vertical")
+        with root.canvas.before:
+            Color(*COLORS["background"])
+            self._bg_rect = Rectangle(pos=root.pos, size=root.size)
+        root.bind(
+            pos=lambda inst, _val: setattr(self._bg_rect, "pos", inst.pos),
+            size=lambda inst, _val: setattr(self._bg_rect, "size", inst.size),
         )
-        header.add_widget(back_btn)
 
-        title = Label(
-            text="选择添加方式",
-            font_size=dp(20),
-            bold=True,
-            color=(0.2, 0.4, 0.6, 1),
+        root.add_widget(self._create_header())
+
+        content = BoxLayout(
+            orientation="vertical",
+            padding=(dp(16), dp(12), dp(16), dp(20)),
+            spacing=dp(14),
         )
-        if CHINESE_FONT:
-            title.font_name = CHINESE_FONT
-        header.add_widget(title)
-
-        root.add_widget(header)
-
-        # 说明文字
-        hint = Label(
-            text="未来将支持更智能的添加方式，现在先作为功能预览展示：",
-            size_hint_y=None,
-            height=dp(40),
-            color=(0.4, 0.4, 0.4, 1),
-        )
-        if CHINESE_FONT:
-            hint.font_name = CHINESE_FONT
-        root.add_widget(hint)
-
-        # 三个卡片
-        cards_box = BoxLayout(orientation="vertical", spacing=dp(12))
-
-        cards_box.add_widget(self._create_card(
+        preview_card = EntryActionCard(
             title="从订单截图自动批量导入",
-            subtitle="上传买菜 / 外卖订单截图，自动识别物品名称和数量。",
+            subtitle="上传买菜或外卖订单截图，系统将自动拆分出物品名称、数量和日期线索。",
             icon="image-multiple",
-            developed=False,
-        ))
+            cta_text="即将开放",
+            accent=COLORS["secondary"],
+            enabled=False,
+        )
+        content.add_widget(preview_card)
 
-        cards_box.add_widget(self._create_card(
-            title="拍照识别生产日期 + 选择类别",
-            subtitle="对准包装上的生产日期拍照，自动识别日期，再手动选类别。",
+        capture_card = EntryActionCard(
+            title="拍照识别日期后补充信息",
+            subtitle="先识别包装上的生产日期，再补足分类、数量和库存信息，适合快速录入。",
             icon="camera-outline",
-            developed=False,
-        ))
+            cta_text="即将开放",
+            accent=COLORS["accent"],
+            enabled=False,
+        )
+        content.add_widget(capture_card)
 
-        cards_box.add_widget(self._create_card(
-            title="手动添加",
-            subtitle="填写名称、数量、日期等详细信息（当前已实现）。",
+        manual_card = EntryActionCard(
+            title="手动添加物品",
+            subtitle="使用完整表单录入名称、分类、日期、提醒和说明，当前已经可用。",
             icon="pencil-plus",
-            developed=True,
-        ))
+            cta_text="进入",
+            accent=COLORS["primary"],
+            enabled=True,
+        )
+        manual_card.bind(on_release=self._go_to_manual_add)
+        content.add_widget(manual_card)
 
-        root.add_widget(cards_box)
-
+        root.add_widget(content)
         self.add_widget(root)
 
-    def _create_card(self, title: str, subtitle: str, icon: str, developed: bool) -> MDCard:
-        """创建单个添加方式卡片"""
-        card = MDCard(
+    def _create_header(self):
+        header = BoxLayout(
+            orientation="vertical",
             size_hint_y=None,
-            height=dp(120),
-            padding=dp(12),
-            radius=[dp(10), dp(10), dp(10), dp(10)],
+            height=dp(92),
+            padding=(dp(16), dp(16), dp(16), dp(12)),
+            spacing=dp(2),
         )
-
-        layout = BoxLayout(orientation="horizontal", spacing=dp(12))
-
-        # 左侧图标
-        icon_btn = MDIconButton(
-            icon=icon,
-            disabled=True,
-            font_name="Roboto",
+        with header.canvas.before:
+            Color(*COLORS["surface"])
+            self._header_bg = Rectangle(pos=header.pos, size=header.size)
+        with header.canvas.after:
+            Color(*COLORS["divider"])
+            self._header_divider = Line(points=[])
+        header.bind(
+            pos=lambda inst, _val: setattr(self._header_bg, "pos", inst.pos),
+            size=lambda inst, _val: setattr(self._header_bg, "size", inst.size),
         )
-        layout.add_widget(icon_btn)
+        header.bind(pos=self._update_header_divider, size=self._update_header_divider)
 
-        # 中间标题 + 描述
-        text_box = BoxLayout(orientation="vertical", spacing=dp(4))
+        top_row = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(12))
 
-        title_label = Label(
-            text=title,
+        back_shell = BoxLayout(
+            orientation="vertical",
+            size_hint=(None, None),
+            width=dp(40),
+            height=dp(40),
+            padding=dp(8),
+        )
+        with back_shell.canvas.before:
+            Color(*COLORS["surface_tint"])
+            self._back_bg = RoundedRectangle(
+                pos=back_shell.pos,
+                size=back_shell.size,
+                radius=[dp(14)],
+            )
+        back_shell.bind(
+            pos=lambda inst, _val: setattr(self._back_bg, "pos", inst.pos),
+            size=lambda inst, _val: setattr(self._back_bg, "size", inst.size),
+            on_touch_up=lambda inst, touch: self._handle_back_touch(inst, touch),
+        )
+        back_shell.add_widget(
+            MDIcon(
+                icon="arrow-left",
+                theme_text_color="Custom",
+                text_color=COLORS["text_primary"],
+                halign="center",
+                valign="middle",
+                font_size=dp(22),
+            )
+        )
+        top_row.add_widget(back_shell)
+
+        title_box = BoxLayout(orientation="vertical", spacing=dp(2))
+        title = Label(
+            text="选择添加方式",
             size_hint_y=None,
-            height=dp(26),
-            bold=True,
-            color=(0.1, 0.1, 0.1, 1),
-        )
-        subtitle_label = Label(
-            text=subtitle,
-            color=(0.4, 0.4, 0.4, 1),
+            height=dp(24),
             halign="left",
-            valign="top",
+            valign="middle",
+            font_size=dp(get_font_size("headline_small")),
+            bold=True,
+            color=COLORS["text_primary"],
         )
-        subtitle_label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
-
+        _bind_label_text(title)
         if CHINESE_FONT:
-            title_label.font_name = CHINESE_FONT
-            subtitle_label.font_name = CHINESE_FONT
+            title.font_name = CHINESE_FONT
+        title_box.add_widget(title)
 
-        text_box.add_widget(title_label)
-        text_box.add_widget(subtitle_label)
-        layout.add_widget(text_box)
-
-        # 右侧按钮
-        if developed:
-            btn = MDButton(
-                style="filled",
-                on_release=self._go_to_manual_add,
-                size_hint_x=None,
-                width=dp(80),
-            )
-            btn_text = MDButtonText(text="进入")
-        else:
-            btn = MDButton(
-                style="outlined",
-                disabled=True,
-                size_hint_x=None,
-                width=dp(80),
-            )
-            btn_text = MDButtonText(text="敬请期待")
-
+        subtitle = Label(
+            text="先选入口，再进入对应的录入流程。",
+            size_hint_y=None,
+            height=dp(18),
+            halign="left",
+            valign="middle",
+            font_size=dp(get_font_size("body_medium")),
+            color=COLORS["text_secondary"],
+        )
+        _bind_label_text(subtitle)
         if CHINESE_FONT:
-            btn_text.font_name = CHINESE_FONT
-        btn.add_widget(btn_text)
-        layout.add_widget(btn)
+            subtitle.font_name = CHINESE_FONT
+        title_box.add_widget(subtitle)
 
-        card.add_widget(layout)
-        return card
+        top_row.add_widget(title_box)
+        header.add_widget(top_row)
+        return header
 
-    def _on_back_click(self, instance):
-        """返回主页"""
+    def _update_header_divider(self, instance, _value):
+        self._header_divider.points = [
+            instance.x,
+            instance.y,
+            instance.right,
+            instance.y,
+        ]
+
+    def _handle_back_touch(self, widget, touch):
+        if widget.collide_point(*touch.pos):
+            self._on_back_click(None)
+            return True
+        return False
+
+    def _on_back_click(self, _instance):
         app = MDApp.get_running_app()
         if hasattr(app, "screen_manager"):
             app.screen_manager.current = "main"
 
-    def _go_to_manual_add(self, instance):
-        """跳转到已经实现的手动添加表单"""
+    def _go_to_manual_add(self, _instance):
         app = MDApp.get_running_app()
         if hasattr(app, "screen_manager"):
             app.screen_manager.current = "add_item"
-
-    def on_enter(self):
-        """进入时为整个屏幕应用中文字体"""
-        try:
-            import app.main as main_module
-
-            font = getattr(main_module, "CHINESE_FONT_NAME", None)
-        except Exception:
-            font = None
-        if font:
-            apply_font_to_widget(self, font)
-
-

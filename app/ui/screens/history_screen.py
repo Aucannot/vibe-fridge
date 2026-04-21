@@ -1,207 +1,257 @@
 # -*- coding: utf-8 -*-
 """
-历史屏幕 - 显示已食用和已过期的物品
+历史屏幕
 """
 
-from kivy.uix.screenmanager import Screen
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.label import Label
-from kivy.uix.scrollview import ScrollView
-from kivy.graphics import Color, Rectangle, RoundedRectangle
-from kivy.metrics import dp
-from kivy.clock import Clock
-from kivy.animation import Animation
-from kivy.utils import get_color_from_hex
-from kivymd.uix.label import MDIcon
 from datetime import date
 
+from kivy.graphics import Color, Line, Rectangle, RoundedRectangle
+from kivy.metrics import dp
+from kivy.uix.behaviors import ButtonBehavior
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.label import Label
+from kivy.uix.screenmanager import Screen
+from kivy.uix.scrollview import ScrollView
+from kivymd.uix.label import MDIcon
+
 from app.services.item_service import item_service
+from app.ui.theme.design_tokens import COLOR_PALETTE, get_card_style, get_font_size
+from app.utils.font_helper import CHINESE_FONT_NAME as CHINESE_FONT
+from app.utils.font_helper import apply_font_to_widget
 from app.utils.logger import setup_logger
-from app.utils.font_helper import apply_font_to_widget, CHINESE_FONT_NAME as CHINESE_FONT
-from app.ui.theme.design_tokens import COLOR_PALETTE
 
 logger = setup_logger(__name__)
 
 COLORS = COLOR_PALETTE
+HERO_CARD = get_card_style("hero")
+LIST_CARD = get_card_style("list")
+
+
+def _bind_label_text(widget, horizontal_padding=0):
+    widget.bind(
+        size=lambda inst, val: setattr(
+            inst, "text_size", (max(0, val[0] - horizontal_padding), None)
+        )
+    )
+
+
+class RestoreButton(ButtonBehavior, BoxLayout):
+    __events__ = ("on_release",)
+
+    def __init__(self, text="恢复", **kwargs):
+        super().__init__(**kwargs)
+        self.orientation = "vertical"
+        self.size_hint = (None, None)
+        self.size = (dp(72), dp(34))
+        self.padding = (dp(12), dp(8))
+        self._pressed = False
+        label = Label(
+            text=text,
+            halign="center",
+            valign="middle",
+            font_size=dp(get_font_size("label_medium")),
+            color=COLORS["on_primary_container"],
+        )
+        label.bind(size=lambda inst, val: setattr(inst, "text_size", val))
+        if CHINESE_FONT:
+            label.font_name = CHINESE_FONT
+        self.add_widget(label)
+        self.bind(pos=self._redraw, size=self._redraw)
+        self._redraw()
+
+    def _redraw(self, *_args):
+        bg_color = COLORS["surface_tint"] if self._pressed else COLORS["primary_container"]
+        radius = dp(16)
+        self.canvas.before.clear()
+        self.canvas.after.clear()
+        with self.canvas.before:
+            Color(*bg_color)
+            RoundedRectangle(pos=self.pos, size=self.size, radius=[radius])
+        with self.canvas.after:
+            Color(*COLORS["divider"])
+            Line(
+                width=dp(1),
+                rounded_rectangle=(self.x, self.y, self.width, self.height, radius),
+            )
+
+    def on_touch_down(self, touch):
+        if self.collide_point(*touch.pos):
+            self._pressed = True
+            self._redraw()
+            return True
+        return super().on_touch_down(touch)
+
+    def on_touch_up(self, touch):
+        should_dispatch = self._pressed and self.collide_point(*touch.pos)
+        self._pressed = False
+        self._redraw()
+        if should_dispatch:
+            self.dispatch("on_release")
+            return True
+        return super().on_touch_up(touch)
+
+    def on_release(self, *_args):
+        pass
 
 
 class HistoryItemCard(BoxLayout):
-    """历史物品卡片"""
-    __events__ = ('on_restore', 'on_delete')
-
-    def __init__(self, item_data, **kwargs):
+    def __init__(self, item_data, on_restore, **kwargs):
         super().__init__(**kwargs)
         self.item_id = str(item_data.id)
         self.item_name = item_data.name
-        self.category = item_data.wiki.category.name if item_data.wiki and item_data.wiki.category else "其他"
-        self.expiry_date = item_data.expiry_date.strftime('%Y-%m-%d') if item_data.expiry_date else '无'
+        self.category = (
+            item_data.wiki.category.name
+            if item_data.wiki and item_data.wiki.category
+            else "其他"
+        )
+        self.expiry_date = (
+            item_data.expiry_date.strftime("%Y-%m-%d") if item_data.expiry_date else "无"
+        )
         self.quantity = item_data.quantity
         self.status = item_data.status.value
-        self.consumed_at = item_data.consumed_at.strftime('%Y-%m-%d %H:%M') if item_data.consumed_at else None
-
-        if item_data.expiry_date:
-            delta = item_data.expiry_date - date.today()
-            self.days_until_expiry = delta.days
-        else:
-            self.days_until_expiry = 0
-
+        self.consumed_at = (
+            item_data.consumed_at.strftime("%Y-%m-%d %H:%M")
+            if item_data.consumed_at
+            else None
+        )
+        self.days_until_expiry = (
+            (item_data.expiry_date - date.today()).days if item_data.expiry_date else 0
+        )
         self.orientation = "horizontal"
         self.size_hint_y = None
-        self.size_hint_x = 1
-        self.height = dp(96)
-        self.padding = (dp(16), dp(10), dp(8), dp(10))
-        self.spacing = dp(14)
+        self.height = dp(108)
+        self.padding = (dp(14), dp(14), dp(14), dp(14))
+        self.spacing = dp(12)
+        self._build_ui(on_restore)
+        self.bind(pos=self._redraw, size=self._redraw)
+        self._redraw()
 
-        self._setup_ui()
-        self._setup_background()
-
-        if CHINESE_FONT:
-            apply_font_to_widget(self, CHINESE_FONT)
-
-    def _setup_ui(self):
-        icon_map = {
-            "食品": "food-apple",
-            "日用品": "home",
-            "药品": "medical-bag",
-            "化妆品": "face-woman",
-            "其他": "package-variant",
-        }
-        icon_name = icon_map.get(self.category, "package-variant")
-        status_color = self._get_status_color()
-
-        icon = MDIcon(
-            icon=icon_name,
-            theme_text_color="Custom",
-            text_color=status_color,
-            size_hint_x=None,
-            width=dp(48),
-            size_hint_y=None,
-            height=dp(76),
-            halign="center",
-            valign="middle",
-            font_size=dp(28),
-        )
-        self.add_widget(icon)
-
-        text_box = BoxLayout(
+    def _build_ui(self, on_restore):
+        icon_shell = BoxLayout(
             orientation="vertical",
-            padding=(dp(4), dp(2)),
-            spacing=dp(6),
-            size_hint_x=1,
-            size_hint_y=None,
+            size_hint=(None, None),
+            width=dp(48),
+            height=dp(48),
+            padding=dp(10),
         )
-        text_box.bind(minimum_height=lambda inst, val: setattr(inst, "height", val))
+        with icon_shell.canvas.before:
+            Color(*self._status_bg_color())
+            self._icon_bg = RoundedRectangle(
+                pos=icon_shell.pos, size=icon_shell.size, radius=[dp(16)]
+            )
+        icon_shell.bind(
+            pos=lambda inst, _val: setattr(self._icon_bg, "pos", inst.pos),
+            size=lambda inst, _val: setattr(self._icon_bg, "size", inst.size),
+        )
+        icon_shell.add_widget(
+            MDIcon(
+                icon=self._category_icon(),
+                theme_text_color="Custom",
+                text_color=self._status_text_color(),
+                halign="center",
+                valign="middle",
+                font_size=dp(22),
+            )
+        )
+        self.add_widget(icon_shell)
 
-        headline_text = f"{self.item_name}"
-        if self.quantity > 1:
-            headline_text += f" ×{self.quantity}"
+        text_box = BoxLayout(orientation="vertical", spacing=dp(4))
 
         name_label = Label(
-            text=headline_text,
+            text=f"{self.item_name} ×{self.quantity}" if self.quantity > 1 else self.item_name,
             size_hint_y=None,
-            height=dp(28),
+            height=dp(24),
             halign="left",
             valign="middle",
-            color=COLORS['text_primary'],
-            font_size=dp(18),
+            font_size=dp(get_font_size("title_small")),
             bold=True,
+            color=COLORS["text_primary"],
         )
-        name_label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
+        _bind_label_text(name_label)
         if CHINESE_FONT:
             name_label.font_name = CHINESE_FONT
         text_box.add_widget(name_label)
 
-        status_text = self._get_main_status_text()
-        supporting_label = Label(
-            text=f"{self.category}  ·  {status_text}",
+        status_label = Label(
+            text=f"{self.category} · {self._status_text()}",
             size_hint_y=None,
-            height=dp(22),
+            height=dp(18),
             halign="left",
             valign="middle",
-            color=COLORS['text_secondary'],
-            font_size=dp(14),
+            font_size=dp(get_font_size("body_small")),
+            color=COLORS["text_secondary"],
         )
-        supporting_label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
+        _bind_label_text(status_label)
         if CHINESE_FONT:
-            supporting_label.font_name = CHINESE_FONT
-        text_box.add_widget(supporting_label)
+            status_label.font_name = CHINESE_FONT
+        text_box.add_widget(status_label)
 
-        if self.expiry_date != "无":
-            date_text = self._get_date_text()
-            date_label = Label(
-                text=date_text,
-                size_hint_y=None,
-                height=dp(22),
-                halign="left",
-                valign="middle",
-                color=self._get_status_color(),
-                font_size=dp(13),
-            )
-            date_label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
-            if CHINESE_FONT:
-                date_label.font_name = CHINESE_FONT
-            text_box.add_widget(date_label)
-
+        detail_label = Label(
+            text=self._detail_text(),
+            halign="left",
+            valign="top",
+            font_size=dp(get_font_size("body_small")),
+            color=self._status_text_color(),
+        )
+        _bind_label_text(detail_label)
+        if CHINESE_FONT:
+            detail_label.font_name = CHINESE_FONT
+        text_box.add_widget(detail_label)
         self.add_widget(text_box)
 
-    def _get_status_color(self):
-        if self.status == 'consumed':
-            return COLORS['success']
-        elif self.days_until_expiry < 0:
-            return COLORS['error']
-        else:
-            return COLORS['text_secondary']
+        action_box = BoxLayout(
+            orientation="vertical",
+            size_hint=(None, 1),
+            width=dp(76),
+            padding=(0, dp(10), 0, dp(10)),
+        )
+        restore_btn = RestoreButton()
+        restore_btn.bind(on_release=lambda *_args: on_restore(self.item_id))
+        action_box.add_widget(restore_btn)
+        self.add_widget(action_box)
 
-    def _get_main_status_text(self):
-        if self.status == 'consumed':
-            return "已食用"
-        elif self.days_until_expiry < 0:
-            return "已过期"
-        else:
-            return "正常"
+    def _status_bg_color(self):
+        return (
+            COLORS["success_container"]
+            if self.status == "consumed"
+            else COLORS["error_container"]
+        )
 
-    def _get_date_text(self):
-        if self.status == 'consumed' and self.consumed_at:
-            return f"食用时间: {self.consumed_at}"
-        elif self.days_until_expiry < 0:
-            return f"过期: {self.expiry_date}"
-        else:
-            return f"过期: {self.expiry_date}"
+    def _status_text_color(self):
+        return COLORS["success"] if self.status == "consumed" else COLORS["error"]
 
-    def _setup_background(self):
-        bg_color = self._get_bg_color()
+    def _status_text(self):
+        return "已食用" if self.status == "consumed" else "已过期"
+
+    def _detail_text(self):
+        if self.status == "consumed" and self.consumed_at:
+            return f"食用时间：{self.consumed_at}"
+        if self.expiry_date != "无":
+            return f"过期日期：{self.expiry_date}"
+        return "无日期信息"
+
+    def _category_icon(self):
+        return {
+            "食品": "food-apple",
+            "日用品": "home-outline",
+            "药品": "medical-bag",
+            "化妆品": "lipstick",
+            "其他": "package-variant-closed",
+        }.get(self.category, "package-variant-closed")
+
+    def _redraw(self, *_args):
+        radius = dp(LIST_CARD["radius"])
         self.canvas.before.clear()
+        self.canvas.after.clear()
         with self.canvas.before:
-            Color(*bg_color)
-            RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(12)])
-        self.bind(pos=self._update_rect, size=self._update_rect)
-
-    def _get_bg_color(self):
-        if self.status == 'consumed':
-            return COLORS['success_container'] if 'success_container' in COLORS else (0.9, 0.98, 0.93, 1)
-        else:
-            return COLORS['error_container'] if 'error_container' in COLORS else (0.98, 0.93, 0.93, 1)
-
-    def _update_rect(self, *args):
-        self.canvas.before.clear()
-        bg_color = self._get_bg_color()
-        with self.canvas.before:
-            Color(*bg_color)
-            RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(12)])
-
-    def on_restore(self, *args):
-        """恢复物品"""
-        pass
-
-    def on_delete(self, *args):
-        """删除物品"""
-        pass
-
-    def on_touch_up(self, touch):
-        if self.collide_point(*touch.pos):
-            # 显示操作菜单
-            self.dispatch('on_restore')
-        return super().on_touch_up(touch)
+            Color(*COLORS["surface"])
+            RoundedRectangle(pos=self.pos, size=self.size, radius=[radius])
+        with self.canvas.after:
+            Color(*COLORS["divider"])
+            Line(
+                width=dp(1),
+                rounded_rectangle=(self.x, self.y, self.width, self.height, radius),
+            )
 
 
 class HistoryScreen(Screen):
@@ -209,179 +259,319 @@ class HistoryScreen(Screen):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.name = 'history'
-        self._item_widgets = {}
+        self.name = "history"
+        self.item_list_layout = None
+        self._consumed_value = None
+        self._expired_value = None
         self._build_ui()
 
     def _build_ui(self):
-        main_layout = BoxLayout(orientation='vertical', size_hint=(1, 1))
-
-        with main_layout.canvas.before:
-            Color(*COLORS['background'])
-            self.bg_rect = Rectangle(pos=main_layout.pos, size=main_layout.size)
-
-        main_layout.bind(pos=self._update_bg_rect, size=self._update_bg_rect)
-
-        self._create_header(main_layout)
-        self._create_list_section(main_layout)
-
-        self.add_widget(main_layout)
-
-    def _update_bg_rect(self, instance, value):
-        self.bg_rect.pos = instance.pos
-        self.bg_rect.size = instance.size
-
-    def _create_header(self, parent):
-        header = BoxLayout(
-            orientation='horizontal',
-            size_hint_y=None,
-            height=dp(52),
-            padding=(dp(16), dp(8), dp(16), dp(8)),
+        root = BoxLayout(orientation="vertical")
+        with root.canvas.before:
+            Color(*COLORS["background"])
+            self._bg_rect = Rectangle(pos=root.pos, size=root.size)
+        root.bind(
+            pos=lambda inst, _val: setattr(self._bg_rect, "pos", inst.pos),
+            size=lambda inst, _val: setattr(self._bg_rect, "size", inst.size),
         )
 
-        title_label = Label(
-            text="历史记录",
-            font_size=dp(20),
-            bold=True,
-            color=COLORS['text_primary'],
-            halign="left",
-            valign="middle",
-        )
-        if CHINESE_FONT:
-            title_label.font_name = CHINESE_FONT
-        header.add_widget(title_label)
+        root.add_widget(self._create_header())
 
-        desc_label = Label(
-            text="已食用和已过期的物品",
-            font_size=dp(13),
-            color=COLORS['text_hint'],
-            halign="left",
-            valign="middle",
-        )
-        if CHINESE_FONT:
-            desc_label.font_name = CHINESE_FONT
-        header.add_widget(desc_label)
-
-        parent.add_widget(header)
-
-    def _create_list_section(self, parent):
-        scroll_view = ScrollView(
-            size_hint=(1, 1),
+        scroll = ScrollView(
             do_scroll_x=False,
             bar_width=dp(3),
-            bar_color=(0.2, 0.5, 0.85, 0.3),
-            bar_inactive_color=(0.2, 0.5, 0.85, 0.1),
+            bar_color=(*COLORS["primary"][:3], 0.25),
+            bar_inactive_color=(*COLORS["primary"][:3], 0.1),
         )
+        content = BoxLayout(
+            orientation="vertical",
+            size_hint_y=None,
+            padding=(dp(16), dp(14), dp(16), dp(24)),
+            spacing=dp(14),
+        )
+        content.bind(minimum_height=content.setter("height"))
 
-        with scroll_view.canvas.before:
-            Color(*COLORS['background'])
-            self.scroll_bg = Rectangle(pos=scroll_view.pos, size=scroll_view.size)
+        content.add_widget(self._create_overview_card())
 
-        scroll_view.bind(pos=self._update_scroll_bg, size=self._update_scroll_bg)
+        section_title = Label(
+            text="历史记录",
+            size_hint_y=None,
+            height=dp(24),
+            halign="left",
+            valign="middle",
+            font_size=dp(get_font_size("title_medium")),
+            bold=True,
+            color=COLORS["text_primary"],
+        )
+        _bind_label_text(section_title)
+        if CHINESE_FONT:
+            section_title.font_name = CHINESE_FONT
+        content.add_widget(section_title)
 
         self.item_list_layout = BoxLayout(
             orientation="vertical",
             size_hint_y=None,
-            size_hint_x=1,
-            padding=(dp(12), dp(8), dp(12), dp(16)),
-            spacing=dp(8),
+            spacing=dp(10),
         )
-        self.item_list_layout.bind(minimum_height=self.item_list_layout.setter('height'))
+        self.item_list_layout.bind(minimum_height=self.item_list_layout.setter("height"))
+        content.add_widget(self.item_list_layout)
 
-        scroll_view.add_widget(self.item_list_layout)
-        parent.add_widget(scroll_view)
+        scroll.add_widget(content)
+        root.add_widget(scroll)
+        self.add_widget(root)
 
-    def _update_scroll_bg(self, instance, value):
-        self.scroll_bg.pos = instance.pos
-        self.scroll_bg.size = instance.size
+    def _create_header(self):
+        header = BoxLayout(
+            orientation="vertical",
+            size_hint_y=None,
+            height=dp(92),
+            padding=(dp(20), dp(18), dp(20), dp(12)),
+            spacing=dp(2),
+        )
+        with header.canvas.before:
+            Color(*COLORS["surface"])
+            self._header_bg = Rectangle(pos=header.pos, size=header.size)
+        with header.canvas.after:
+            Color(*COLORS["divider"])
+            self._header_divider = Line(points=[])
+        header.bind(
+            pos=lambda inst, _val: setattr(self._header_bg, "pos", inst.pos),
+            size=lambda inst, _val: setattr(self._header_bg, "size", inst.size),
+        )
+        header.bind(pos=self._update_header_divider, size=self._update_header_divider)
+
+        title = Label(
+            text="历史记录",
+            size_hint_y=None,
+            height=dp(28),
+            halign="left",
+            valign="middle",
+            font_size=dp(get_font_size("headline_small")),
+            bold=True,
+            color=COLORS["text_primary"],
+        )
+        _bind_label_text(title)
+        if CHINESE_FONT:
+            title.font_name = CHINESE_FONT
+        header.add_widget(title)
+
+        subtitle = Label(
+            text="收纳已食用和已过期物品，并提供清晰的恢复入口。",
+            size_hint_y=None,
+            height=dp(18),
+            halign="left",
+            valign="middle",
+            font_size=dp(get_font_size("body_medium")),
+            color=COLORS["text_secondary"],
+        )
+        _bind_label_text(subtitle)
+        if CHINESE_FONT:
+            subtitle.font_name = CHINESE_FONT
+        header.add_widget(subtitle)
+        return header
+
+    def _create_overview_card(self):
+        card = BoxLayout(
+            orientation="vertical",
+            size_hint_y=None,
+            height=dp(146),
+            padding=dp(HERO_CARD["padding"]),
+            spacing=dp(12),
+        )
+        with card.canvas.before:
+            Color(*COLORS["surface_elevated"])
+            self._hero_bg = RoundedRectangle(
+                pos=card.pos, size=card.size, radius=[dp(HERO_CARD["radius"])]
+            )
+        with card.canvas.after:
+            Color(*COLORS["divider"])
+            self._hero_outline = Line(
+                rounded_rectangle=(0, 0, 0, 0, dp(HERO_CARD["radius"])),
+                width=dp(1),
+            )
+        card.bind(pos=self._update_hero_card, size=self._update_hero_card)
+
+        eyebrow = Label(
+            text="回收区",
+            size_hint_y=None,
+            height=dp(18),
+            halign="left",
+            valign="middle",
+            font_size=dp(get_font_size("label_medium")),
+            color=COLORS["secondary"],
+        )
+        _bind_label_text(eyebrow)
+        if CHINESE_FONT:
+            eyebrow.font_name = CHINESE_FONT
+        card.add_widget(eyebrow)
+
+        headline = Label(
+            text="把“已食用”和“已过期”分开统计，并给每条记录显式恢复按钮，避免误触。",
+            halign="left",
+            valign="top",
+            font_size=dp(get_font_size("title_medium")),
+            color=COLORS["text_primary"],
+            bold=True,
+        )
+        _bind_label_text(headline)
+        if CHINESE_FONT:
+            headline.font_name = CHINESE_FONT
+        card.add_widget(headline)
+
+        metrics = BoxLayout(size_hint_y=None, height=dp(34), spacing=dp(10))
+        self._consumed_value = self._metric_chip("已食用 0")
+        self._expired_value = self._metric_chip("已过期 0", warn=True)
+        metrics.add_widget(self._consumed_value)
+        metrics.add_widget(self._expired_value)
+        metrics.add_widget(BoxLayout())
+        card.add_widget(metrics)
+        return card
+
+    def _metric_chip(self, text, warn=False):
+        chip = Label(
+            text=text,
+            size_hint=(None, None),
+            width=dp(94),
+            height=dp(34),
+            halign="center",
+            valign="middle",
+            font_size=dp(get_font_size("label_medium")),
+            color=COLORS["error"] if warn else COLORS["success"],
+        )
+        chip.bind(size=lambda inst, val: setattr(inst, "text_size", val))
+        if CHINESE_FONT:
+            chip.font_name = CHINESE_FONT
+        with chip.canvas.before:
+            Color(*(COLORS["error_container"] if warn else COLORS["success_container"]))
+            bg = RoundedRectangle(pos=chip.pos, size=chip.size, radius=[dp(17)])
+        chip.bind(
+            pos=lambda inst, _val: setattr(bg, "pos", inst.pos),
+            size=lambda inst, _val: setattr(bg, "size", inst.size),
+        )
+        return chip
+
+    def _update_header_divider(self, instance, _value):
+        self._header_divider.points = [instance.x, instance.y, instance.right, instance.y]
+
+    def _update_hero_card(self, instance, _value):
+        radius = dp(HERO_CARD["radius"])
+        self._hero_bg.pos = instance.pos
+        self._hero_bg.size = instance.size
+        self._hero_outline.rounded_rectangle = (
+            instance.x,
+            instance.y,
+            instance.width,
+            instance.height,
+            radius,
+        )
+
+    def _show_empty_state(self):
+        empty_card = BoxLayout(
+            orientation="vertical",
+            size_hint_y=None,
+            height=dp(220),
+            padding=(dp(20), dp(28), dp(20), dp(28)),
+            spacing=dp(10),
+        )
+        with empty_card.canvas.before:
+            Color(*COLORS["surface"])
+            bg = RoundedRectangle(
+                pos=empty_card.pos,
+                size=empty_card.size,
+                radius=[dp(HERO_CARD["radius"])],
+            )
+        with empty_card.canvas.after:
+            Color(*COLORS["divider"])
+            outline = Line(
+                width=dp(1),
+                rounded_rectangle=(0, 0, 0, 0, dp(HERO_CARD["radius"])),
+            )
+        empty_card.bind(
+            pos=lambda inst, _val: setattr(bg, "pos", inst.pos),
+            size=lambda inst, _val: setattr(bg, "size", inst.size),
+        )
+        empty_card.bind(
+            pos=lambda inst, _val: setattr(
+                outline,
+                "rounded_rectangle",
+                (inst.x, inst.y, inst.width, inst.height, dp(HERO_CARD["radius"])),
+            ),
+            size=lambda inst, _val: setattr(
+                outline,
+                "rounded_rectangle",
+                (inst.x, inst.y, inst.width, inst.height, dp(HERO_CARD["radius"])),
+            ),
+        )
+        empty_card.add_widget(
+            MDIcon(
+                icon="history",
+                theme_text_color="Custom",
+                text_color=COLORS["text_hint"],
+                halign="center",
+                valign="middle",
+                size_hint_y=None,
+                height=dp(56),
+                font_size=dp(42),
+            )
+        )
+
+        title = Label(
+            text="暂无历史记录",
+            size_hint_y=None,
+            height=dp(26),
+            halign="center",
+            valign="middle",
+            font_size=dp(get_font_size("title_medium")),
+            bold=True,
+            color=COLORS["text_primary"],
+        )
+        title.bind(size=lambda inst, val: setattr(inst, "text_size", val))
+        if CHINESE_FONT:
+            title.font_name = CHINESE_FONT
+        empty_card.add_widget(title)
+
+        subtitle = Label(
+            text="已食用或已过期的物品会显示在这里，恢复后会重新回到库存列表。",
+            halign="center",
+            valign="middle",
+            font_size=dp(get_font_size("body_medium")),
+            color=COLORS["text_secondary"],
+        )
+        subtitle.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
+        if CHINESE_FONT:
+            subtitle.font_name = CHINESE_FONT
+        empty_card.add_widget(subtitle)
+        self.item_list_layout.add_widget(empty_card)
 
     def _load_items(self):
         self.item_list_layout.clear_widgets()
-        self._item_widgets.clear()
-
         try:
             items = item_service.get_history_items()
+            consumed_count = sum(1 for item in items if item.status.value == "consumed")
+            expired_count = max(0, len(items) - consumed_count)
+            self._consumed_value.text = f"已食用 {consumed_count}"
+            self._expired_value.text = f"已过期 {expired_count}"
 
             if not items:
                 self._show_empty_state()
                 return
 
-            for i, item in enumerate(items):
-                item_widget = HistoryItemCard(item)
-                item_widget.bind(on_restore=lambda inst, item_id=item.id: self._on_restore_item(item_id))
-                item_widget.opacity = 0
-                item_widget.y -= dp(10)
-                self.item_list_layout.add_widget(item_widget)
-                self._item_widgets[str(item.id)] = item_widget
-
-                Clock.schedule_once(
-                    lambda dt, w=item_widget: Animation(
-                        opacity=1,
-                        y=w.y + dp(10),
-                        duration=0.25,
-                        t='out_cubic'
-                    ).start(w),
-                    i * 0.05
+            for item in items:
+                self.item_list_layout.add_widget(
+                    HistoryItemCard(item, on_restore=self._on_restore_item)
                 )
-
-        except Exception as e:
-            logger.error(f"加载历史物品失败: {e}")
+        except Exception as exc:
+            logger.error(f"加载历史物品失败: {exc}")
+            self._consumed_value.text = "已食用 0"
+            self._expired_value.text = "已过期 0"
             self._show_empty_state()
 
-    def _show_empty_state(self):
-        empty_container = BoxLayout(
-            orientation="vertical",
-            size_hint_y=None,
-            height=dp(200),
-            padding=dp(32),
-        )
-
-        empty_icon = MDIcon(
-            icon="history",
-            theme_text_color="Custom",
-            text_color=COLORS['text_hint'],
-            size_hint_y=None,
-            height=dp(64),
-            font_size=dp(48),
-        )
-        empty_container.add_widget(empty_icon)
-
-        empty_text = Label(
-            text="暂无历史记录",
-            font_size=dp(18),
-            color=COLORS['text_secondary'],
-            size_hint_y=None,
-            height=dp(32),
-        )
-        if CHINESE_FONT:
-            empty_text.font_name = CHINESE_FONT
-        empty_container.add_widget(empty_text)
-
-        hint_text = Label(
-            text="已食用或已过期的物品会显示在这里",
-            font_size=dp(14),
-            color=COLORS['text_hint'],
-            size_hint_y=None,
-            height=dp(28),
-        )
-        if CHINESE_FONT:
-            hint_text.font_name = CHINESE_FONT
-        empty_container.add_widget(hint_text)
-
-        self.item_list_layout.add_widget(empty_container)
-
     def _on_restore_item(self, item_id):
-        """恢复物品"""
         if item_service.restore_item(str(item_id)):
             logger.info(f"物品已恢复: {item_id}")
             self._load_items()
 
     def on_enter(self):
-        """进入屏幕时调用"""
         self._load_items()
         if CHINESE_FONT:
             apply_font_to_widget(self, CHINESE_FONT)
-
-    def on_leave(self):
-        """离开屏幕时调用"""
-        pass
