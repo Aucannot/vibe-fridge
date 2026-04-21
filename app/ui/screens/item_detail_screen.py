@@ -5,22 +5,22 @@
 
 from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.gridlayout import GridLayout
 from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.modalview import ModalView
+from kivy.uix.floatlayout import FloatLayout
 from kivy.metrics import dp
 from kivy.properties import (
     StringProperty, NumericProperty, ObjectProperty, ListProperty
 )
 from kivy.clock import Clock
+from kivy.graphics import Color, Rectangle, RoundedRectangle, Line
 from kivymd.app import MDApp
 from kivymd.uix.card import MDCard
-from kivymd.uix.button import (
-    MDButton, MDIconButton, MDButtonText
-)
+from kivymd.uix.button import MDIconButton
 from kivymd.uix.dialog import MDDialog
+from kivymd.uix.label import MDIcon
 from kivymd.uix.list import (
     MDList, MDListItem,
     MDListItemLeadingIcon,
@@ -34,8 +34,92 @@ from app.services.wiki_service import wiki_service
 from app.models.item import ItemStatus
 from app.utils.logger import setup_logger
 from app.utils.font_helper import apply_font_to_widget, CHINESE_FONT_NAME as CHINESE_FONT
+from app.ui.theme.design_tokens import COLOR_PALETTE, get_card_style, get_font_size
 
 logger = setup_logger(__name__)
+COLORS = COLOR_PALETTE
+SECTION_CARD = get_card_style("section")
+
+
+def _bind_label_text(widget, horizontal_padding=0):
+    widget.bind(
+        size=lambda inst, val: setattr(
+            inst, "text_size", (max(0, val[0] - horizontal_padding), None)
+        )
+    )
+
+
+def _bind_auto_height(widget, min_height, horizontal_padding=0):
+    _bind_label_text(widget, horizontal_padding)
+    widget.bind(
+        texture_size=lambda inst, val: setattr(inst, "height", max(min_height, val[1]))
+    )
+
+
+class DetailButton(Button):
+    """Rounded action button aligned with the refreshed design system."""
+
+    def __init__(self, variant="secondary", radius=14, **kwargs):
+        self.variant = variant
+        self._pressed = False
+        self._radius = dp(radius)
+        kwargs.setdefault("size_hint_y", None)
+        kwargs.setdefault("height", dp(48))
+        kwargs.setdefault("background_normal", "")
+        kwargs.setdefault("background_down", "")
+        kwargs.setdefault("background_color", (0, 0, 0, 0))
+        kwargs.setdefault("font_size", dp(get_font_size("label_large")))
+        super().__init__(**kwargs)
+        self.valign = "middle"
+        if CHINESE_FONT:
+            self.font_name = CHINESE_FONT
+        self.bind(pos=self._redraw, size=self._redraw)
+        self.bind(size=self._update_text_size)
+        self._update_text_size()
+        self._redraw()
+
+    def _palette(self):
+        if self.variant == "primary":
+            return COLORS["primary"], None, COLORS["on_primary"]
+        if self.variant == "danger":
+            return COLORS["error_container"], COLORS["error"], COLORS["error_dark"]
+        if self.variant == "tonal":
+            return COLORS["primary_container"], None, COLORS["on_primary_container"]
+        return COLORS["surface_variant"], COLORS["divider"], COLORS["text_primary"]
+
+    def _update_text_size(self, *_args):
+        self.text_size = (max(0, self.width - dp(20)), self.height)
+
+    def _redraw(self, *_args):
+        fill, border, text_color = self._palette()
+        current_fill = (
+            (fill[0] * 0.95, fill[1] * 0.95, fill[2] * 0.95, fill[3]) if self._pressed else fill
+        )
+        self.color = text_color
+        self.canvas.before.clear()
+        self.canvas.after.clear()
+        with self.canvas.before:
+            Color(*current_fill)
+            RoundedRectangle(pos=self.pos, size=self.size, radius=[self._radius])
+        if border:
+            with self.canvas.after:
+                Color(*border)
+                Line(
+                    width=dp(1),
+                    rounded_rectangle=(self.x, self.y, self.width, self.height, self._radius),
+                )
+
+    def on_touch_down(self, touch):
+        if self.collide_point(*touch.pos):
+            self._pressed = True
+            self._redraw()
+        return super().on_touch_down(touch)
+
+    def on_touch_up(self, touch):
+        if self._pressed:
+            self._pressed = False
+            self._redraw()
+        return super().on_touch_up(touch)
 
 
 class ItemDetailScreen(Screen):
@@ -71,505 +155,564 @@ class ItemDetailScreen(Screen):
 
     def _build_ui(self):
         """构建UI界面"""
-        # 主布局 - 设置白色背景
         main_layout = BoxLayout(orientation='vertical')
-        from kivy.graphics import Color, Rectangle
         with main_layout.canvas.before:
-            Color(1, 1, 1, 1)  # 白色背景
+            Color(*COLORS["background"])
             self.bg_rect = Rectangle(pos=main_layout.pos, size=main_layout.size)
-        
-        def update_bg_rect(instance, value):
+
+        def update_bg_rect(instance, _value):
             self.bg_rect.pos = instance.pos
             self.bg_rect.size = instance.size
-        
+
         main_layout.bind(pos=update_bg_rect, size=update_bg_rect)
 
-        # 头部栏
-        header = self._create_header()
-        main_layout.add_widget(header)
-
-        # 内容区域（可滚动）
-        content = self._create_content()
-        main_layout.add_widget(content)
-
-        # 底部操作栏
-        action_bar = self._create_action_bar()
-        main_layout.add_widget(action_bar)
+        main_layout.add_widget(self._create_header())
+        main_layout.add_widget(self._create_content())
+        main_layout.add_widget(self._create_action_bar())
 
         self.add_widget(main_layout)
 
     def _create_header(self) -> BoxLayout:
         """创建头部栏"""
-        header = BoxLayout(size_hint_y=None, height=dp(56))
+        header = BoxLayout(
+            size_hint_y=None,
+            height=dp(88),
+            padding=(dp(12), dp(14), dp(16), dp(14)),
+            spacing=dp(10),
+        )
+        with header.canvas.before:
+            Color(*COLORS["surface"])
+            self.header_bg_rect = Rectangle(pos=header.pos, size=header.size)
+        with header.canvas.after:
+            Color(*COLORS["divider"])
+            self.header_divider = Line(points=[])
+        header.bind(
+            pos=lambda inst, _val: setattr(self.header_bg_rect, "pos", inst.pos),
+            size=lambda inst, _val: setattr(self.header_bg_rect, "size", inst.size),
+        )
+        header.bind(pos=self._update_header_divider, size=self._update_header_divider)
 
-        # 返回按钮（显式设置图标颜色，避免与背景融在一起）
         back_btn = MDIconButton(
             icon="arrow-left",
             on_release=self._on_back_click,
         )
         try:
-            # KivyMD 2.0 使用 icon_color，自定义为深色
-            back_btn.icon_color = (0.2, 0.2, 0.2, 1)
+            back_btn.icon_color = COLORS["text_primary"]
         except Exception:
             pass
         header.add_widget(back_btn)
 
-        # 标题
+        title_box = BoxLayout(orientation="vertical", spacing=dp(2))
         self.title_label = Label(
             text="物品详情",
-            size_hint_x=0.7,
-            font_size=dp(20),
-            bold=True
+            size_hint_y=None,
+            height=dp(28),
+            halign="left",
+            valign="middle",
+            font_size=dp(get_font_size("headline_small")),
+            color=COLORS["text_primary"],
+            bold=True,
         )
+        _bind_label_text(self.title_label)
         if CHINESE_FONT:
             self.title_label.font_name = CHINESE_FONT
-        header.add_widget(self.title_label)
+        title_box.add_widget(self.title_label)
 
-        # 编辑按钮
+        self.header_subtitle = Label(
+            text="查看库存记录、日期信息和状态提示",
+            size_hint_y=None,
+            height=dp(20),
+            halign="left",
+            valign="middle",
+            font_size=dp(get_font_size("body_small")),
+            color=COLORS["text_secondary"],
+        )
+        _bind_label_text(self.header_subtitle)
+        if CHINESE_FONT:
+            self.header_subtitle.font_name = CHINESE_FONT
+        title_box.add_widget(self.header_subtitle)
+        header.add_widget(title_box)
+
         edit_btn = MDIconButton(
             icon="pencil",
             on_release=self._on_edit_click,
             font_name="Roboto",
         )
+        try:
+            edit_btn.icon_color = COLORS["primary"]
+        except Exception:
+            pass
         header.add_widget(edit_btn)
 
         return header
 
     def _create_content(self) -> ScrollView:
         """创建内容区域"""
-        scroll_view = ScrollView()
-        # 设置滚动视图背景色
-        from kivy.graphics import Color, Rectangle
+        scroll_view = ScrollView(do_scroll_x=False, bar_width=0)
         with scroll_view.canvas.before:
-            Color(1, 1, 1, 1)  # 白色背景
+            Color(*COLORS["background"])
             scroll_bg_rect = Rectangle(pos=scroll_view.pos, size=scroll_view.size)
-        
-        def update_scroll_bg(instance, value):
+
+        def update_scroll_bg(instance, _value):
             scroll_bg_rect.pos = instance.pos
             scroll_bg_rect.size = instance.size
-        
+
         scroll_view.bind(pos=update_scroll_bg, size=update_scroll_bg)
 
         content_layout = BoxLayout(
             orientation='vertical',
             size_hint_y=None,
             padding=dp(16),
-            spacing=dp(16)
+            spacing=dp(14)
         )
         content_layout.bind(minimum_height=content_layout.setter('height'))
 
-        # 基本信息卡片
-        basic_info_card = self._create_basic_info_card()
-        content_layout.add_widget(basic_info_card)
-
-        # 数量信息卡片
-        quantity_card = self._create_quantity_card()
-        content_layout.add_widget(quantity_card)
-
-        # 日期信息卡片
-        date_card = self._create_date_card()
-        content_layout.add_widget(date_card)
-
-        # AI预测卡片（如果有数据）
+        content_layout.add_widget(self._create_basic_info_card())
+        content_layout.add_widget(self._create_quantity_card())
+        content_layout.add_widget(self._create_date_card())
         self.ai_card = self._create_ai_card()
         content_layout.add_widget(self.ai_card)
-
-        # 来源信息卡片（如果有数据）
         self.source_card = self._create_source_card()
         content_layout.add_widget(self.source_card)
-
-        # 标签卡片
         self.tag_card = self._create_tag_card()
         content_layout.add_widget(self.tag_card)
+        content_layout.add_widget(BoxLayout(size_hint_y=None, height=dp(8)))
 
         scroll_view.add_widget(content_layout)
         return scroll_view
 
-    def _create_basic_info_card(self) -> MDCard:
-        """创建基本信息卡片"""
+    def _update_header_divider(self, instance, _value):
+        self.header_divider.points = [instance.x, instance.y, instance.right, instance.y]
+
+    def _create_section_card(self, title: str, icon: str, subtitle: str | None = None):
         card = MDCard(
             size_hint_y=None,
-            height=dp(120),
-            padding=dp(16),
-            radius=[dp(8), dp(8), dp(8), dp(8)]
+            padding=0,
+            radius=[dp(SECTION_CARD["radius"])] * 4,
+            style="elevated",
+            md_bg_color=COLORS["surface"],
         )
-
-        layout = GridLayout(cols=2, rows=3, spacing=dp(8))
-
-        # 物品名称
-        name_static_label = Label(
-            text="名称:",
-            size_hint_x=None,
-            width=dp(60),
-            color=(0.4, 0.4, 0.4, 1)
+        content = BoxLayout(
+            orientation="vertical",
+            size_hint_y=None,
+            spacing=dp(SECTION_CARD["gap"]),
+            padding=dp(SECTION_CARD["padding"]),
         )
+        content.bind(minimum_height=content.setter("height"))
+        content.bind(height=lambda inst, val: setattr(card, "height", val))
+
+        header = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(12))
+        icon_box = FloatLayout(size_hint=(None, None), width=dp(38), height=dp(38))
+        with icon_box.canvas.before:
+            Color(*COLORS["primary_container"])
+            icon_box._bg = RoundedRectangle(pos=icon_box.pos, size=icon_box.size, radius=[dp(12)])
+        icon_box.bind(
+            pos=lambda inst, _val: setattr(inst._bg, "pos", inst.pos),
+            size=lambda inst, _val: setattr(inst._bg, "size", inst.size),
+        )
+        icon_widget = MDIcon(
+            icon=icon,
+            size_hint=(None, None),
+            size=(dp(18), dp(18)),
+            halign="center",
+            valign="middle",
+            font_size=dp(18),
+        )
+        icon_widget.bind(size=lambda inst, val: setattr(inst, "text_size", val))
+        icon_widget.color = COLORS["primary"]
+        icon_box.add_widget(icon_widget)
+        icon_box.bind(
+            pos=lambda inst, _val: self._position_centered_icon(inst, icon_widget),
+            size=lambda inst, _val: self._position_centered_icon(inst, icon_widget),
+        )
+        icon_widget.bind(size=lambda _inst, _val: self._position_centered_icon(icon_box, icon_widget))
+        header.add_widget(icon_box)
+
+        text_box = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(0))
+        text_box.bind(minimum_height=text_box.setter("height"))
+        text_box.bind(
+            minimum_height=lambda inst, val: setattr(header, "height", max(dp(38), val))
+        )
+        title_label = Label(
+            text=title,
+            size_hint_y=None,
+            height=dp(22),
+            halign="left",
+            valign="middle",
+            font_size=dp(get_font_size("title_medium")),
+            color=COLORS["text_primary"],
+            bold=True,
+        )
+        _bind_auto_height(title_label, dp(22))
         if CHINESE_FONT:
-            name_static_label.font_name = CHINESE_FONT
-        layout.add_widget(name_static_label)
+            title_label.font_name = CHINESE_FONT
+        text_box.add_widget(title_label)
+
+        if subtitle:
+            text_box.spacing = dp(2)
+            subtitle_label = Label(
+                text=subtitle,
+                size_hint_y=None,
+                height=dp(18),
+                halign="left",
+                valign="top",
+                font_size=dp(get_font_size("body_small")),
+                color=COLORS["text_secondary"],
+            )
+            _bind_auto_height(subtitle_label, dp(18))
+            if CHINESE_FONT:
+                subtitle_label.font_name = CHINESE_FONT
+            text_box.add_widget(subtitle_label)
+        header.add_widget(text_box)
+        content.add_widget(header)
+
+        body = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(12))
+        body.bind(minimum_height=body.setter("height"))
+        content.add_widget(body)
+        card.add_widget(content)
+        card._content = content
+        self._decorate_card(card, SECTION_CARD["radius"])
+        return card, body
+
+    def _decorate_card(self, widget, radius):
+        with widget.canvas.after:
+            Color(*COLORS["divider"])
+            widget._outline = Line(width=dp(1), rounded_rectangle=(0, 0, 0, 0, dp(radius)))
+
+        def _update_outline(instance, _value):
+            widget._outline.rounded_rectangle = (
+                instance.x, instance.y, instance.width, instance.height, dp(radius)
+            )
+
+        widget.bind(pos=_update_outline, size=_update_outline)
+        _update_outline(widget, None)
+
+    def _position_centered_icon(self, icon_box, icon_widget):
+        icon_widget.text_size = icon_widget.size
+        icon_widget.pos = (
+            icon_box.x + (icon_box.width - icon_widget.width) / 2,
+            icon_box.y + (icon_box.height - icon_widget.height) / 2 - dp(1),
+        )
+
+    def _create_caption(self, text: str):
+        label = Label(
+            text=text,
+            size_hint_y=None,
+            height=dp(18),
+            halign="left",
+            valign="middle",
+            font_size=dp(get_font_size("label_large")),
+            color=COLORS["text_secondary"],
+        )
+        _bind_auto_height(label, dp(18))
+        if CHINESE_FONT:
+            label.font_name = CHINESE_FONT
+        return label
+
+    def _create_value_block(self, caption: str, value_label: Label):
+        block = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(6))
+        block.bind(minimum_height=block.setter("height"))
+        block.add_widget(self._create_caption(caption))
+        block.add_widget(value_label)
+        return block
+
+    def _create_basic_info_card(self) -> MDCard:
+        """创建基本信息卡片"""
+        card, body = self._create_section_card(
+            "基本信息",
+            "information-outline",
+        )
+
         self.name_label = Label(
             text=self.item_name,
+            size_hint_y=None,
+            height=dp(26),
+            halign="left",
+            valign="middle",
             bold=True,
-            color=(0, 0, 0, 1)
+            font_size=dp(get_font_size("title_medium")),
+            color=COLORS["text_primary"],
         )
+        _bind_auto_height(self.name_label, dp(26))
         if CHINESE_FONT:
             self.name_label.font_name = CHINESE_FONT
-        layout.add_widget(self.name_label)
+        body.add_widget(self._create_value_block("名称", self.name_label))
 
-        # 类别
-        category_static_label = Label(
-            text="类别:",
-            size_hint_x=None,
-            width=dp(60),
-            color=(0.4, 0.4, 0.4, 1)
-        )
-        if CHINESE_FONT:
-            category_static_label.font_name = CHINESE_FONT
-        layout.add_widget(category_static_label)
         self.category_label = Label(
             text=self.item_category,
-            color=(0.2, 0.4, 0.6, 1)
+            size_hint_y=None,
+            height=dp(22),
+            halign="left",
+            valign="middle",
+            color=COLORS["secondary_dark"],
+            font_size=dp(get_font_size("body_medium")),
         )
+        _bind_auto_height(self.category_label, dp(22))
         if CHINESE_FONT:
             self.category_label.font_name = CHINESE_FONT
-        layout.add_widget(self.category_label)
+        body.add_widget(self._create_value_block("类别", self.category_label))
 
-        # 描述
-        desc_static_label = Label(
-            text="描述:",
-            size_hint_x=None,
-            width=dp(60),
-            color=(0.4, 0.4, 0.4, 1)
-        )
-        if CHINESE_FONT:
-            desc_static_label.font_name = CHINESE_FONT
-        layout.add_widget(desc_static_label)
         self.description_label = Label(
             text=self.item_description or "无描述",
-            color=(0.4, 0.4, 0.4, 1)
+            size_hint_y=None,
+            halign="left",
+            valign="top",
+            color=COLORS["text_secondary"],
+            font_size=dp(get_font_size("body_medium")),
+        )
+        _bind_label_text(self.description_label)
+        self.description_label.bind(
+            texture_size=lambda inst, val: setattr(inst, "height", max(dp(24), val[1]))
         )
         if CHINESE_FONT:
             self.description_label.font_name = CHINESE_FONT
-        layout.add_widget(self.description_label)
-
-        card.add_widget(layout)
+        body.add_widget(self._create_value_block("描述", self.description_label))
         return card
 
     def _create_quantity_card(self) -> MDCard:
         """创建数量信息卡片"""
-        card = MDCard(
-            size_hint_y=None,
-            height=dp(80),
-            padding=dp(16),
-            radius=[dp(8), dp(8), dp(8), dp(8)]
+        card, body = self._create_section_card(
+            "库存数量",
+            "counter",
         )
 
-        layout = GridLayout(cols=4, rows=1, spacing=dp(8))
-
-        # 数量标签
-        quantity_static_label = Label(
-            text="数量:",
-            color=(0.4, 0.4, 0.4, 1)
-        )
-        if CHINESE_FONT:
-            quantity_static_label.font_name = CHINESE_FONT
-        layout.add_widget(quantity_static_label)
-
-        # 数量显示
+        quantity_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(10))
         self.quantity_label = Label(
             text=str(self.item_quantity),
+            size_hint=(None, None),
+            width=dp(72),
+            height=dp(36),
+            halign="left",
+            valign="middle",
             bold=True,
-            font_size=dp(20),
-            color=(0.2, 0.6, 0.2, 1)
+            font_size=dp(get_font_size("headline_small")),
+            color=COLORS["success_dark"],
         )
+        _bind_label_text(self.quantity_label)
         if CHINESE_FONT:
             self.quantity_label.font_name = CHINESE_FONT
-        layout.add_widget(self.quantity_label)
+        quantity_row.add_widget(self.quantity_label)
 
-        # 单位
-        unit_static_label = Label(
-            text="单位:",
-            color=(0.4, 0.4, 0.4, 1)
-        )
-        if CHINESE_FONT:
-            unit_static_label.font_name = CHINESE_FONT
-        layout.add_widget(unit_static_label)
         self.unit_label = Label(
             text=self.item_unit or "个",
-            color=(0.4, 0.4, 0.4, 1)
+            halign="left",
+            valign="middle",
+            color=COLORS["text_secondary"],
+            font_size=dp(get_font_size("body_medium")),
         )
+        _bind_label_text(self.unit_label)
         if CHINESE_FONT:
             self.unit_label.font_name = CHINESE_FONT
-        layout.add_widget(self.unit_label)
-
-        card.add_widget(layout)
+        quantity_row.add_widget(self.unit_label)
+        body.add_widget(self._create_value_block("数量", quantity_row))
         return card
 
     def _create_date_card(self) -> MDCard:
         """创建日期信息卡片"""
-        card = MDCard(
-            size_hint_y=None,
-            height=dp(160),
-            padding=dp(16),
-            radius=[dp(8), dp(8), dp(8), dp(8)]
+        card, body = self._create_section_card(
+            "日期与提醒",
+            "calendar-clock",
         )
 
-        layout = GridLayout(cols=2, rows=4, spacing=dp(8))
-
-        # 购买日期
-        purchase_static_label = Label(
-            text="购买日期:",
-            color=(0.4, 0.4, 0.4, 1)
-        )
-        if CHINESE_FONT:
-            purchase_static_label.font_name = CHINESE_FONT
-        layout.add_widget(purchase_static_label)
         self.purchase_date_label = Label(
             text=self.purchase_date or "未设置",
-            color=(0.4, 0.4, 0.4, 1)
+            size_hint_y=None,
+            height=dp(22),
+            halign="left",
+            valign="middle",
+            color=COLORS["text_secondary"],
+            font_size=dp(get_font_size("body_medium")),
         )
+        _bind_auto_height(self.purchase_date_label, dp(22))
         if CHINESE_FONT:
             self.purchase_date_label.font_name = CHINESE_FONT
-        layout.add_widget(self.purchase_date_label)
+        body.add_widget(self._create_value_block("购买日期", self.purchase_date_label))
 
-        # 过期日期
-        expiry_static_label = Label(
-            text="过期日期:",
-            color=(0.4, 0.4, 0.4, 1)
-        )
-        if CHINESE_FONT:
-            expiry_static_label.font_name = CHINESE_FONT
-        layout.add_widget(expiry_static_label)
         self.expiry_date_label = Label(
             text=self.expiry_date or "未设置",
+            size_hint_y=None,
+            height=dp(22),
+            halign="left",
+            valign="middle",
             color=self._get_expiry_date_color(),
-            bold=self.days_until_expiry <= 3
+            font_size=dp(get_font_size("body_medium")),
+            bold=self.days_until_expiry <= 3,
         )
+        _bind_auto_height(self.expiry_date_label, dp(22))
         if CHINESE_FONT:
             self.expiry_date_label.font_name = CHINESE_FONT
-        layout.add_widget(self.expiry_date_label)
+        body.add_widget(self._create_value_block("过期日期", self.expiry_date_label))
 
-        # 过期天数
-        status_static_label = Label(
-            text="过期状态:",
-            color=(0.4, 0.4, 0.4, 1)
-        )
-        if CHINESE_FONT:
-            status_static_label.font_name = CHINESE_FONT
-        layout.add_widget(status_static_label)
         self.expiry_status_label = Label(
             text=self._get_expiry_status_text(),
+            size_hint_y=None,
+            height=dp(22),
+            halign="left",
+            valign="middle",
             color=self._get_expiry_status_color(),
-            bold=True
+            font_size=dp(get_font_size("body_medium")),
+            bold=True,
         )
+        _bind_auto_height(self.expiry_status_label, dp(22))
         if CHINESE_FONT:
             self.expiry_status_label.font_name = CHINESE_FONT
-        layout.add_widget(self.expiry_status_label)
+        body.add_widget(self._create_value_block("过期状态", self.expiry_status_label))
 
-        # 提醒日期
-        reminder_static_label = Label(
-            text="提醒日期:",
-            color=(0.4, 0.4, 0.4, 1)
-        )
-        if CHINESE_FONT:
-            reminder_static_label.font_name = CHINESE_FONT
-        layout.add_widget(reminder_static_label)
         self.reminder_date_label = Label(
             text=self.reminder_date or "未设置",
-            color=(0.4, 0.4, 0.4, 1)
+            size_hint_y=None,
+            height=dp(22),
+            halign="left",
+            valign="middle",
+            color=COLORS["text_secondary"],
+            font_size=dp(get_font_size("body_medium")),
         )
+        _bind_auto_height(self.reminder_date_label, dp(22))
         if CHINESE_FONT:
             self.reminder_date_label.font_name = CHINESE_FONT
-        layout.add_widget(self.reminder_date_label)
-
-        card.add_widget(layout)
+        body.add_widget(self._create_value_block("提醒日期", self.reminder_date_label))
         return card
 
     def _create_ai_card(self) -> MDCard:
         """创建AI预测卡片"""
-        card = MDCard(
-            size_hint_y=None,
-            height=dp(0),
-            padding=dp(16),
-            radius=[dp(8), dp(8), dp(8), dp(8)]
+        card, self.ai_layout = self._create_section_card(
+            "AI 预测信息",
+            "sparkles",
         )
-
-        self.ai_layout = BoxLayout(orientation='vertical')
-        ai_title_label = Label(
-            text="AI预测信息",
-            bold=True,
-            size_hint_y=None,
-            height=dp(24),
-            color=(0.4, 0.4, 0.4, 1)
-        )
-        if CHINESE_FONT:
-            ai_title_label.font_name = CHINESE_FONT
-        self.ai_layout.add_widget(ai_title_label)
 
         self.ai_content_label = Label(
             text="",
-            color=(0.4, 0.4, 0.4, 1),
+            color=COLORS["text_secondary"],
             halign="left",
-            valign="top"
+            valign="top",
+            size_hint_y=None,
+            font_size=dp(get_font_size("body_medium")),
         )
-        self.ai_content_label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], val[1])))
+        _bind_label_text(self.ai_content_label)
+        self.ai_content_label.bind(
+            texture_size=lambda inst, val: setattr(inst, "height", max(dp(40), val[1]))
+        )
         if CHINESE_FONT:
             self.ai_content_label.font_name = CHINESE_FONT
         self.ai_layout.add_widget(self.ai_content_label)
-
-        card.add_widget(self.ai_layout)
+        card.height = 0
+        card.opacity = 0
         return card
 
     def _create_source_card(self) -> MDCard:
         """创建来源信息卡片"""
-        card = MDCard(
-            size_hint_y=None,
-            height=dp(0),
-            padding=dp(16),
-            radius=[dp(8), dp(8), dp(8), dp(8)]
+        card, self.source_layout = self._create_section_card(
+            "来源信息",
+            "source-branch",
         )
-
-        self.source_layout = BoxLayout(orientation='vertical')
-        source_title_label = Label(
-            text="来源信息",
-            bold=True,
-            size_hint_y=None,
-            height=dp(24),
-            color=(0.4, 0.4, 0.4, 1)
-        )
-        if CHINESE_FONT:
-            source_title_label.font_name = CHINESE_FONT
-        self.source_layout.add_widget(source_title_label)
 
         self.source_content_label = Label(
             text="",
-            color=(0.4, 0.4, 0.4, 1),
+            color=COLORS["text_secondary"],
             halign="left",
-            valign="top"
+            valign="top",
+            size_hint_y=None,
+            font_size=dp(get_font_size("body_medium")),
         )
-        self.source_content_label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], val[1])))
+        _bind_label_text(self.source_content_label)
+        self.source_content_label.bind(
+            texture_size=lambda inst, val: setattr(inst, "height", max(dp(28), val[1]))
+        )
         if CHINESE_FONT:
             self.source_content_label.font_name = CHINESE_FONT
         self.source_layout.add_widget(self.source_content_label)
-
-        card.add_widget(self.source_layout)
+        card.height = 0
+        card.opacity = 0
         return card
 
     def _create_tag_card(self) -> MDCard:
         """创建标签卡片"""
-        card = MDCard(
-            size_hint_y=None,
-            height=dp(80),
-            padding=dp(16),
-            radius=[dp(8), dp(8), dp(8), dp(8)]
+        card, self.tag_layout = self._create_section_card(
+            "标签",
+            "tag-outline",
         )
-
-        self.tag_layout = GridLayout(cols=3, rows=1, spacing=dp(8))
-        tag_static_label = Label(
-            text="标签:",
-            color=(0.4, 0.4, 0.4, 1)
-        )
-        if CHINESE_FONT:
-            tag_static_label.font_name = CHINESE_FONT
-        self.tag_layout.add_widget(tag_static_label)
 
         self.tag_content_label = Label(
             text="无标签",
-            color=(0.4, 0.4, 0.4, 1)
+            color=COLORS["text_secondary"],
+            halign="left",
+            valign="middle",
+            size_hint_y=None,
+            height=dp(22),
+            font_size=dp(get_font_size("body_medium")),
         )
+        _bind_auto_height(self.tag_content_label, dp(22))
         if CHINESE_FONT:
             self.tag_content_label.font_name = CHINESE_FONT
         self.tag_layout.add_widget(self.tag_content_label)
-
-        card.add_widget(self.tag_layout)
         return card
 
     def _create_action_bar(self) -> BoxLayout:
         """创建底部操作栏"""
         action_bar = BoxLayout(
             size_hint_y=None,
-            height=dp(56),
-            padding=dp(8),
-            spacing=dp(8)
+            height=dp(84),
+            padding=(dp(16), dp(12), dp(16), dp(16)),
+            spacing=dp(10)
         )
+        with action_bar.canvas.before:
+            Color(*COLORS["surface"])
+            action_bar._bg = Rectangle(pos=action_bar.pos, size=action_bar.size)
+        with action_bar.canvas.after:
+            Color(*COLORS["divider"])
+            action_bar._line = Line(points=[])
+        action_bar.bind(
+            pos=lambda inst, _val: setattr(inst._bg, "pos", inst.pos),
+            size=lambda inst, _val: setattr(inst._bg, "size", inst.size),
+        )
+        action_bar.bind(pos=self._update_action_divider, size=self._update_action_divider)
 
-        # 删除按钮
-        delete_btn = MDButton(
-            style="outlined",
-            on_release=self._on_delete_click
+        delete_btn = DetailButton(
+            text="删除",
+            variant="danger",
+            size_hint_x=0.26,
+            on_release=self._on_delete_click,
         )
-        # 创建按钮文本部件（新的KivyMD API需要这样）
-        delete_text = MDButtonText(text="删除")
-        delete_text.color = (0.9, 0.3, 0.3, 1)
-        try:
-            import app.main as main_module
-            chinese_font = getattr(main_module, 'CHINESE_FONT_NAME', None)
-            if chinese_font:
-                delete_text.font_name = chinese_font
-        except:
-            pass
-        delete_btn.add_widget(delete_text)
         action_bar.add_widget(delete_btn)
 
-        # 增加数量按钮
-        increase_btn = MDButton(
-            style="filled",
-            on_release=lambda x: self._change_quantity(1)
+        increase_btn = DetailButton(
+            text="+1",
+            variant="tonal",
+            size_hint_x=0.18,
+            on_release=lambda _x: self._change_quantity(1),
         )
-        increase_text = MDButtonText(text="+1")
-        try:
-            import app.main as main_module
-            chinese_font = getattr(main_module, 'CHINESE_FONT_NAME', None)
-            if chinese_font:
-                increase_text.font_name = chinese_font
-        except:
-            pass
-        increase_btn.add_widget(increase_text)
         action_bar.add_widget(increase_btn)
 
-        # 减少数量按钮
-        decrease_btn = MDButton(
-            style="filled",
-            on_release=lambda x: self._change_quantity(-1)
+        decrease_btn = DetailButton(
+            text="-1",
+            size_hint_x=0.18,
+            on_release=lambda _x: self._change_quantity(-1),
         )
-        decrease_text = MDButtonText(text="-1")
-        try:
-            import app.main as main_module
-            chinese_font = getattr(main_module, 'CHINESE_FONT_NAME', None)
-            if chinese_font:
-                decrease_text.font_name = chinese_font
-        except:
-            pass
-        decrease_btn.add_widget(decrease_text)
         action_bar.add_widget(decrease_btn)
 
-        # 返回主界面按钮（符合安卓底部操作习惯）
-        back_btn = MDButton(
-            style="filled",
+        back_btn = DetailButton(
+            text="返回",
+            variant="primary",
+            size_hint_x=0.32,
             on_release=self._on_back_click,
         )
-        back_text = MDButtonText(text="返回")
-        try:
-            import app.main as main_module
-            chinese_font = getattr(main_module, "CHINESE_FONT_NAME", None)
-            if chinese_font:
-                back_text.font_name = chinese_font
-        except Exception:
-            pass
-        back_btn.add_widget(back_text)
         action_bar.add_widget(back_btn)
 
         return action_bar
 
+    def _update_action_divider(self, instance, _value):
+        instance._line.points = [instance.x, instance.top, instance.right, instance.top]
+
     def _get_expiry_date_color(self):
         """获取过期日期颜色"""
         if not self.expiry_date:
-            return (0.4, 0.4, 0.4, 1)
+            return COLORS["text_secondary"]
         elif self.days_until_expiry < 0:
-            return (0.9, 0.3, 0.3, 1)  # 红色
+            return COLORS["error"]
         elif self.days_until_expiry <= 3:
-            return (0.9, 0.6, 0.2, 1)  # 橙色
+            return COLORS["warning"]
         else:
-            return (0.2, 0.6, 0.2, 1)  # 绿色
+            return COLORS["success"]
 
     def _get_expiry_status_text(self):
         """获取过期状态文本"""
@@ -587,13 +730,13 @@ class ItemDetailScreen(Screen):
     def _get_expiry_status_color(self):
         """获取过期状态颜色"""
         if not self.expiry_date:
-            return (0.4, 0.4, 0.4, 1)
+            return COLORS["text_secondary"]
         elif self.days_until_expiry < 0:
-            return (0.9, 0.3, 0.3, 1)  # 红色
+            return COLORS["error"]
         elif self.days_until_expiry <= 3:
-            return (0.9, 0.6, 0.2, 1)  # 橙色
+            return COLORS["warning"]
         else:
-            return (0.2, 0.6, 0.2, 1)  # 绿色
+            return COLORS["success"]
 
     def _on_item_id_changed(self, instance, value):
         """物品ID变化时调用"""
@@ -772,9 +915,11 @@ class ItemDetailScreen(Screen):
             self.ai_content_label.text = ai_text
             if CHINESE_FONT:
                 self.ai_content_label.font_name = CHINESE_FONT
-            self.ai_card.height = dp(80)
+            self.ai_card.opacity = 1
+            Clock.schedule_once(lambda _dt: setattr(self.ai_card, "height", self.ai_card._content.height), 0)
         else:
             self.ai_card.height = dp(0)
+            self.ai_card.opacity = 0
 
     def _update_source_card(self):
         """更新来源卡片"""
@@ -782,9 +927,11 @@ class ItemDetailScreen(Screen):
             self.source_content_label.text = self.source_info
             if CHINESE_FONT:
                 self.source_content_label.font_name = CHINESE_FONT
-            self.source_card.height = dp(60)
+            self.source_card.opacity = 1
+            Clock.schedule_once(lambda _dt: setattr(self.source_card, "height", self.source_card._content.height), 0)
         else:
             self.source_card.height = dp(0)
+            self.source_card.opacity = 0
 
     def _update_tag_card(self):
         """更新标签卡片"""
@@ -817,68 +964,54 @@ class ItemDetailScreen(Screen):
 
     def _show_delete_dialog(self):
         """显示删除确认对话框（使用 ModalView 适配 KivyMD 2.0）"""
-        # 延迟导入，避免循环依赖
-        from kivy.uix.modalview import ModalView
-        from kivy.uix.boxlayout import BoxLayout
-        from kivy.uix.label import Label
-        from kivy.metrics import dp
+        dialog = ModalView(size_hint=(0.82, None), height=dp(208), auto_dismiss=False)
 
-        # 获取中文字体
-        chinese_font = None
-        try:
-            import app.main as main_module
-            chinese_font = getattr(main_module, "CHINESE_FONT_NAME", None)
-        except Exception:
-            pass
+        root = BoxLayout(
+            orientation="vertical",
+            padding=dp(18),
+            spacing=dp(16),
+            size_hint=(1, None),
+            height=dp(208),
+        )
+        self._decorate_modal_panel(root)
 
-        dialog = ModalView(size_hint=(0.8, None), height=dp(180), auto_dismiss=False)
-
-        root = BoxLayout(orientation="vertical", padding=dp(20), spacing=dp(16))
-
-        # 标题
         title_label = Label(
             text="确认删除",
             size_hint_y=None,
             height=dp(32),
+            halign="left",
+            valign="middle",
             bold=True,
-            color=(0.2, 0.2, 0.2, 1),
+            color=COLORS["error_dark"],
         )
-        if chinese_font:
-            title_label.font_name = chinese_font
+        _bind_label_text(title_label)
+        if CHINESE_FONT:
+            title_label.font_name = CHINESE_FONT
         root.add_widget(title_label)
 
-        # 内容
         content_label = Label(
             text=f"确定要删除 '{self.item_name}' 吗？",
-            size_hint_y=None,
-            height=dp(60),
-            color=(0.3, 0.3, 0.3, 1),
+            size_hint_y=1,
+            halign="left",
+            valign="top",
+            color=COLORS["text_secondary"],
+            font_size=dp(get_font_size("body_medium")),
         )
-        if chinese_font:
-            content_label.font_name = chinese_font
+        content_label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
+        if CHINESE_FONT:
+            content_label.font_name = CHINESE_FONT
         root.add_widget(content_label)
 
-        # 按钮区域
         btn_bar = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(44), spacing=dp(16))
 
-        # 取消按钮
-        cancel_btn = MDButton(on_release=lambda x: dialog.dismiss())
-        cancel_text = MDButtonText(text="取消")
-        if chinese_font:
-            cancel_text.font_name = chinese_font
-        cancel_btn.add_widget(cancel_text)
+        cancel_btn = DetailButton(text="取消", on_release=lambda _x: dialog.dismiss())
         btn_bar.add_widget(cancel_btn)
 
-        # 确认按钮
         def _on_confirm(instance):
             dialog.dismiss()
             self._confirm_delete(instance)
 
-        confirm_btn = MDButton(on_release=_on_confirm)
-        confirm_text = MDButtonText(text="确定")
-        if chinese_font:
-            confirm_text.font_name = chinese_font
-        confirm_btn.add_widget(confirm_text)
+        confirm_btn = DetailButton(text="确定删除", variant="danger", on_release=_on_confirm)
         btn_bar.add_widget(confirm_btn)
 
         root.add_widget(btn_bar)
@@ -886,6 +1019,24 @@ class ItemDetailScreen(Screen):
         dialog.add_widget(root)
         self.delete_dialog = dialog
         dialog.open()
+
+    def _decorate_modal_panel(self, widget):
+        with widget.canvas.before:
+            Color(*COLORS["surface"])
+            widget._modal_bg = RoundedRectangle(pos=widget.pos, size=widget.size, radius=[dp(20)])
+        with widget.canvas.after:
+            Color(*COLORS["divider"])
+            widget._modal_outline = Line(width=dp(1), rounded_rectangle=(0, 0, 0, 0, dp(20)))
+
+        def _update_panel(instance, _value):
+            instance._modal_bg.pos = instance.pos
+            instance._modal_bg.size = instance.size
+            instance._modal_outline.rounded_rectangle = (
+                instance.x, instance.y, instance.width, instance.height, dp(20)
+            )
+
+        widget.bind(pos=_update_panel, size=_update_panel)
+        _update_panel(widget, None)
 
     def _confirm_delete(self, instance):
         """确认删除"""
