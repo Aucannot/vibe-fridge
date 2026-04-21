@@ -19,6 +19,7 @@ sys.path.insert(0, str(project_root))
 
 # 必须在导入任何 Kivy 模块之前设置 Config
 from kivy.config import Config
+from kivy.core.text import LabelBase
 
 # 配置 Kivy 基本设置（必须在导入其他 Kivy 模块之前）
 Config.set('graphics', 'width', '360')
@@ -30,6 +31,7 @@ from kivymd.app import MDApp
 from kivy.core.window import Window
 from kivy.uix.screenmanager import ScreenManager
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.metrics import dp
@@ -48,6 +50,25 @@ chinese_font_name = register_chinese_font()
 # 存储字体名称供其他模块使用（供各个 Screen 模块引用）
 CHINESE_FONT_NAME = chinese_font_name
 
+
+def ensure_kivymd_icon_font():
+    """Register KivyMD icon font aliases used by old and new widgets."""
+    try:
+        from kivymd import fonts_path
+
+        icon_font_path = os.path.join(fonts_path, "materialdesignicons-webfont.ttf")
+        if not os.path.exists(icon_font_path):
+            return
+
+        # Newer KivyMD uses "Icons"; some local code still referenced the legacy alias.
+        LabelBase.register(name="Icons", fn_regular=icon_font_path)
+        LabelBase.register(name="MaterialIcons", fn_regular=icon_font_path)
+    except Exception:
+        return
+
+
+ensure_kivymd_icon_font()
+
 # 导入应用模块（注意：需在字体注册之后）
 from app.ui.screens.main_screen import MainScreen
 from app.ui.screens.items_screen import ItemsScreen
@@ -62,6 +83,10 @@ from app.ui.screens.history_screen import HistoryScreen
 from app.services.database import init_database
 from app.utils.logger import setup_logger
 from app.services.item_service import seed_example_items
+from app.ui.theme.design_tokens import COLOR_PALETTE
+
+
+COLORS = COLOR_PALETTE
 
 
 class VibeFridgeApp(MDApp):
@@ -72,7 +97,7 @@ class VibeFridgeApp(MDApp):
         self.logger = setup_logger(__name__)
         # 设置主题
         self.theme_cls.theme_style = "Light"
-        self.theme_cls.primary_palette = "Blue"
+        self.theme_cls.primary_palette = "Teal"
         self.theme_cls.material_style = "M3"
         
         # 底部导航按钮引用
@@ -84,14 +109,18 @@ class VibeFridgeApp(MDApp):
         # 设置中文字体（如果已注册）
         if chinese_font_name:
             try:
-                # 确保字体应用到所有文本组件：遍历 KivyMD 的字体样式并替换为中文字体
+                # 确保 KivyMD 内部使用 font_style/role 的控件也切到中文字体。
                 if hasattr(self.theme_cls, 'font_styles'):
-                    # 为所有字体样式设置中文字体，但跳过"Icon"样式（图标需要使用自己的字体）
-                    for style_name in self.theme_cls.font_styles:
-                        if style_name == 'Icon' or style_name == 'Icons':
-                            continue  # 跳过图标字体样式
-                        if hasattr(self.theme_cls.font_styles[style_name], 'font_name'):
-                            self.theme_cls.font_styles[style_name]['font-name'] = chinese_font_name
+                    font_styles = dict(self.theme_cls.font_styles)
+                    for style_name, style_roles in font_styles.items():
+                        if style_name in ('Icon', 'Icons'):
+                            continue
+                        if not isinstance(style_roles, dict):
+                            continue
+                        for role_name, role_values in style_roles.items():
+                            if isinstance(role_values, dict):
+                                role_values['font-name'] = chinese_font_name
+                    self.theme_cls.font_styles = font_styles
                 self.logger.debug(f"已为 KivyMD 设置中文字体: {chinese_font_name}")
             except Exception as e:
                 self.logger.debug(f"设置 KivyMD 字体失败: {e}")
@@ -102,14 +131,14 @@ class VibeFridgeApp(MDApp):
             try:
                 from kivymd.uix.label import MDIcon
                 if hasattr(MDIcon, 'font_name'):
-                    MDIcon.font_name = 'MaterialIcons'
-                    self.logger.debug("已为 MDIcon 设置图标字体为 MaterialIcons")
+                    MDIcon.font_name = 'Icons'
+                    self.logger.debug("已为 MDIcon 设置图标字体为 Icons")
 
                 # 确保MDCheckbox也使用正确的图标字体
                 from kivymd.uix.selectioncontrol import MDCheckbox
                 if hasattr(MDCheckbox, 'font_name'):
-                    MDCheckbox.font_name = 'MaterialIcons'
-                    self.logger.debug("已为 MDCheckbox 设置图标字体为 MaterialIcons")
+                    MDCheckbox.font_name = 'Icons'
+                    self.logger.debug("已为 MDCheckbox 设置图标字体为 Icons")
             except Exception as e:
                 self.logger.debug(f"设置 MDIcon/MDCheckbox 字体失败: {e}")
                 import traceback
@@ -194,13 +223,39 @@ class VibeFridgeApp(MDApp):
     # ---------------- 底部导航栏相关 ----------------
     def _create_bottom_nav_bar(self):
         """创建应用底部的导航栏：首页 / 物品 / ➕ / 食谱 / 设置"""
-        from kivy.graphics import Color, RoundedRectangle, Line, Ellipse
+        from kivy.graphics import Color, RoundedRectangle, Line
         
         nav = BoxLayout(
             size_hint_y=None,
-            height=dp(70),
-            padding=(dp(8), dp(8), dp(8), dp(8)),
-            spacing=dp(0),
+            height=dp(74),
+            padding=(dp(10), dp(8), dp(10), dp(10)),
+            spacing=dp(4),
+        )
+        with nav.canvas.before:
+            self._nav_bg_color = Color(*COLORS["surface"])
+            self._nav_bg_rect = RoundedRectangle(
+                pos=nav.pos,
+                size=nav.size,
+                radius=[dp(22), dp(22), 0, 0],
+            )
+        with nav.canvas.after:
+            self._nav_divider_color = Color(*COLORS["divider"])
+            self._nav_divider_line = Line(points=[])
+        nav.bind(
+            pos=lambda inst, _val: setattr(self._nav_bg_rect, "pos", inst.pos),
+            size=lambda inst, _val: setattr(self._nav_bg_rect, "size", inst.size),
+        )
+        nav.bind(
+            pos=lambda inst, _val: setattr(
+                self._nav_divider_line,
+                "points",
+                [inst.x, inst.top, inst.right, inst.top],
+            ),
+            size=lambda inst, _val: setattr(
+                self._nav_divider_line,
+                "points",
+                [inst.x, inst.top, inst.right, inst.top],
+            ),
         )
 
         def make_btn(text, on_press, is_center=False):
@@ -212,12 +267,12 @@ class VibeFridgeApp(MDApp):
             class NavButton(ButtonBehavior, BoxLayout):
                 text = StringProperty("")
                 icon = StringProperty("")
-                icon_color = ColorProperty((0.6, 0.6, 0.6, 1))
-                text_color = ColorProperty((0.6, 0.6, 0.6, 1))
-                bg_color = ColorProperty((1, 1, 1, 1))
-                bg_highlight = ColorProperty((0.95, 0.95, 0.95, 1))
-                icon_highlight = ColorProperty((0.25, 0.55, 0.9, 1))
-                text_highlight = ColorProperty((0.25, 0.55, 0.9, 1))
+                icon_color = ColorProperty(COLORS["text_hint"])
+                text_color = ColorProperty(COLORS["text_hint"])
+                bg_color = ColorProperty((0, 0, 0, 0))
+                bg_highlight = ColorProperty(COLORS["surface_tint"])
+                icon_highlight = ColorProperty(COLORS["primary"])
+                text_highlight = ColorProperty(COLORS["primary"])
                 is_center_btn = BooleanProperty(False)
                 scale_x = NumericProperty(1.0)
                 scale_y = NumericProperty(1.0)
@@ -225,16 +280,16 @@ class VibeFridgeApp(MDApp):
                 def __init__(self, **kwargs):
                     super().__init__(**kwargs)
                     self.orientation = "vertical"
-                    self.spacing = dp(2)  # 减小间距，使图标和文字更靠近
+                    self.spacing = dp(2)
                     self.size_hint_y = None
-                    self.height = dp(52) if not kwargs.get('is_center', False) else dp(56)
+                    self.height = dp(52) if not self.is_center_btn else dp(56)
                     self.bind(on_press=self._on_press)
                     self.bind(scale_x=self._on_scale_change, scale_y=self._on_scale_change)
                     self.bind(center=self._on_center_change)
                     
                     if self.is_center_btn:
-                        self.bg_color = (0.25, 0.55, 0.9, 1)
-                        self.icon_color = (1, 1, 1, 1)
+                        self.bg_color = COLORS["primary"]
+                        self.icon_color = COLORS["on_primary"]
                     
                     self.bind(bg_color=self._update_bg_color)
                     self._build_content()
@@ -242,9 +297,9 @@ class VibeFridgeApp(MDApp):
 
                 def _setup_background(self):
                     if self.is_center_btn:
-                        radius = [dp(16)]
+                        radius = [dp(22)]
                     else:
-                        radius = [dp(12)]
+                        radius = [dp(18)]
                     with self.canvas.before:
                         self._bg_color = Color(*self.bg_color)
                         self._bg_rect = RoundedRectangle(size=self.size, pos=self.pos, radius=radius)
@@ -285,30 +340,42 @@ class VibeFridgeApp(MDApp):
                         size=lambda ins, val: setattr(ins, 'text_size', val),
                         icon_color=lambda ins, val: setattr(self, 'icon_color', val)
                     )
-                    # 确保图标在容器中水平居中
-                    icon_lbl.size_hint_x = 1
-                    icon_lbl.size_hint_y = None
-                    icon_lbl.height = dp(28) if self.is_center_btn else dp(24)
+                    if self.is_center_btn:
+                        icon_lbl.size_hint = (None, None)
+                        icon_lbl.size = (icon_size, icon_size)
+                        icon_lbl.bind(size=lambda ins, val: setattr(ins, 'text_size', val))
 
-                    # 创建图标容器使其在按钮中水平居中
-                    icon_container = BoxLayout(
-                        orientation='horizontal',
-                        size_hint_x=1,
-                        size_hint_y=None,
-                        height=dp(28) if self.is_center_btn else dp(24),
-                    )
-                    icon_container.add_widget(icon_lbl)
-                    self.add_widget(icon_container)
+                        icon_container = AnchorLayout(
+                            anchor_x="center",
+                            anchor_y="center",
+                            size_hint=(1, 1),
+                        )
+                        icon_container.add_widget(icon_lbl)
+                        self.add_widget(icon_container)
+                    else:
+                        # 确保普通导航图标在容器中水平居中
+                        icon_lbl.size_hint_x = 1
+                        icon_lbl.size_hint_y = None
+                        icon_lbl.height = dp(24)
+
+                        icon_container = BoxLayout(
+                            orientation='horizontal',
+                            size_hint_x=1,
+                            size_hint_y=None,
+                            height=dp(24),
+                        )
+                        icon_container.add_widget(icon_lbl)
+                        self.add_widget(icon_container)
 
                     if not self.is_center_btn:
                         label = Label(
                             text=self.text,
-                            font_size=dp(10),
+                            font_size=dp(11),
                             halign="center",
                             valign="middle",
                             size_hint_x=1,
                             size_hint_y=None,
-                            height=dp(14),
+                            height=dp(16),
                             color=self.text_color,
                         )
                         if CHINESE_FONT_NAME:
@@ -337,12 +404,12 @@ class VibeFridgeApp(MDApp):
                     if highlighted:
                         self.bg_color = self.bg_highlight
                     else:
-                        self.bg_color = (1, 1, 1, 1)
+                        self.bg_color = (0, 0, 0, 0)
                     self._update_text_colors(highlighted)
 
                 def _update_text_colors(self, highlighted):
-                    new_icon_color = self.icon_highlight if highlighted else (0.6, 0.6, 0.6, 1)
-                    new_text_color = self.text_highlight if highlighted else (0.6, 0.6, 0.6, 1)
+                    new_icon_color = self.icon_highlight if highlighted else COLORS["text_hint"]
+                    new_text_color = self.text_highlight if highlighted else COLORS["text_hint"]
                     for child in self.children:
                         if hasattr(child, 'icon_color'):
                             child.icon_color = new_icon_color
@@ -353,13 +420,14 @@ class VibeFridgeApp(MDApp):
                 text=text,
                 icon="add" if is_center else "",
                 on_release=on_press,
-                size_hint_x=1,
+                size_hint_x=None if is_center else 1,
+                width=dp(72) if is_center else dp(0),
                 is_center_btn=is_center,
             )
             if is_center:
                 btn.icon = "plus"
-                btn.bg_highlight = (0.25, 0.55, 0.9, 1)
-                btn.icon_highlight = (1, 1, 1, 1)
+                btn.bg_highlight = COLORS["primary"]
+                btn.icon_highlight = COLORS["on_primary"]
             return btn
 
         home_btn = make_btn("首页", lambda *_: self.switch_to_screen("main"))
@@ -382,14 +450,19 @@ class VibeFridgeApp(MDApp):
         settings_btn.icon = "cog-outline"
         settings_btn._build_content()
 
-        left_layout = BoxLayout(orientation='horizontal', size_hint_x=0.4)
+        left_layout = BoxLayout(orientation='horizontal', size_hint_x=1)
         left_layout.add_widget(home_btn)
         left_layout.add_widget(items_btn)
 
-        center_layout = BoxLayout(orientation='horizontal', size_hint_x=0.2)
+        center_layout = BoxLayout(
+            orientation='horizontal',
+            size_hint=(None, 1),
+            width=dp(84),
+        )
+        center_layout.padding = (0, dp(2), 0, 0)
         center_layout.add_widget(plus_btn)
 
-        right_layout = BoxLayout(orientation='horizontal', size_hint_x=0.4)
+        right_layout = BoxLayout(orientation='horizontal', size_hint_x=1)
         right_layout.add_widget(recipes_btn)
         right_layout.add_widget(settings_btn)
 

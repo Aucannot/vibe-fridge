@@ -1,91 +1,117 @@
 # -*- coding: utf-8 -*-
 """
 Design System - Centralized UI Design Tokens
-Modern color palette, typography scale, spacing system, and elevation tokens
+Fresh utility palette, typography scale, spacing system, and card presets
+for a household inventory and expiry-tracking product.
 """
 
 from kivy.utils import get_color_from_hex
 
+
 DESIGN_TOKENS = {
+    "meta": {
+        "product_type": "household inventory tool",
+        "style_keywords": [
+            "fresh utility",
+            "clean refrigeration",
+            "high clarity",
+            "friendly data density",
+        ],
+    },
     "colors": {
         "primary": {
-            "main": get_color_from_hex("#6366F1"),
-            "light": get_color_from_hex("#818CF8"),
-            "dark": get_color_from_hex("#4F46E5"),
-            "container": get_color_from_hex("#E0E7FF"),
+            "main": get_color_from_hex("#1B8B7A"),
+            "light": get_color_from_hex("#49B7A3"),
+            "dark": get_color_from_hex("#136457"),
+            "container": get_color_from_hex("#D8F3ED"),
             "on_main": get_color_from_hex("#FFFFFF"),
-            "on_container": get_color_from_hex("#1E1B4B"),
+            "on_container": get_color_from_hex("#0A3932"),
         },
         "secondary": {
-            "main": get_color_from_hex("#EC4899"),
-            "light": get_color_from_hex("#F472B6"),
-            "dark": get_color_from_hex("#DB2777"),
-            "container": get_color_from_hex("#FCE7F3"),
+            "main": get_color_from_hex("#4E7BC7"),
+            "light": get_color_from_hex("#7A9ADD"),
+            "dark": get_color_from_hex("#345AA2"),
+            "container": get_color_from_hex("#E2EBFF"),
             "on_main": get_color_from_hex("#FFFFFF"),
-            "on_container": get_color_from_hex("#831843"),
+            "on_container": get_color_from_hex("#1C3563"),
         },
         "tertiary": {
-            "main": get_color_from_hex("#14B8A6"),
-            "light": get_color_from_hex("#2DD4BF"),
-            "dark": get_color_from_hex("#0D9488"),
-            "container": get_color_from_hex("#CCFBF1"),
+            "main": get_color_from_hex("#E49A41"),
+            "light": get_color_from_hex("#F2BA73"),
+            "dark": get_color_from_hex("#B8741D"),
+            "container": get_color_from_hex("#FFF0DC"),
             "on_main": get_color_from_hex("#FFFFFF"),
-            "on_container": get_color_from_hex("#134E4A"),
+            "on_container": get_color_from_hex("#6A3C02"),
         },
         "success": {
-            "main": get_color_from_hex("#22C55E"),
-            "light": get_color_from_hex("#4ADE80"),
-            "dark": get_color_from_hex("#16A34A"),
-            "container": get_color_from_hex("#DCFCE7"),
-            "on_container": get_color_from_hex("#166534"),
+            "main": get_color_from_hex("#2E9F6B"),
+            "light": get_color_from_hex("#66C38E"),
+            "dark": get_color_from_hex("#18784C"),
+            "container": get_color_from_hex("#DDF6E8"),
+            "on_container": get_color_from_hex("#0F5132"),
         },
         "warning": {
-            "main": get_color_from_hex("#F59E0B"),
-            "light": get_color_from_hex("#FBBF24"),
-            "dark": get_color_from_hex("#D97706"),
-            "container": get_color_from_hex("#FEF3C7"),
-            "on_container": get_color_from_hex("#92400E"),
+            "main": get_color_from_hex("#D98E04"),
+            "light": get_color_from_hex("#F1B94C"),
+            "dark": get_color_from_hex("#A86D00"),
+            "container": get_color_from_hex("#FFF2CC"),
+            "on_container": get_color_from_hex("#674200"),
         },
         "error": {
-            "main": get_color_from_hex("#EF4444"),
-            "light": get_color_from_hex("#F87171"),
-            "dark": get_color_from_hex("#DC2626"),
-            "container": get_color_from_hex("#FEE2E2"),
-            "on_container": get_color_from_hex("#991B1B"),
+            "main": get_color_from_hex("#D95C5C"),
+            "light": get_color_from_hex("#E98A8A"),
+            "dark": get_color_from_hex("#B33D3D"),
+            "container": get_color_from_hex("#FDE3E3"),
+            "on_container": get_color_from_hex("#6C1F1F"),
         },
         "neutral": {
             "0": get_color_from_hex("#FFFFFF"),
-            "4": get_color_from_hex("#FAFAFA"),
-            "6": get_color_from_hex("#F5F5F5"),
-            "10": get_color_from_hex("#F0F0F0"),
-            "12": get_color_from_hex("#EAEAEA"),
-            "17": get_color_from_hex("#E5E5E5"),
-            "20": get_color_from_hex("#D4D4D4"),
-            "30": get_color_from_hex("#A3A3A3"),
-            "40": get_color_from_hex("#737373"),
-            "50": get_color_from_hex("#525252"),
-            "60": get_color_from_hex("#404040"),
-            "70": get_color_from_hex("#262626"),
-            "80": get_color_from_hex("#171717"),
-            "87": get_color_from_hex("#0D0D0D"),
-            "90": get_color_from_hex("#050505"),
-            "95": get_color_from_hex("#0A0A0A"),
+            "4": get_color_from_hex("#FAFCFB"),
+            "6": get_color_from_hex("#F6F8F7"),
+            "10": get_color_from_hex("#EEF2F1"),
+            "12": get_color_from_hex("#E7ECEA"),
+            "17": get_color_from_hex("#DBE2E0"),
+            "20": get_color_from_hex("#CDD6D4"),
+            "30": get_color_from_hex("#A6B2AF"),
+            "40": get_color_from_hex("#7C8B87"),
+            "50": get_color_from_hex("#5E6B67"),
+            "60": get_color_from_hex("#46514E"),
+            "70": get_color_from_hex("#2F3836"),
+            "80": get_color_from_hex("#1F2624"),
+            "87": get_color_from_hex("#151918"),
+            "90": get_color_from_hex("#101313"),
+            "95": get_color_from_hex("#0A0D0C"),
         },
         "background": {
-            "default": get_color_from_hex("#FAFAFA"),
+            "default": get_color_from_hex("#F4F8F7"),
             "elevated": get_color_from_hex("#FFFFFF"),
-            "surface_variant": get_color_from_hex("#F4F4F5"),
+            "surface_variant": get_color_from_hex("#ECF3F1"),
         },
         "surface": {
             "main": get_color_from_hex("#FFFFFF"),
             "elevated": get_color_from_hex("#FFFFFF"),
-            "variant": get_color_from_hex("#F4F4F5"),
-            "inverse": get_color_from_hex("#18181B"),
+            "variant": get_color_from_hex("#ECF3F1"),
+            "inverse": get_color_from_hex("#17302C"),
         },
-        "outline": get_color_from_hex("#D4D4D8"),
-        "outline_variant": get_color_from_hex("#E4E4E7"),
+        "outline": get_color_from_hex("#CFDAD7"),
+        "outline_variant": get_color_from_hex("#DEE7E4"),
+        "surface_tint": get_color_from_hex("#EAF7F4"),
+        "surface_cool": get_color_from_hex("#F0F7FB"),
+        "surface_warm": get_color_from_hex("#FFF7EC"),
     },
     "typography": {
+        "families": {
+            "primary": "ChineseFont",
+            "fallback": "Roboto",
+            "numeric": "Roboto",
+            "mono": "Roboto",
+        },
+        "weights": {
+            "regular": 400,
+            "medium": 500,
+            "semibold": 600,
+            "bold": 700,
+        },
         "display_large": {"font_size": 57, "line_height": 64, "letter_spacing": -0.25},
         "display_medium": {"font_size": 45, "line_height": 52, "letter_spacing": 0},
         "display_small": {"font_size": 36, "line_height": 44, "letter_spacing": 0},
@@ -120,17 +146,58 @@ DESIGN_TOKENS = {
         "md": 8,
         "lg": 12,
         "xl": 16,
-        "2xl": 24,
+        "2xl": 20,
         "3xl": 28,
         "full": 9999,
     },
     "elevation": {
         "none": {"elevation": 0, "shadow_radius": 0, "shadow_offset": (0, 0)},
-        "1": {"elevation": 2, "shadow_radius": 4, "shadow_offset": (0, 1)},
-        "2": {"elevation": 4, "shadow_radius": 4, "shadow_offset": (0, 2)},
-        "3": {"elevation": 6, "shadow_radius": 8, "shadow_offset": (0, 3)},
-        "4": {"elevation": 8, "shadow_radius": 10, "shadow_offset": (0, 4)},
-        "5": {"elevation": 12, "shadow_radius": 14, "shadow_offset": (0, 6)},
+        "1": {"elevation": 2, "shadow_radius": 8, "shadow_offset": (0, 2)},
+        "2": {"elevation": 4, "shadow_radius": 12, "shadow_offset": (0, 4)},
+        "3": {"elevation": 6, "shadow_radius": 16, "shadow_offset": (0, 6)},
+        "4": {"elevation": 8, "shadow_radius": 20, "shadow_offset": (0, 8)},
+        "5": {"elevation": 12, "shadow_radius": 24, "shadow_offset": (0, 10)},
+    },
+    "card": {
+        "hero": {
+            "radius": 20,
+            "padding": 20,
+            "gap": 12,
+            "border_width": 0,
+            "elevation": "2",
+            "background": "surface_elevated",
+            "icon_background": "primary_container",
+        },
+        "section": {
+            "radius": 16,
+            "padding": 16,
+            "gap": 12,
+            "border_width": 1,
+            "elevation": "1",
+            "background": "surface",
+            "border_color": "divider",
+        },
+        "list": {
+            "radius": 14,
+            "padding": 14,
+            "gap": 10,
+            "border_width": 1,
+            "elevation": "none",
+            "background": "surface",
+            "border_color": "divider",
+        },
+        "status": {
+            "radius": 14,
+            "padding": 14,
+            "gap": 8,
+            "border_width": 0,
+            "elevation": "none",
+        },
+        "interactive": {
+            "press_scale": 0.98,
+            "hover_lift": 2,
+            "animation_duration": 0.18,
+        },
     },
     "animation": {
         "duration_short": 0.15,
@@ -140,6 +207,7 @@ DESIGN_TOKENS = {
         "easing_emphasized": "out_quart",
     },
 }
+
 
 COLOR_PALETTE = {
     "primary": DESIGN_TOKENS["colors"]["primary"]["main"],
@@ -174,8 +242,12 @@ COLOR_PALETTE = {
     "surface": DESIGN_TOKENS["colors"]["surface"]["main"],
     "surface_elevated": DESIGN_TOKENS["colors"]["surface"]["elevated"],
     "surface_variant": DESIGN_TOKENS["colors"]["surface"]["variant"],
-    "text_primary": DESIGN_TOKENS["colors"]["neutral"]["70"],
-    "text_secondary": DESIGN_TOKENS["colors"]["neutral"]["50"],
+    "surface_tint": DESIGN_TOKENS["colors"]["surface_tint"],
+    "surface_cool": DESIGN_TOKENS["colors"]["surface_cool"],
+    "surface_warm": DESIGN_TOKENS["colors"]["surface_warm"],
+    "text_primary": DESIGN_TOKENS["colors"]["neutral"]["80"],
+    "text_secondary": DESIGN_TOKENS["colors"]["neutral"]["60"],
+    "text_tertiary": DESIGN_TOKENS["colors"]["neutral"]["50"],
     "text_hint": DESIGN_TOKENS["colors"]["neutral"]["40"],
     "text_on_primary": DESIGN_TOKENS["colors"]["primary"]["on_main"],
     "divider": DESIGN_TOKENS["colors"]["outline_variant"],
@@ -183,23 +255,45 @@ COLOR_PALETTE = {
     "expired": DESIGN_TOKENS["colors"]["error"]["main"],
     "expiring": DESIGN_TOKENS["colors"]["warning"]["main"],
     "normal": DESIGN_TOKENS["colors"]["success"]["main"],
+    "info": DESIGN_TOKENS["colors"]["secondary"]["main"],
+    "info_container": DESIGN_TOKENS["colors"]["secondary"]["container"],
     "accent": DESIGN_TOKENS["colors"]["tertiary"]["main"],
     "accent_light": DESIGN_TOKENS["colors"]["tertiary"]["light"],
+    "accent_container": DESIGN_TOKENS["colors"]["tertiary"]["container"],
+    "fresh": DESIGN_TOKENS["colors"]["primary"]["main"],
+    "storage_cold": DESIGN_TOKENS["colors"]["secondary"]["main"],
+    "storage_warm": DESIGN_TOKENS["colors"]["tertiary"]["main"],
     "chip_selected": DESIGN_TOKENS["colors"]["primary"]["container"],
     "chip_unselected": DESIGN_TOKENS["colors"]["surface"]["variant"],
+    "status_success_bg": DESIGN_TOKENS["colors"]["success"]["container"],
+    "status_warning_bg": DESIGN_TOKENS["colors"]["warning"]["container"],
+    "status_error_bg": DESIGN_TOKENS["colors"]["error"]["container"],
 }
+
 
 def get_font_size(style):
     return DESIGN_TOKENS["typography"][style]["font_size"]
 
+
 def get_line_height(style):
     return DESIGN_TOKENS["typography"][style]["line_height"]
+
+
+def get_font_family(role="primary"):
+    return DESIGN_TOKENS["typography"]["families"][role]
+
 
 def get_spacing(size):
     return DESIGN_TOKENS["spacing"][size]
 
+
 def get_border_radius(size):
     return DESIGN_TOKENS["border_radius"][size]
 
+
 def get_elevation(level):
     return DESIGN_TOKENS["elevation"][level]
+
+
+def get_card_style(name):
+    return DESIGN_TOKENS["card"][name]

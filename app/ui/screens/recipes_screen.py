@@ -1,387 +1,418 @@
 # -*- coding: utf-8 -*-
 """
-食谱屏幕 - 根据冰箱物品推荐菜谱
+食谱屏幕
 """
 
-from kivy.uix.screenmanager import Screen
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.scrollview import ScrollView
-from kivy.uix.label import Label
-from kivy.metrics import dp
-from kivy.clock import Clock
-from kivy.graphics import Rectangle, Color
+from datetime import date, timedelta
 
-from app.utils.font_helper import apply_font_to_widget, CHINESE_FONT_NAME as CHINESE_FONT
-from app.ui.theme.design_tokens import COLOR_PALETTE
+from kivy.graphics import Color, Line, Rectangle, RoundedRectangle
+from kivy.metrics import dp
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.label import Label
+from kivy.uix.screenmanager import Screen
+from kivy.uix.scrollview import ScrollView
+from kivymd.uix.label import MDIcon
+
+from app.services.item_service import item_service
+from app.models.item import ItemStatus
+from app.ui.theme.design_tokens import COLOR_PALETTE, get_card_style, get_font_size
+from app.utils.font_helper import CHINESE_FONT_NAME as CHINESE_FONT
+from app.utils.font_helper import apply_font_to_widget
 
 COLORS = COLOR_PALETTE
+LIST_CARD = get_card_style("list")
 
 
-class StatCard(BoxLayout):
-    """统计卡片"""
+def _bind_label_text(widget, horizontal_padding=0):
+    widget.bind(
+        size=lambda inst, val: setattr(
+            inst, "text_size", (max(0, val[0] - horizontal_padding), None)
+        )
+    )
 
-    def __init__(self, icon, title, value, color, **kwargs):
+
+class MetricTile(BoxLayout):
+    def __init__(self, icon, title, accent, **kwargs):
         super().__init__(**kwargs)
-        self.orientation = 'vertical'
+        self.orientation = "vertical"
+        self.padding = dp(14)
+        self.spacing = dp(6)
+        self._accent = accent
         self.size_hint = (1, 1)
-        self.padding = dp(12)
-        self.spacing = dp(4)
-        self._color = color
-        self.rnd = None
-        self._build_ui(icon, title, value)
+        self._value_label = None
+        self._build_ui(icon, title)
+        self.bind(pos=self._redraw, size=self._redraw)
+        self._redraw()
 
-    def _build_ui(self, icon, title, value):
-        from kivymd.uix.label import MDIcon
-        from kivy.graphics import Color, RoundedRectangle
-
-        # 绘制背景
-        with self.canvas.before:
-            Color(*COLORS['surface'])
-            self.rnd = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(12)])
-
-        # 更新背景位置的回调
-        self.bind(pos=self._update_bg, size=self._update_bg)
-
-        icon_widget = MDIcon(
-            icon=icon,
-            theme_text_color="Custom",
-            text_color=self._color,
-            size_hint_y=None,
-            height=dp(24),
-            font_size=dp(22),
-            halign="center",
+    def _build_ui(self, icon, title):
+        icon_row = BoxLayout(size_hint_y=None, height=dp(28))
+        icon_row.add_widget(
+            MDIcon(
+                icon=icon,
+                theme_text_color="Custom",
+                text_color=self._accent,
+                halign="left",
+                valign="middle",
+                font_size=dp(20),
+            )
         )
-        self.add_widget(icon_widget)
+        self.add_widget(icon_row)
 
-        value_label = Label(
-            text=value,
-            font_size=dp(18),
+        self._value_label = Label(
+            text="0",
+            size_hint_y=None,
+            height=dp(28),
+            halign="left",
+            valign="middle",
+            font_size=dp(get_font_size("headline_small")),
             bold=True,
-            color=COLORS['text_primary'],
-            size_hint_y=None,
-            height=dp(22),
-            halign="center",
+            color=COLORS["text_primary"],
         )
-        self.add_widget(value_label)
+        _bind_label_text(self._value_label)
+        if CHINESE_FONT:
+            self._value_label.font_name = CHINESE_FONT
+        self.add_widget(self._value_label)
 
         title_label = Label(
             text=title,
-            font_size=dp(11),
-            color=COLORS['text_hint'],
-            size_hint_y=None,
-            height=dp(16),
-            halign="center",
+            halign="left",
+            valign="middle",
+            font_size=dp(get_font_size("body_small")),
+            color=COLORS["text_secondary"],
         )
+        _bind_label_text(title_label)
+        if CHINESE_FONT:
+            title_label.font_name = CHINESE_FONT
         self.add_widget(title_label)
 
-    def _update_bg(self, instance, value):
-        if self.rnd:
-            self.rnd.pos = self.pos
-            self.rnd.size = self.size
+    def set_value(self, text):
+        self._value_label.text = text
+
+    def _redraw(self, *_args):
+        radius = dp(LIST_CARD["radius"])
+        self.canvas.before.clear()
+        self.canvas.after.clear()
+        with self.canvas.before:
+            Color(*COLORS["surface"])
+            RoundedRectangle(pos=self.pos, size=self.size, radius=[radius])
+        with self.canvas.after:
+            Color(*COLORS["divider"])
+            Line(
+                width=dp(1),
+                rounded_rectangle=(self.x, self.y, self.width, self.height, radius),
+            )
 
 
 class RecipeCard(BoxLayout):
-    """食谱卡片"""
-
-    def __init__(self, title, description, time, difficulty, ingredients, **kwargs):
+    def __init__(self, title, description, time_text, difficulty, ingredients, accent, **kwargs):
         super().__init__(**kwargs)
-        self.orientation = 'vertical'
+        self.orientation = "vertical"
         self.size_hint_y = None
-        self.height = dp(140)
-        self.padding = dp(16)
+        self.height = dp(168)
+        self.padding = dp(LIST_CARD["padding"])
         self.spacing = dp(10)
-        self.rnd = None
-        self._build_content(title, description, time, difficulty, ingredients)
+        self._accent = accent
+        self._build_ui(title, description, time_text, difficulty, ingredients)
+        self.bind(pos=self._redraw, size=self._redraw)
+        self._redraw()
 
-    def _build_content(self, title, description, time, difficulty, ingredients):
-        from kivy.graphics import Color, RoundedRectangle
-
-        # 绘制背景
-        with self.canvas.before:
-            Color(*COLORS['surface'])
-            self.rnd = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(16)])
-
-        # 更新背景位置的回调
-        self.bind(pos=self._update_bg, size=self._update_bg)
-
-        # 标题行
-        title_row = BoxLayout(size_hint_y=None, height=dp(24))
+    def _build_ui(self, title, description, time_text, difficulty, ingredients):
+        header = BoxLayout(size_hint_y=None, height=dp(24))
         title_label = Label(
             text=title,
-            font_size=dp(16),
-            bold=True,
-            color=COLORS['text_primary'],
-            size_hint_y=None,
-            height=dp(24),
             halign="left",
             valign="middle",
+            font_size=dp(get_font_size("title_medium")),
+            bold=True,
+            color=COLORS["text_primary"],
         )
-        title_label.bind(size=lambda ins, val: setattr(ins, 'text_size', val))
-        title_row.add_widget(title_label)
-        self.add_widget(title_row)
+        _bind_label_text(title_label)
+        if CHINESE_FONT:
+            title_label.font_name = CHINESE_FONT
+        header.add_widget(title_label)
+        self.add_widget(header)
 
-        # 描述
         desc_label = Label(
             text=description,
-            font_size=dp(13),
-            color=COLORS['text_secondary'],
             size_hint_y=None,
-            height=dp(20),
+            height=dp(40),
             halign="left",
-            valign="middle",
+            valign="top",
+            font_size=dp(get_font_size("body_medium")),
+            color=COLORS["text_secondary"],
         )
-        desc_label.bind(size=lambda ins, val: setattr(ins, 'text_size', val))
+        _bind_label_text(desc_label)
+        if CHINESE_FONT:
+            desc_label.font_name = CHINESE_FONT
         self.add_widget(desc_label)
 
-        # 元数据行
-        meta_row = BoxLayout(size_hint_y=None, height=dp(24), spacing=dp(16))
-
-        time_lbl = Label(
-            text=time,
-            font_size=dp(12),
-            color=COLORS['text_hint'],
-            size_hint_x=None,
-            width=dp(60),
-            halign="left",
-            valign="middle",
-        )
-        time_lbl.bind(size=lambda ins, val: setattr(ins, 'text_size', val))
-
-        diff_lbl = Label(
-            text=difficulty,
-            font_size=dp(12),
-            color=COLORS['text_hint'],
-            size_hint_x=None,
-            width=dp(60),
-            halign="left",
-            valign="middle",
-        )
-        diff_lbl.bind(size=lambda ins, val: setattr(ins, 'text_size', val))
-
-        meta_row.add_widget(time_lbl)
-        meta_row.add_widget(diff_lbl)
-        meta_row.add_widget(BoxLayout(size_hint_x=1))  # 填充
+        meta_row = BoxLayout(size_hint_y=None, height=dp(28), spacing=dp(8))
+        meta_row.add_widget(self._create_chip(time_text, COLORS["surface_cool"], COLORS["secondary"]))
+        meta_row.add_widget(self._create_chip(difficulty, COLORS["surface_warm"], COLORS["accent"]))
+        meta_row.add_widget(BoxLayout())
         self.add_widget(meta_row)
 
-        # 食材标签
-        ing_label = Label(
-            text=ingredients,
-            font_size=dp(12),
-            color=COLORS['primary'],
+        ingredients_title = Label(
+            text="推荐食材",
             size_hint_y=None,
-            height=dp(20),
+            height=dp(18),
             halign="left",
             valign="middle",
+            font_size=dp(get_font_size("label_medium")),
+            color=self._accent,
         )
-        ing_label.bind(size=lambda ins, val: setattr(ins, 'text_size', val))
-        self.add_widget(ing_label)
+        _bind_label_text(ingredients_title)
+        if CHINESE_FONT:
+            ingredients_title.font_name = CHINESE_FONT
+        self.add_widget(ingredients_title)
 
-    def _update_bg(self, instance, value):
-        if self.rnd:
-            self.rnd.pos = self.pos
-            self.rnd.size = self.size
+        ingredients_label = Label(
+            text=ingredients,
+            halign="left",
+            valign="top",
+            font_size=dp(get_font_size("body_small")),
+            color=COLORS["text_secondary"],
+        )
+        _bind_label_text(ingredients_label)
+        if CHINESE_FONT:
+            ingredients_label.font_name = CHINESE_FONT
+        self.add_widget(ingredients_label)
+
+    def _create_chip(self, text, bg_color, text_color):
+        chip = Label(
+            text=text,
+            size_hint=(None, None),
+            width=max(dp(74), dp(18) + len(text) * dp(8)),
+            height=dp(28),
+            halign="center",
+            valign="middle",
+            font_size=dp(get_font_size("label_medium")),
+            color=text_color,
+        )
+        chip.bind(size=lambda inst, val: setattr(inst, "text_size", val))
+        if CHINESE_FONT:
+            chip.font_name = CHINESE_FONT
+        with chip.canvas.before:
+            Color(*bg_color)
+            bg = RoundedRectangle(pos=chip.pos, size=chip.size, radius=[dp(14)])
+        chip.bind(
+            pos=lambda inst, _val: setattr(bg, "pos", inst.pos),
+            size=lambda inst, _val: setattr(bg, "size", inst.size),
+        )
+        return chip
+
+    def _redraw(self, *_args):
+        radius = dp(LIST_CARD["radius"])
+        self.canvas.before.clear()
+        self.canvas.after.clear()
+        with self.canvas.before:
+            Color(*COLORS["surface"])
+            RoundedRectangle(pos=self.pos, size=self.size, radius=[radius])
+        with self.canvas.after:
+            Color(*COLORS["divider"])
+            Line(
+                width=dp(1),
+                rounded_rectangle=(self.x, self.y, self.width, self.height, radius),
+            )
 
 
 class RecipesScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.name = "recipes"
+        self.ingredient_card = None
+        self.recipe_card = None
+        self.expiring_card = None
         self._build_ui()
-        Clock.schedule_once(lambda *_: self._load_real_stats(), 0.1)
 
     def _build_ui(self):
-        main_layout = BoxLayout(orientation='vertical', size_hint=(1, 1))
-
-        # 背景色
-        with main_layout.canvas.before:
-            self.bg_color = Color(*COLORS['background'])
-            self.bg_rect = Rectangle(pos=main_layout.pos, size=main_layout.size)
-
-        main_layout.bind(pos=self._update_bg_rect, size=self._update_bg_rect)
-
-        # 创建头部区域
-        header = BoxLayout(
-            orientation='vertical',
-            size_hint_y=None,
-            height=dp(80),
-            padding=(dp(20), dp(20), dp(20), dp(8)),
-            spacing=dp(4),
+        root = BoxLayout(orientation="vertical")
+        with root.canvas.before:
+            Color(*COLORS["background"])
+            self._bg_rect = Rectangle(pos=root.pos, size=root.size)
+        root.bind(
+            pos=lambda inst, _val: setattr(self._bg_rect, "pos", inst.pos),
+            size=lambda inst, _val: setattr(self._bg_rect, "size", inst.size),
         )
+
+        root.add_widget(self._create_header())
+
+        scroll = ScrollView(
+            do_scroll_x=False,
+            bar_width=dp(3),
+            bar_color=(*COLORS["primary"][:3], 0.25),
+            bar_inactive_color=(*COLORS["primary"][:3], 0.1),
+        )
+        content = BoxLayout(
+            orientation="vertical",
+            size_hint_y=None,
+            padding=(dp(16), dp(14), dp(16), dp(24)),
+            spacing=dp(14),
+        )
+        content.bind(minimum_height=content.setter("height"))
+
+        content.add_widget(self._create_metrics_row())
+        content.add_widget(self._create_section_title())
+
+        for recipe in self._sample_recipes():
+            content.add_widget(RecipeCard(**recipe))
+
+        scroll.add_widget(content)
+        root.add_widget(scroll)
+        self.add_widget(root)
+
+    def _create_header(self):
+        header = BoxLayout(
+            orientation="vertical",
+            size_hint_y=None,
+            height=dp(92),
+            padding=(dp(20), dp(18), dp(20), dp(12)),
+            spacing=dp(2),
+        )
+        with header.canvas.before:
+            Color(*COLORS["surface"])
+            self._header_bg = Rectangle(pos=header.pos, size=header.size)
+        with header.canvas.after:
+            Color(*COLORS["divider"])
+            self._header_divider = Line(points=[])
+        header.bind(
+            pos=lambda inst, _val: setattr(self._header_bg, "pos", inst.pos),
+            size=lambda inst, _val: setattr(self._header_bg, "size", inst.size),
+        )
+        header.bind(pos=self._update_header_divider, size=self._update_header_divider)
 
         title = Label(
             text="食谱推荐",
-            font_size=dp(22),
-            bold=True,
-            color=COLORS['text_primary'],
             size_hint_y=None,
-            height=dp(30),
+            height=dp(28),
             halign="left",
             valign="middle",
+            font_size=dp(get_font_size("headline_small")),
+            bold=True,
+            color=COLORS["text_primary"],
         )
-        title.bind(size=lambda ins, val: setattr(ins, 'text_size', val))
+        _bind_label_text(title)
+        if CHINESE_FONT:
+            title.font_name = CHINESE_FONT
         header.add_widget(title)
 
         subtitle = Label(
-            text="根据冰箱里的食材，推荐美味菜谱",
-            font_size=dp(13),
-            color=COLORS['text_secondary'],
+            text="根据库存情况组织可做菜谱和即将过期食材。",
             size_hint_y=None,
-            height=dp(20),
+            height=dp(18),
             halign="left",
             valign="middle",
+            font_size=dp(get_font_size("body_medium")),
+            color=COLORS["text_secondary"],
         )
-        subtitle.bind(size=lambda ins, val: setattr(ins, 'text_size', val))
+        _bind_label_text(subtitle)
+        if CHINESE_FONT:
+            subtitle.font_name = CHINESE_FONT
         header.add_widget(subtitle)
+        return header
 
-        main_layout.add_widget(header)
-
-        # 统计卡片区域
-        stats_container = BoxLayout(
-            orientation='vertical',
-            size_hint_y=None,
-            height=dp(96),
-            padding=(dp(16), dp(0), dp(16), dp(12)),
+    def _create_metrics_row(self):
+        row = BoxLayout(size_hint_y=None, height=dp(112), spacing=dp(10))
+        self.ingredient_card = MetricTile(
+            icon="food-apple",
+            title="可用食材",
+            accent=COLORS["primary"],
         )
-
-        stats_row = BoxLayout(size_hint_y=None, height=dp(84), spacing=dp(12))
-
-        self.ingredient_card = StatCard("food-apple", "可用食材", "0种", COLORS['primary'])
-        self.recipe_card = StatCard("silverware-fork-knife", "可做菜谱", "0道", COLORS['accent'])
-        self.expiring_card = StatCard("clock-alert", "即将过期", "0种", COLORS['warning'])
-
-        stats_row.add_widget(self.ingredient_card)
-        stats_row.add_widget(self.recipe_card)
-        stats_row.add_widget(self.expiring_card)
-
-        stats_container.add_widget(stats_row)
-        main_layout.add_widget(stats_container)
-
-        # 分隔线
-        separator = BoxLayout(size_hint_y=None, height=dp(1), padding=(dp(16), 0, dp(16), 0))
-
-        sep_color = Color(0, 0, 0, 0.05)
-        sep_rect = Rectangle(pos=separator.pos, size=separator.size)
-
-        separator.canvas.before.add(sep_color)
-        separator.canvas.before.add(sep_rect)
-
-        separator.bind(pos=lambda ins, val: setattr(sep_rect, 'pos', val))
-        separator.bind(size=lambda ins, val: setattr(sep_rect, 'size', val))
-
-        main_layout.add_widget(separator)
-
-        # 菜谱标题
-        recipe_header = BoxLayout(
-            orientation='horizontal',
-            size_hint_y=None,
-            height=dp(48),
-            padding=(dp(16), dp(8), dp(16), dp(8)),
+        self.recipe_card = MetricTile(
+            icon="silverware-fork-knife",
+            title="可做菜谱",
+            accent=COLORS["secondary"],
         )
+        self.expiring_card = MetricTile(
+            icon="clock-alert-outline",
+            title="3 天内过期",
+            accent=COLORS["warning"],
+        )
+        row.add_widget(self.ingredient_card)
+        row.add_widget(self.recipe_card)
+        row.add_widget(self.expiring_card)
+        return row
 
-        recipe_title = Label(
+    def _create_section_title(self):
+        box = BoxLayout(orientation="vertical", size_hint_y=None, height=dp(22), spacing=dp(0))
+
+        title = Label(
             text="推荐菜谱",
-            font_size=dp(16),
-            bold=True,
-            color=COLORS['text_primary'],
             size_hint_y=None,
-            height=dp(24),
+            height=dp(22),
             halign="left",
             valign="middle",
+            font_size=dp(get_font_size("title_medium")),
+            bold=True,
+            color=COLORS["text_primary"],
         )
-        recipe_header.add_widget(recipe_title)
-        main_layout.add_widget(recipe_header)
+        _bind_label_text(title)
+        if CHINESE_FONT:
+            title.font_name = CHINESE_FONT
+        box.add_widget(title)
+        return box
 
-        # 滚动区域
-        scroll_view = ScrollView(
-            size_hint=(1, 1),
-            do_scroll_x=False,
-            bar_width=dp(3),
-            bar_color=(0.2, 0.5, 0.85, 0.3),
-            bar_inactive_color=(0.2, 0.5, 0.85, 0.1),
-        )
-
-        # 菜谱列表
-        self.recipes_layout = BoxLayout(
-            orientation="vertical",
-            size_hint_y=None,
-            size_hint_x=1,
-            padding=(dp(16), dp(4), dp(16), dp(20)),
-            spacing=dp(12),
-        )
-        self.recipes_layout.bind(minimum_height=self.recipes_layout.setter('height'))
-
-        # 添加示例菜谱
-        sample_recipes = [
-            ("番茄炒蛋", "经典家常菜，简单易做", "15分钟", "简单", "番茄、鸡蛋、葱"),
-            ("蒜蓉西兰花", "清爽健康，低脂营养", "10分钟", "简单", "西兰花、蒜、盐"),
-            ("蛋花汤", "暖胃养身，营养丰富", "12分钟", "中等", "鸡蛋、紫菜、葱花"),
-            ("凉拌黄瓜", "夏日开胃，清脆爽口", "5分钟", "简单", "黄瓜、蒜、陈醋"),
-            ("红烧肉", "经典硬菜，肥而不腻", "45分钟", "困难", "五花肉、酱油、冰糖"),
-            ("蛋炒饭", "快速美味，一人食首选", "8分钟", "简单", "米饭、鸡蛋、葱花"),
+    def _sample_recipes(self):
+        return [
+            {
+                "title": "番茄炒蛋",
+                "description": "高频家常菜，适合把即将过熟的番茄和鸡蛋快速消耗掉。",
+                "time_text": "15 分钟",
+                "difficulty": "简单",
+                "ingredients": "番茄、鸡蛋、葱、少量糖和盐",
+                "accent": COLORS["primary"],
+            },
+            {
+                "title": "蒜蓉西兰花",
+                "description": "清爽快炒，适合把短保蔬菜优先处理，降低蔫掉浪费。",
+                "time_text": "10 分钟",
+                "difficulty": "简单",
+                "ingredients": "西兰花、蒜、盐、少量食用油",
+                "accent": COLORS["secondary"],
+            },
+            {
+                "title": "蛋花汤",
+                "description": "适合库存较少时的补位菜谱，准备时间短，容错率高。",
+                "time_text": "12 分钟",
+                "difficulty": "中等",
+                "ingredients": "鸡蛋、紫菜、葱花、白胡椒",
+                "accent": COLORS["accent"],
+            },
+            {
+                "title": "蛋炒饭",
+                "description": "优先利用剩饭和零散配菜，适合作为库存清理型菜谱。",
+                "time_text": "8 分钟",
+                "difficulty": "简单",
+                "ingredients": "米饭、鸡蛋、葱花、冷藏剩菜",
+                "accent": COLORS["primary"],
+            },
         ]
 
-        for title, desc, time, diff, ings in sample_recipes:
-            recipe_card = RecipeCard(
-                title=title,
-                description=desc,
-                time=time,
-                difficulty=diff,
-                ingredients=ings,
-            )
-            self.recipes_layout.add_widget(recipe_card)
-
-        scroll_view.add_widget(self.recipes_layout)
-        main_layout.add_widget(scroll_view)
-
-        self.add_widget(main_layout)
-
-    def _update_bg_rect(self, instance, value):
-        if hasattr(self, 'bg_rect'):
-            self.bg_rect.pos = instance.pos
-            self.bg_rect.size = instance.size
+    def _update_header_divider(self, instance, _value):
+        self._header_divider.points = [instance.x, instance.y, instance.right, instance.y]
 
     def _load_real_stats(self):
-        """加载真实的统计数据"""
-        from app.services.item_service import item_service
-        from app.models.item import ItemStatus
-        from datetime import date, timedelta
-
         try:
-            # 获取活跃物品
             active_items = item_service.get_items(status=ItemStatus.ACTIVE)
-
-            # 按名称分组统计唯一食材
             ingredient_names = set()
             expiring_count = 0
 
             today = date.today()
-            tomorrow = today + timedelta(days=3)
+            threshold = today + timedelta(days=3)
 
             for item in active_items:
                 ingredient_names.add(item.name)
+                if item.expiry_date and today <= item.expiry_date <= threshold:
+                    expiring_count += 1
 
-                # 即将过期统计
-                if item.expiry_date:
-                    days_until = (item.expiry_date - today).days
-                    if 0 <= days_until <= 3:
-                        expiring_count += 1
-
-            # 可做菜谱（简单估算，假设每道菜平均需要2-3种食材）
             recipe_count = max(0, len(ingredient_names) // 2)
-
-            # 更新卡片
-            for i, card in enumerate([self.ingredient_card, self.recipe_card, self.expiring_card]):
-                # children 顺序是: [图标, 值, 标题]
-                # 但由于BoxLayout是反向顺序访问的，所以 children[1] 是值
-                if i == 0:
-                    card.children[1].text = f"{len(ingredient_names)}种"
-                elif i == 1:
-                    card.children[1].text = f"{recipe_count}道"
-                elif i == 2:
-                    card.children[1].text = f"{expiring_count}种"
-
-        except Exception as e:
-            print(f"加载统计数据失败: {e}")
+            self.ingredient_card.set_value(f"{len(ingredient_names)} 种")
+            self.recipe_card.set_value(f"{recipe_count} 道")
+            self.expiring_card.set_value(f"{expiring_count} 种")
+        except Exception:
+            self.ingredient_card.set_value("0 种")
+            self.recipe_card.set_value("0 道")
+            self.expiring_card.set_value("0 种")
 
     def on_enter(self):
         if CHINESE_FONT:
