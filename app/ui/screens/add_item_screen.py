@@ -1225,6 +1225,10 @@ class AddItemScreen(Screen):
         if hasattr(self, "reminder_checkbox"):
             self.reminder_checkbox.active = True
 
+        # 重置提醒 checkbox，修复表单重置后 UI 状态与数据不一致问题
+        if hasattr(self, "reminder_checkbox"):
+            self.reminder_checkbox.active = True
+
         # 聚焦到名称输入框
         self.name_input.focus = True
 

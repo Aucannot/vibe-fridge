@@ -45,6 +45,9 @@ LIST_CARD = get_card_style("list")
 HEADER_CHIP_HEIGHT = dp(36)
 HEADER_TOGGLE_RADIUS = dp(16)
 
+HEADER_CHIP_HEIGHT = dp(36)
+HEADER_TOGGLE_RADIUS = dp(16)
+
 def get_token_color(key):
     return COLORS.get(key, (0.5, 0.5, 0.5, 1))
 
