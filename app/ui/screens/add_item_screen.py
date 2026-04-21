@@ -9,6 +9,7 @@ from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.button import Button
+from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.graphics import Color, Rectangle, RoundedRectangle, Line
 from kivymd.app import MDApp
@@ -16,6 +17,10 @@ from kivymd.uix.card import MDCard
 from kivymd.uix.button import MDIconButton
 from kivymd.uix.label import MDIcon
 from kivymd.uix.pickers import MDModalDatePicker
+from kivymd.uix.pickers.datepicker.datepicker import (
+    MDDatePickerDaySelectableItem,
+    MDDatePickerWeekdayLabel,
+)
 from kivymd.uix.selectioncontrol import MDCheckbox
 from datetime import date
 
@@ -39,6 +44,70 @@ def _bind_label_text(widget, horizontal_padding=0):
             inst, "text_size", (max(0, val[0] - horizontal_padding), None)
         )
     )
+
+
+class ChineseMDModalDatePicker(MDModalDatePicker):
+    """Localized modal date picker with stable Chinese weekday labels."""
+
+    WEEKDAY_SHORT_NAMES = {
+        0: "一",
+        1: "二",
+        2: "三",
+        3: "四",
+        4: "五",
+        5: "六",
+        6: "日",
+    }
+    WEEKDAY_FULL_NAMES = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+
+    def __init__(self, **kwargs):
+        kwargs.setdefault("supporting_text", "选择日期")
+        kwargs.setdefault("text_button_ok", "确定")
+        kwargs.setdefault("text_button_cancel", "取消")
+        super().__init__(**kwargs)
+
+    def generate_list_widgets_days(self) -> None:
+        calendar_list = []
+
+        for day_index in self.calendar.iterweekdays():
+            weekday_label = MDDatePickerWeekdayLabel(
+                text=self.WEEKDAY_SHORT_NAMES.get(day_index, ""),
+                date_picker=self,
+            )
+            if CHINESE_FONT:
+                weekday_label.font_name = CHINESE_FONT
+            self.calendar_layout.add_widget(weekday_label)
+
+        for index in range(6 * 7):
+            day_item = MDDatePickerDaySelectableItem(
+                is_week_end=index % 7 == 6,
+                date_picker=self,
+            )
+            if CHINESE_FONT:
+                day_item.font_name = CHINESE_FONT
+            calendar_list.append(day_item)
+            self.calendar_layout.add_widget(day_item)
+
+        self._calendar_list = calendar_list
+
+    def set_text_full_date(self) -> str:
+        if self.mode != "picker":
+            return super().set_text_full_date()
+
+        selected_date = date(self.sel_year, self.sel_month, self.sel_day)
+        return (
+            f"{self.WEEKDAY_FULL_NAMES[selected_date.weekday()]}，"
+            f"{selected_date.month}月{selected_date.day}日"
+        )
+
+    def _update_date_label_text(self):
+        self._current_month_name = self.set_text_full_date()
+        self._current_full_month_name = f"{self.year}年{self.month}月"
+
+    def on_open(self) -> None:
+        super().on_open()
+        if CHINESE_FONT:
+            Clock.schedule_once(lambda *_: apply_font_to_widget(self, CHINESE_FONT), 0)
 
 
 class FridgeTextInput(TextInput):
@@ -711,7 +780,7 @@ class AddItemScreen(Screen):
         """显示日期选择器"""
         from datetime import date
         today = date.today()
-        self.date_picker = MDModalDatePicker(
+        self.date_picker = ChineseMDModalDatePicker(
             year=today.year,
             month=today.month,
             day=today.day,
@@ -722,8 +791,6 @@ class AddItemScreen(Screen):
             on_ok=lambda instance, *args, dt=date_type: self._on_date_ok(
                 instance, *args, date_type=dt
             ),
-            # 打开后再应用字体，确保内部子控件已经创建
-            on_open=lambda instance: self._apply_font_to_date_picker(instance),
         )
         self.date_picker.open()
 
@@ -757,9 +824,88 @@ class AddItemScreen(Screen):
                 font_name = getattr(main_module, "CHINESE_FONT_NAME", None)
             if font_name:
                 apply_font_to_widget(picker_instance, font_name)
+                self._apply_font_to_date_picker_ids(picker_instance, font_name)
         except Exception:
             # 字体应用失败时静默忽略，不影响功能
             pass
+
+    def _configure_date_picker(self, picker_instance):
+        """Apply localization and fonts after picker widgets exist."""
+        self._localize_date_picker(picker_instance)
+        self._apply_font_to_date_picker(picker_instance)
+
+    def _schedule_date_picker_refresh(self, picker_instance):
+        """Refresh the picker after KivyMD finishes its internal open-time updates."""
+        delays = (0, 0.03, 0.08, 0.16)
+        for delay in delays:
+            Clock.schedule_once(
+                lambda *_args, inst=picker_instance: self._configure_date_picker(inst),
+                delay,
+            )
+
+    def _apply_font_to_date_picker_ids(self, picker_instance, font_name):
+        """Set font on key KivyMD date picker labels that rely on theme styles."""
+        ids = getattr(picker_instance, "ids", None)
+        if not ids:
+            return
+
+        for key in ("supporting_label", "current_month_name"):
+            widget = ids.get(key)
+            if widget is not None and hasattr(widget, "font_name"):
+                widget.font_name = font_name
+
+        year_selection_items = ids.get("year_selection_items")
+        if year_selection_items is not None:
+            year_label = year_selection_items.ids.get("label")
+            if year_label is not None and hasattr(year_label, "font_name"):
+                year_label.font_name = font_name
+
+    def _localize_date_picker(self, picker_instance):
+        """Replace unstable locale defaults with readable Chinese text."""
+        if picker_instance is None:
+            return
+
+        picker_instance.supporting_text = "选择日期"
+        picker_instance.text_button_ok = "确定"
+        picker_instance.text_button_cancel = "取消"
+        picker_instance._current_month_name = self._format_date_picker_title(
+            picker_instance
+        )
+        picker_instance._current_full_month_name = (
+            f"{picker_instance.year}年{picker_instance.month}月"
+        )
+        self._localize_date_picker_weekdays(picker_instance)
+
+    def _format_date_picker_title(self, picker_instance) -> str:
+        selected = date(
+            picker_instance.sel_year,
+            picker_instance.sel_month,
+            picker_instance.sel_day,
+        )
+        weekday_names = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+        return f"{weekday_names[selected.weekday()]}，{selected.month}月{selected.day}日"
+
+    def _localize_date_picker_weekdays(self, picker_instance):
+        weekday_labels = [
+            widget
+            for widget in picker_instance.calendar_layout.children
+            if type(widget).__name__ == "MDDatePickerWeekdayLabel"
+        ]
+        if not weekday_labels:
+            return
+
+        weekday_short_names = {
+            0: "一",
+            1: "二",
+            2: "三",
+            3: "四",
+            4: "五",
+            5: "六",
+            6: "日",
+        }
+        ordered_days = list(picker_instance.calendar.iterweekdays())
+        for widget, day_index in zip(reversed(weekday_labels), ordered_days):
+            widget.text = weekday_short_names.get(day_index, "")
 
     def _on_date_selected(self, selected_date, date_type: str):
         """日期选择回调"""

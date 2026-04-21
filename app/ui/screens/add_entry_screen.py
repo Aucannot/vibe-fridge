@@ -5,10 +5,12 @@
 
 from kivy.graphics import Color, Line, Rectangle, RoundedRectangle
 from kivy.metrics import dp
+from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.uix.screenmanager import Screen
+from kivy.uix.scrollview import ScrollView
 from kivymd.app import MDApp
 from kivymd.uix.label import MDIcon
 
@@ -27,6 +29,13 @@ def _bind_label_text(widget, horizontal_padding=0):
     )
 
 
+def _bind_auto_height(widget, min_height, horizontal_padding=0):
+    _bind_label_text(widget, horizontal_padding)
+    widget.bind(
+        texture_size=lambda inst, val: setattr(inst, "height", max(min_height, val[1]))
+    )
+
+
 class EntryActionCard(ButtonBehavior, BoxLayout):
     """Single entry option card."""
 
@@ -36,18 +45,28 @@ class EntryActionCard(ButtonBehavior, BoxLayout):
         super().__init__(**kwargs)
         self.orientation = "horizontal"
         self.size_hint_y = None
-        self.height = dp(128)
+        self.height = dp(156)
         self.padding = dp(LIST_CARD["padding"])
         self.spacing = dp(14)
         self.enabled = enabled
         self._accent = accent
         self._pressed = False
         self._icon_bg = None
+        self._body = None
+        self._status_box = None
         self._build_ui(title, subtitle, icon, cta_text)
+        self.bind(minimum_height=self._update_height)
         self.bind(pos=self._redraw, size=self._redraw)
+        self._update_height()
         self._redraw()
 
     def _build_ui(self, title, subtitle, icon, cta_text):
+        icon_container = AnchorLayout(
+            anchor_x="center",
+            anchor_y="center",
+            size_hint=(None, 1),
+            width=dp(72),
+        )
         icon_shell = BoxLayout(
             orientation="vertical",
             size_hint=(None, None),
@@ -79,44 +98,61 @@ class EntryActionCard(ButtonBehavior, BoxLayout):
                 font_size=dp(26),
             )
         )
-        self.add_widget(icon_shell)
+        icon_container.add_widget(icon_shell)
+        self.add_widget(icon_container)
 
-        body = BoxLayout(orientation="vertical", spacing=dp(6))
+        body = BoxLayout(
+            orientation="vertical",
+            size_hint=(1, None),
+            spacing=dp(6),
+            padding=(0, dp(2), 0, dp(2)),
+        )
+        body.bind(minimum_height=body.setter("height"))
+        self._body = body
 
         title_label = Label(
             text=title,
             size_hint_y=None,
-            height=dp(24),
+            height=dp(28),
             halign="left",
-            valign="middle",
+            valign="top",
             font_size=dp(get_font_size("title_medium")),
             bold=True,
             color=COLORS["text_primary"],
         )
-        _bind_label_text(title_label)
+        _bind_auto_height(title_label, dp(28))
         if CHINESE_FONT:
             title_label.font_name = CHINESE_FONT
         body.add_widget(title_label)
 
         subtitle_label = Label(
             text=subtitle,
+            size_hint_y=None,
+            height=dp(48),
             halign="left",
             valign="top",
             font_size=dp(get_font_size("body_medium")),
             color=COLORS["text_secondary"],
         )
-        _bind_label_text(subtitle_label)
+        _bind_auto_height(subtitle_label, dp(48))
         if CHINESE_FONT:
             subtitle_label.font_name = CHINESE_FONT
         body.add_widget(subtitle_label)
         self.add_widget(body)
 
+        status_container = AnchorLayout(
+            anchor_x="center",
+            anchor_y="center",
+            size_hint=(None, 1),
+            width=dp(108),
+        )
         status_box = BoxLayout(
             orientation="vertical",
-            size_hint=(None, 1),
-            width=dp(92),
+            size_hint=(1, None),
+            height=dp(68),
             spacing=dp(8),
         )
+        self._status_box = status_box
 
         self._status_chip = Label(
             text="已就绪" if self.enabled else "规划中",
@@ -149,7 +185,15 @@ class EntryActionCard(ButtonBehavior, BoxLayout):
             self._cta.font_name = CHINESE_FONT
         status_box.add_widget(self._cta)
 
-        self.add_widget(status_box)
+        status_container.add_widget(status_box)
+        self.add_widget(status_container)
+
+    def _update_height(self, *_args):
+        body_height = self._body.height if self._body else 0
+        status_height = self._status_box.height if self._status_box else 0
+        content_height = max(dp(56), body_height, status_height)
+        vertical_padding = self.padding[1] + self.padding[3]
+        self.height = max(dp(144), content_height + vertical_padding)
 
     def _redraw(self, *_args):
         radius = dp(LIST_CARD["radius"])
@@ -224,11 +268,19 @@ class AddEntryScreen(Screen):
 
         root.add_widget(self._create_header())
 
+        scroll = ScrollView(
+            do_scroll_x=False,
+            bar_width=dp(3),
+            bar_color=(*COLORS["primary"][:3], 0.25),
+            bar_inactive_color=(*COLORS["primary"][:3], 0.1),
+        )
         content = BoxLayout(
             orientation="vertical",
+            size_hint_y=None,
             padding=(dp(16), dp(12), dp(16), dp(20)),
             spacing=dp(14),
         )
+        content.bind(minimum_height=content.setter("height"))
         preview_card = EntryActionCard(
             title="从订单截图自动批量导入",
             subtitle="上传买菜或外卖订单截图，系统将自动拆分出物品名称、数量和日期线索。",
@@ -260,7 +312,9 @@ class AddEntryScreen(Screen):
         manual_card.bind(on_release=self._go_to_manual_add)
         content.add_widget(manual_card)
 
-        root.add_widget(content)
+        content.add_widget(BoxLayout(size_hint_y=None, height=dp(4)))
+        scroll.add_widget(content)
+        root.add_widget(scroll)
         self.add_widget(root)
 
     def _create_header(self):
