@@ -77,6 +77,7 @@ from app.ui.screens.item_wiki_detail_screen import ItemWikiDetailScreen
 from app.ui.screens.item_wiki_edit_screen import ItemWikiEditScreen
 from app.ui.screens.add_item_screen import AddItemScreen
 from app.ui.screens.add_entry_screen import AddEntryScreen
+from app.ui.screens.order_import_screen import OrderImportScreen
 from app.ui.screens.recipes_screen import RecipesScreen
 from app.ui.screens.settings_screen import SettingsScreen
 from app.ui.screens.history_screen import HistoryScreen
@@ -203,6 +204,10 @@ class VibeFridgeApp(MDApp):
         # 选择添加方式屏幕
         add_entry_screen = AddEntryScreen(name="add_entry")
         self.screen_manager.add_widget(add_entry_screen)
+
+        # 订单截图导入屏幕
+        order_import_screen = OrderImportScreen(name="order_import")
+        self.screen_manager.add_widget(order_import_screen)
 
         # 添加物品屏幕（手动添加）
         add_item_screen = AddItemScreen(name='add_item')

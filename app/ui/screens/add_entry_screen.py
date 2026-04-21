@@ -41,7 +41,17 @@ class EntryActionCard(ButtonBehavior, BoxLayout):
 
     __events__ = ("on_release",)
 
-    def __init__(self, title, subtitle, icon, cta_text, accent, enabled, **kwargs):
+    def __init__(
+        self,
+        title,
+        subtitle,
+        icon,
+        cta_text,
+        accent,
+        enabled,
+        status_text=None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.orientation = "horizontal"
         self.size_hint_y = None
@@ -54,6 +64,10 @@ class EntryActionCard(ButtonBehavior, BoxLayout):
         self._icon_bg = None
         self._body = None
         self._status_box = None
+        self._status_chip = None
+        self._resolved_status_text = (
+            status_text if status_text is not None else ("已就绪" if self.enabled else "规划中")
+        )
         self._build_ui(title, subtitle, icon, cta_text)
         self.bind(minimum_height=self._update_height)
         self.bind(pos=self._redraw, size=self._redraw)
@@ -140,53 +154,56 @@ class EntryActionCard(ButtonBehavior, BoxLayout):
         body.add_widget(subtitle_label)
         self.add_widget(body)
 
-        status_container = AnchorLayout(
-            anchor_x="center",
-            anchor_y="center",
-            size_hint=(None, 1),
-            width=dp(108),
-        )
-        status_box = BoxLayout(
-            orientation="vertical",
-            size_hint=(1, None),
-            height=dp(68),
-            spacing=dp(8),
-        )
-        self._status_box = status_box
+        if self._resolved_status_text or cta_text:
+            status_container = AnchorLayout(
+                anchor_x="center",
+                anchor_y="center",
+                size_hint=(None, 1),
+                width=dp(108),
+            )
+            status_box = BoxLayout(
+                orientation="vertical",
+                size_hint=(1, None),
+                height=dp(68),
+                spacing=dp(8),
+            )
+            self._status_box = status_box
 
-        self._status_chip = Label(
-            text="已就绪" if self.enabled else "规划中",
-            size_hint_y=None,
-            height=dp(28),
-            halign="center",
-            valign="middle",
-            font_size=dp(get_font_size("label_medium")),
-            color=self._accent if self.enabled else COLORS["text_hint"],
-        )
-        self._status_chip.bind(
-            size=lambda inst, val: setattr(inst, "text_size", (val[0], val[1]))
-        )
-        if CHINESE_FONT:
-            self._status_chip.font_name = CHINESE_FONT
-        status_box.add_widget(self._status_chip)
+            if self._resolved_status_text:
+                self._status_chip = Label(
+                    text=self._resolved_status_text,
+                    size_hint_y=None,
+                    height=dp(28),
+                    halign="center",
+                    valign="middle",
+                    font_size=dp(get_font_size("label_medium")),
+                    color=self._accent if self.enabled else COLORS["text_hint"],
+                )
+                self._status_chip.bind(
+                    size=lambda inst, val: setattr(inst, "text_size", (val[0], val[1]))
+                )
+                if CHINESE_FONT:
+                    self._status_chip.font_name = CHINESE_FONT
+                status_box.add_widget(self._status_chip)
 
-        self._cta = Label(
-            text=cta_text,
-            size_hint_y=None,
-            height=dp(24),
-            halign="center",
-            valign="middle",
-            font_size=dp(get_font_size("label_large")),
-            bold=self.enabled,
-            color=self._accent if self.enabled else COLORS["text_hint"],
-        )
-        self._cta.bind(size=lambda inst, val: setattr(inst, "text_size", val))
-        if CHINESE_FONT:
-            self._cta.font_name = CHINESE_FONT
-        status_box.add_widget(self._cta)
+            if cta_text:
+                self._cta = Label(
+                    text=cta_text,
+                    size_hint_y=None,
+                    height=dp(24),
+                    halign="center",
+                    valign="middle",
+                    font_size=dp(get_font_size("label_large")),
+                    bold=self.enabled,
+                    color=self._accent if self.enabled else COLORS["text_hint"],
+                )
+                self._cta.bind(size=lambda inst, val: setattr(inst, "text_size", val))
+                if CHINESE_FONT:
+                    self._cta.font_name = CHINESE_FONT
+                status_box.add_widget(self._cta)
 
-        status_container.add_widget(status_box)
-        self.add_widget(status_container)
+            status_container.add_widget(status_box)
+            self.add_widget(status_container)
 
     def _update_height(self, *_args):
         body_height = self._body.height if self._body else 0
@@ -213,20 +230,21 @@ class EntryActionCard(ButtonBehavior, BoxLayout):
                 rounded_rectangle=(self.x, self.y, self.width, self.height, radius),
             )
 
-        self._status_chip.canvas.before.clear()
-        with self._status_chip.canvas.before:
-            Color(
-                *(
-                    COLORS["primary_container"]
-                    if self.enabled
-                    else COLORS["surface_variant"]
+        if self._status_chip is not None:
+            self._status_chip.canvas.before.clear()
+            with self._status_chip.canvas.before:
+                Color(
+                    *(
+                        COLORS["primary_container"]
+                        if self.enabled
+                        else COLORS["surface_variant"]
+                    )
                 )
-            )
-            RoundedRectangle(
-                pos=self._status_chip.pos,
-                size=self._status_chip.size,
-                radius=[dp(14)],
-            )
+                RoundedRectangle(
+                    pos=self._status_chip.pos,
+                    size=self._status_chip.size,
+                    radius=[dp(14)],
+                )
 
     def on_touch_down(self, touch):
         if self.enabled and self.collide_point(*touch.pos):
@@ -285,10 +303,12 @@ class AddEntryScreen(Screen):
             title="从订单截图自动批量导入",
             subtitle="上传买菜或外卖订单截图，系统将自动拆分出物品名称、数量和日期线索。",
             icon="image-multiple",
-            cta_text="即将开放",
+            cta_text="",
             accent=COLORS["secondary"],
-            enabled=False,
+            enabled=True,
+            status_text="",
         )
+        preview_card.bind(on_release=self._go_to_order_import)
         content.add_widget(preview_card)
 
         capture_card = EntryActionCard(
@@ -305,9 +325,10 @@ class AddEntryScreen(Screen):
             title="手动添加物品",
             subtitle="使用完整表单录入名称、分类、日期、提醒和说明，当前已经可用。",
             icon="pencil-plus",
-            cta_text="进入",
+            cta_text="",
             accent=COLORS["primary"],
             enabled=True,
+            status_text="",
         )
         manual_card.bind(on_release=self._go_to_manual_add)
         content.add_widget(manual_card)
@@ -427,3 +448,8 @@ class AddEntryScreen(Screen):
         app = MDApp.get_running_app()
         if hasattr(app, "screen_manager"):
             app.screen_manager.current = "add_item"
+
+    def _go_to_order_import(self, _instance):
+        app = MDApp.get_running_app()
+        if hasattr(app, "screen_manager"):
+            app.screen_manager.current = "order_import"

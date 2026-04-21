@@ -104,10 +104,12 @@ class ItemService:
                 if tags:
                     ItemService._add_tags_to_item(session, item, tags)
 
+                session.flush()
+                session.refresh(item)
+                # 返回前主动分离对象，避免调用方在提交后读取基础字段时触发 DetachedInstanceError。
+                session.expunge(item)
+
                 logger.info(f"物品创建成功: {item.name} (ID: {item.id})")
-                # 此处不再手动 expunge；在 with 块结束时会话会提交并关闭，
-                # item 会自然变为 detached，对调用方读取基础字段是安全的，
-                # 且不会影响关系同步，避免在提交阶段出现 SAWarning。
                 return item
 
         except Exception as e:

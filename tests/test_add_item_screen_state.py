@@ -9,8 +9,11 @@ import pytest
 os.environ.setdefault("KIVY_NO_ARGS", "1")
 os.environ.setdefault("KIVY_WINDOW", "mock")
 
-pytest.importorskip("kivy")
-pytest.importorskip("kivymd")
+try:
+    pytest.importorskip("kivy")
+    pytest.importorskip("kivymd")
+except BaseException as exc:  # pragma: no cover - headless CI fallback
+    pytest.skip(f"Kivy test environment unavailable: {exc}", allow_module_level=True)
 
 from app.ui.screens.add_item_screen import AddItemScreen
 

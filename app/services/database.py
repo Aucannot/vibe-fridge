@@ -5,6 +5,7 @@
 
 import os
 from pathlib import Path
+from typing import Optional
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.exc import SQLAlchemyError
@@ -96,6 +97,31 @@ def _migrate_database(engine) -> None:
                 except Exception as e:
                     logger.warning(f"添加wiki_id外键约束失败（可能是表不存在）: {e}")
 
+            if 'image_path' not in items_columns:
+                logger.info("添加image_path字段到items表")
+                conn.execute(text("ALTER TABLE items ADD COLUMN image_path VARCHAR(255)"))
+                logger.info("image_path字段添加成功")
+
+            if 'source_app' not in items_columns:
+                logger.info("添加source_app字段到items表")
+                conn.execute(text("ALTER TABLE items ADD COLUMN source_app VARCHAR(50)"))
+                logger.info("source_app字段添加成功")
+
+            if 'source_order_id' not in items_columns:
+                logger.info("添加source_order_id字段到items表")
+                conn.execute(text("ALTER TABLE items ADD COLUMN source_order_id VARCHAR(100)"))
+                logger.info("source_order_id字段添加成功")
+
+            if 'predicted_expiry_date' not in items_columns:
+                logger.info("添加predicted_expiry_date字段到items表")
+                conn.execute(text("ALTER TABLE items ADD COLUMN predicted_expiry_date DATE"))
+                logger.info("predicted_expiry_date字段添加成功")
+
+            if 'prediction_confidence' not in items_columns:
+                logger.info("添加prediction_confidence字段到items表")
+                conn.execute(text("ALTER TABLE items ADD COLUMN prediction_confidence FLOAT"))
+                logger.info("prediction_confidence字段添加成功")
+
             # 检查是否需要创建 item_wikis 表
             tables = inspector.get_table_names()
             if 'item_wikis' not in tables:
@@ -157,6 +183,17 @@ def _migrate_database(engine) -> None:
                 """))
                 logger.info("item_wiki_categories表创建成功")
 
+            if 'app_settings' not in tables:
+                logger.info("创建app_settings表")
+                conn.execute(text("""
+                    CREATE TABLE app_settings (
+                        key VARCHAR(100) PRIMARY KEY,
+                        value TEXT,
+                        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                """))
+                logger.info("app_settings表创建成功")
+
     except Exception as e:
         logger.warning(f"数据库迁移失败: {e}")
 
@@ -170,7 +207,7 @@ def get_session() -> Session:
     """
     db_url = get_database_url()
     engine = create_engine(db_url)
-    SessionLocal = sessionmaker(bind=engine)
+    SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
     return SessionLocal()
 
 
@@ -199,7 +236,7 @@ class DatabaseService:
 
     def __init__(self):
         self.engine = create_engine(get_database_url())
-        self.SessionLocal = sessionmaker(bind=self.engine)
+        self.SessionLocal = sessionmaker(bind=self.engine, expire_on_commit=False)
 
     def get_session(self) -> Session:
         """获取数据库会话"""
@@ -237,6 +274,73 @@ class DatabaseService:
         except SQLAlchemyError as e:
             logger.error(f"SQL执行失败: {str(e)}")
             raise
+
+    def get_setting(self, key: str, default: Optional[str] = None) -> Optional[str]:
+        """
+        获取应用设置值
+
+        Args:
+            key: 设置键
+            default: 默认值
+
+        Returns:
+            Optional[str]: 设置值
+        """
+        try:
+            with self.session_scope() as session:
+                result = session.execute(
+                    text("SELECT value FROM app_settings WHERE key = :key"),
+                    {"key": key},
+                ).scalar()
+                return result if result is not None else default
+        except SQLAlchemyError as e:
+            logger.error(f"获取设置失败: {str(e)}")
+            return default
+
+    def set_setting(self, key: str, value: Optional[str]) -> bool:
+        """
+        保存应用设置值
+
+        Args:
+            key: 设置键
+            value: 设置值
+
+        Returns:
+            bool: 是否保存成功
+        """
+        try:
+            with self.session_scope() as session:
+                session.execute(
+                    text(
+                        """
+                        INSERT INTO app_settings (key, value, updated_at)
+                        VALUES (:key, :value, CURRENT_TIMESTAMP)
+                        ON CONFLICT(key) DO UPDATE SET
+                            value = excluded.value,
+                            updated_at = CURRENT_TIMESTAMP
+                        """
+                    ),
+                    {"key": key, "value": value},
+                )
+                return True
+        except SQLAlchemyError as e:
+            logger.error(f"保存设置失败: {str(e)}")
+            return False
+
+    def get_reminder_days_before(self) -> int:
+        """
+        获取提醒提前天数
+
+        Returns:
+            int: 提前天数
+        """
+        raw_value = self.get_setting(
+            "reminder_days_before", os.getenv("REMINDER_DAYS_BEFORE", "3")
+        )
+        try:
+            return max(0, int(raw_value))
+        except (TypeError, ValueError):
+            return 3
 
     def get_table_count(self, table_name: str) -> int:
         """
