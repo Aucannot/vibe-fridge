@@ -9,10 +9,9 @@ from typing import Any, Dict, Optional
 
 from kivy.clock import Clock
 from kivy.graphics import Color, Line, Rectangle, RoundedRectangle
-from kivy.lang import Builder
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.filechooser import FileChooserListLayout, FileChooserListView
+from kivy.uix.filechooser import FileChooserListView
 from kivy.uix.image import Image
 from kivy.uix.label import Label
 from kivy.uix.modalview import ModalView
@@ -40,114 +39,6 @@ logger = setup_logger(__name__)
 
 COLORS = COLOR_PALETTE
 SECTION_CARD = get_card_style("section")
-
-
-def _kv_rgba(color_name: str) -> str:
-    return ", ".join(str(component) for component in COLORS[color_name])
-
-
-class FridgeFileChooserListLayout(FileChooserListLayout):
-    """Lightweight list layout that matches the app's light modal design."""
-
-    _ENTRY_TEMPLATE = "FridgeFileListEntry"
-
-
-class FridgeFileChooserListView(FileChooserListView):
-    """Styled file chooser used by the order import flow."""
-
-
-Builder.load_string(
-    f"""
-<FridgeFileChooserListLayout>:
-    on_entry_added: treeview.add_node(args[1])
-    on_entries_cleared: treeview.root.nodes = []
-    on_subentry_to_entry: not args[2].locked and treeview.add_node(args[1], args[2])
-    on_remove_subentry: args[2].nodes = []
-    canvas.before:
-        Color:
-            rgba: {_kv_rgba("surface_variant")}
-        RoundedRectangle:
-            pos: self.pos
-            size: self.size
-            radius: [dp(18)]
-    canvas.after:
-        Color:
-            rgba: {_kv_rgba("divider")}
-        Line:
-            width: dp(1)
-            rounded_rectangle: self.x, self.y, self.width, self.height, dp(18)
-    ScrollView:
-        pos: root.pos
-        size: root.size
-        size_hint: None, None
-        do_scroll_x: False
-        bar_width: dp(3)
-        Scatter:
-            do_rotation: False
-            do_scale: False
-            do_translation: False
-            size: treeview.size
-            size_hint_y: None
-            TreeView:
-                id: treeview
-                hide_root: True
-                size_hint_y: None
-                width: self.parent.parent.width
-                height: self.minimum_height
-                on_node_expand: root.controller.entry_subselect(args[1])
-                on_node_collapse: root.controller.close_subselection(args[1])
-
-<FridgeFileChooserListView>:
-    layout: layout
-    FridgeFileChooserListLayout:
-        id: layout
-        controller: root
-
-[FridgeFileListEntry@FloatLayout+TreeViewNode]:
-    locked: False
-    entries: []
-    path: ctx.path
-    is_selected: self.path in ctx.controller().selection
-    size_hint_y: None
-    height: "44dp"
-    is_leaf: not ctx.isdir or ctx.name.endswith(".." + ctx.sep) or self.locked
-    on_touch_down: self.collide_point(*args[1].pos) and ctx.controller().entry_touched(self, args[1])
-    on_touch_up: self.collide_point(*args[1].pos) and ctx.controller().entry_released(self, args[1])
-    canvas.before:
-        Color:
-            rgba: ({_kv_rgba("primary_container")}) if self.is_selected else (0, 0, 0, 0)
-        RoundedRectangle:
-            pos: self.x + dp(6), self.y + dp(3)
-            size: self.width - dp(12), self.height - dp(6)
-            radius: [dp(14)]
-    BoxLayout:
-        pos: root.pos
-        size: root.size
-        padding: dp(12), 0, dp(12), 0
-        spacing: dp(10)
-        Image:
-            source: "atlas://data/images/defaulttheme/filechooser_%s" % ("folder" if ctx.isdir else "file")
-            size_hint_x: None
-            width: dp(18)
-        Label:
-            text: ctx.name
-            font_name: ctx.controller().font_name
-            color: {_kv_rgba("text_primary")}
-            text_size: self.size
-            halign: "left"
-            valign: "middle"
-            shorten: True
-        Label:
-            text: "" if ctx.isdir else "{{}}".format(ctx.get_nice_size())
-            font_name: ctx.controller().font_name
-            color: {_kv_rgba("text_secondary")}
-            size_hint_x: None
-            width: dp(74)
-            text_size: self.size
-            halign: "right"
-            valign: "middle"
-"""
-)
 
 
 class OrderImportScreen(Screen):
@@ -288,7 +179,7 @@ class OrderImportScreen(Screen):
         self.footer_bar.clear_widgets()
 
         if self.draft.view_state == "pick":
-            self.subtitle_label.text = "选择一张订单截图，再进入自动识别。"
+            self.subtitle_label.text = "点按上传区域，选好截图后会自动开始识别。"
             self._render_pick_state()
             self._render_pick_footer()
             return
@@ -307,7 +198,9 @@ class OrderImportScreen(Screen):
         hero_card, body = self._create_section_card(
             title="选择订单截图",
             icon="image-search-outline",
-            subtitle="支持 png、jpg、jpeg、webp、bmp。",
+            subtitle="点按整张卡片，选好后会自动开始识别。",
+            interactive=True,
+            on_release=self._open_file_dialog,
         )
         body.add_widget(
             self._create_hint_box(
@@ -315,13 +208,6 @@ class OrderImportScreen(Screen):
                 tone="secondary",
             )
         )
-
-        select_btn = FridgeButton(
-            text="选择截图文件",
-            variant="tonal",
-            on_release=self._open_file_dialog,
-        )
-        body.add_widget(select_btn)
 
         if self.draft.image_path:
             body.add_widget(self._create_preview_card(self.draft.image_path))
@@ -417,17 +303,10 @@ class OrderImportScreen(Screen):
     def _render_pick_footer(self):
         back_btn = FridgeButton(
             text="返回",
-            size_hint_x=0.38,
+            size_hint_x=1,
             on_release=self._on_back_click,
         )
-        parse_btn = FridgeButton(
-            text="开始识别",
-            variant="primary",
-            size_hint_x=0.6,
-            on_release=self._on_parse_click,
-        )
         self.footer_bar.add_widget(back_btn)
-        self.footer_bar.add_widget(parse_btn)
 
     def _render_parsing_footer(self):
         wait_btn = FridgeButton(
@@ -572,7 +451,14 @@ class OrderImportScreen(Screen):
         body.add_widget(path_label)
         return card
 
-    def _create_section_card(self, title: str, icon: str, subtitle: str | None = None):
+    def _create_section_card(
+        self,
+        title: str,
+        icon: str,
+        subtitle: str | None = None,
+        interactive: bool = False,
+        on_release=None,
+    ):
         card = MDCard(
             size_hint_y=None,
             padding=0,
@@ -580,6 +466,9 @@ class OrderImportScreen(Screen):
             style="elevated",
             md_bg_color=COLORS[SECTION_CARD["background"]],
         )
+        if interactive and on_release is not None:
+            card.ripple_behavior = True
+            card.bind(on_release=on_release)
         content = BoxLayout(
             orientation="vertical",
             size_hint_y=None,
@@ -769,18 +658,19 @@ class OrderImportScreen(Screen):
             path_label.font_name = CHINESE_FONT
         root.add_widget(path_label)
 
-        chooser = FridgeFileChooserListView(
+        chooser = FileChooserListView(
             path=self._default_file_picker_path(),
             filters=[f"*{ext}" for ext in sorted(SUPPORTED_IMAGE_EXTENSIONS)],
             multiselect=False,
             show_hidden=False,
             font_name=CHINESE_FONT or "Roboto",
         )
+        self._configure_file_chooser(chooser)
         chooser.bind(
             path=lambda _chooser, value: setattr(path_label, "text", f"当前目录：{value}")
         )
         path_label.text = f"当前目录：{chooser.path}"
-        root.add_widget(chooser)
+        root.add_widget(self._wrap_file_chooser(chooser))
 
         button_row = BoxLayout(size_hint_y=None, height=dp(48), spacing=dp(10))
         cancel_btn = FridgeButton(
@@ -815,6 +705,81 @@ class OrderImportScreen(Screen):
                 return candidate
         return "."
 
+    def _wrap_file_chooser(self, chooser: FileChooserListView) -> BoxLayout:
+        shell = BoxLayout(size_hint_y=1, padding=dp(6))
+        with shell.canvas.before:
+            Color(*COLORS["surface_variant"])
+            shell._bg = RoundedRectangle(pos=shell.pos, size=shell.size, radius=[dp(18)])
+        with shell.canvas.after:
+            Color(*COLORS["divider"])
+            shell._outline = Line(width=dp(1), rounded_rectangle=(0, 0, 0, 0, dp(18)))
+
+        def _update_shell(instance, _value):
+            instance._bg.pos = instance.pos
+            instance._bg.size = instance.size
+            instance._outline.rounded_rectangle = (
+                instance.x,
+                instance.y,
+                instance.width,
+                instance.height,
+                dp(18),
+            )
+
+        shell.bind(pos=_update_shell, size=_update_shell)
+        shell.add_widget(chooser)
+        return shell
+
+    def _configure_file_chooser(self, chooser: FileChooserListView):
+        chooser.bind(
+            files=lambda *_args: Clock.schedule_once(
+                lambda _dt: self._refresh_file_chooser_styles(chooser), 0
+            ),
+            selection=lambda *_args: Clock.schedule_once(
+                lambda _dt: self._refresh_file_chooser_styles(chooser), 0
+            ),
+            path=lambda *_args: Clock.schedule_once(
+                lambda _dt: self._refresh_file_chooser_styles(chooser), 0
+            ),
+        )
+        Clock.schedule_once(lambda _dt: self._refresh_file_chooser_styles(chooser), 0)
+
+    def _refresh_file_chooser_styles(self, chooser: FileChooserListView):
+        layout = getattr(chooser, "layout", None)
+        if layout is None:
+            return
+
+        treeview = layout.ids.get("treeview")
+        if treeview is None:
+            return
+
+        container = layout.children[0] if layout.children else None
+        if container is not None:
+            header_row = container.children[-1] if container.children else None
+            if header_row is not None:
+                header_row.height = 0
+                header_row.opacity = 0
+                header_row.disabled = True
+
+        for node in treeview.iterate_all_nodes():
+            if getattr(treeview, "root", None) is node:
+                continue
+            node.color_selected = COLORS["primary_container"]
+            node.odd_color = COLORS["surface_variant"]
+            node.even_color = COLORS["surface_variant"]
+            self._apply_file_chooser_text_style(node)
+
+    def _apply_file_chooser_text_style(self, widget):
+        for child in widget.children:
+            if isinstance(child, Label):
+                child.color = (
+                    COLORS["text_secondary"]
+                    if child.halign == "right"
+                    else COLORS["text_primary"]
+                )
+                if CHINESE_FONT:
+                    child.font_name = CHINESE_FONT
+            self._apply_file_chooser_text_style(child)
+
     def _confirm_file_selection(self, dialog: ModalView, selection):
         if not selection:
             self._show_error_dialog("请选择一个图片文件")
@@ -823,9 +788,12 @@ class OrderImportScreen(Screen):
         self.draft.select_image(selection[0])
         dialog.dismiss()
         self._file_dialog = None
-        self._render_current_state()
+        self._start_parse_flow()
 
     def _on_parse_click(self, _instance):
+        self._start_parse_flow()
+
+    def _start_parse_flow(self):
         if not self.draft.image_path:
             self._show_error_dialog("请先选择订单截图")
             return
