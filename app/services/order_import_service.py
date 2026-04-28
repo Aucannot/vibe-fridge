@@ -11,8 +11,9 @@ import os
 import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
+from difflib import SequenceMatcher
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 from dateutil import parser as date_parser
@@ -41,6 +42,14 @@ FUZZY_EXPIRY_RULES = (
 )
 FUZZY_CATEGORY_EXPIRY_DAYS = {
     "食品": (7, "食品默认短保"),
+}
+WIKI_NAME_ALIASES = {
+    "香蕉": ("甜蕉", "蕉"),
+    "苹果": ("红富士", "富士苹果", "青苹果"),
+    "牛奶": ("鲜奶", "纯牛奶"),
+    "酸奶": ("酸乳", "发酵乳"),
+    "面包": ("吐司", "切片"),
+    "鸡蛋": ("蛋", "溏心蛋"),
 }
 SILICONFLOW_MODEL_SETTING = "siliconflow_vision_model"
 LEGACY_SILICONFLOW_MODEL_SETTING = "silicon_flow_vision_model"
@@ -198,8 +207,9 @@ class OrderImportService:
                 )
                 continue
 
+            inventory_name = normalized_item.get("wiki_name") or normalized_item["name"]
             created_item = item_service.create_item(
-                name=normalized_item["name"],
+                name=inventory_name,
                 category=normalized_item["category"],
                 quantity=normalized_item["quantity"],
                 expiry_date=self._parse_date_value(normalized_item["expiry_date"]),
@@ -217,7 +227,7 @@ class OrderImportService:
                 failed_rows.append(
                     {
                         "row": row_number,
-                        "name": normalized_item["name"],
+                        "name": inventory_name,
                         "reason": "创建库存记录失败",
                     }
                 )
@@ -227,7 +237,7 @@ class OrderImportService:
             created_rows.append(
                 {
                     "row": row_number,
-                    "name": normalized_item["name"],
+                    "name": inventory_name,
                     "item_id": created_item.id,
                 }
             )
@@ -405,12 +415,14 @@ class OrderImportService:
     ) -> Dict[str, Any]:
         item_payload = item_payload if isinstance(item_payload, dict) else {}
         raw_name = (item_payload.get("name") or "").strip()
-        wiki_item = wiki_service.get_wiki_by_name(raw_name) if raw_name else None
+        wiki_item, wiki_match = self._resolve_wiki_match(item_payload, raw_name)
 
         warnings = self._normalize_warnings(item_payload.get("warnings"))
         quantity, quantity_warning = self._normalize_quantity(item_payload.get("quantity"))
         if quantity_warning:
             warnings.append(quantity_warning)
+        if wiki_item and wiki_match.get("type") != "exact":
+            warnings.append(self._format_wiki_match_warning(raw_name, wiki_item, wiki_match))
 
         unit = (item_payload.get("unit") or "").strip()
         if not unit and wiki_item and wiki_item.get("default_unit"):
@@ -423,6 +435,16 @@ class OrderImportService:
         category = self._canonicalize_category(item_payload.get("category"))
         if category != (item_payload.get("category") or "").strip():
             warnings.append(f"类别已标准化为：{category}")
+        wiki_category = (
+            self._canonicalize_category(wiki_item.get("category_name"))
+            if wiki_item and wiki_item.get("category_name")
+            else None
+        )
+        if wiki_category and category != wiki_category:
+            category = wiki_category
+            warnings.append(
+                f"已按物品 Wiki「{wiki_item['name']}」的分类调整为：{category}"
+            )
 
         purchase_date_value = item_payload.get("purchase_date")
         if item_payload.get("purchase_date_source") == "default":
@@ -487,8 +509,126 @@ class OrderImportService:
             "selected": bool(item_payload.get("selected", True)) and can_import and not imported,
             "can_import": can_import,
             "imported": imported,
+            "wiki_id": wiki_item.get("id") if wiki_item else None,
+            "wiki_name": wiki_item.get("name") if wiki_item else None,
+            "wiki_match_type": wiki_match.get("type") if wiki_item else None,
+            "wiki_match_score": wiki_match.get("score") if wiki_item else None,
         }
         return normalized_item
+
+    def _resolve_wiki_match(
+        self, item_payload: Dict[str, Any], raw_name: str
+    ) -> Tuple[Optional[Dict[str, Any]], Dict[str, Any]]:
+        explicit_wiki_name = (item_payload.get("wiki_name") or "").strip()
+        if explicit_wiki_name:
+            wiki_item = wiki_service.get_wiki_by_name(explicit_wiki_name)
+            if wiki_item:
+                return wiki_item, {"type": "manual", "score": 1.0}
+
+        if raw_name:
+            exact_match = wiki_service.get_wiki_by_name(raw_name)
+            if exact_match:
+                return exact_match, {"type": "exact", "score": 1.0}
+
+        return self._find_best_wiki_match(
+            raw_name,
+            self._canonicalize_category(item_payload.get("category")),
+        )
+
+    def _find_best_wiki_match(
+        self, raw_name: str, category: str
+    ) -> Tuple[Optional[Dict[str, Any]], Dict[str, Any]]:
+        normalized_raw = self._normalize_wiki_match_text(raw_name)
+        if not normalized_raw:
+            return None, {}
+
+        best_wiki = None
+        best_match: Dict[str, Any] = {}
+        for wiki_item in wiki_service.get_all_wikis(
+            limit=500,
+            include_inventory_count=False,
+        ):
+            score, match_type = self._score_wiki_match(
+                normalized_raw,
+                wiki_item,
+                category,
+            )
+            if score > (best_match.get("score") or 0):
+                best_wiki = wiki_item
+                best_match = {"type": match_type, "score": score}
+
+        if best_wiki and best_match.get("score", 0) >= 0.78:
+            return best_wiki, best_match
+        return None, {}
+
+    def _score_wiki_match(
+        self,
+        normalized_raw: str,
+        wiki_item: Dict[str, Any],
+        category: str,
+    ) -> Tuple[float, Optional[str]]:
+        wiki_name = wiki_item.get("name") or ""
+        normalized_wiki = self._normalize_wiki_match_text(wiki_name)
+        if not normalized_wiki:
+            return 0.0, None
+
+        score = 0.0
+        match_type = None
+        if normalized_raw == normalized_wiki:
+            score = 1.0
+            match_type = "exact"
+        elif normalized_wiki in normalized_raw and len(normalized_wiki) >= 2:
+            score = 0.9 + min(len(normalized_wiki), 8) / 100
+            match_type = "contains"
+        else:
+            for alias in WIKI_NAME_ALIASES.get(wiki_name, ()):
+                normalized_alias = self._normalize_wiki_match_text(alias)
+                if normalized_alias and normalized_alias in normalized_raw:
+                    score = 0.84 + min(len(normalized_alias), 8) / 100
+                    match_type = "alias"
+                    break
+            if score == 0.0 and len(normalized_wiki) >= 3:
+                ratio = SequenceMatcher(None, normalized_raw, normalized_wiki).ratio()
+                if ratio >= 0.62:
+                    score = ratio
+                    match_type = "similar"
+
+        if score == 0.0:
+            return 0.0, None
+
+        raw_wiki_category = wiki_item.get("category_name")
+        wiki_category = (
+            self._canonicalize_category(raw_wiki_category)
+            if raw_wiki_category
+            else None
+        )
+        if wiki_category == category:
+            score += 0.04
+        elif category and wiki_category and wiki_category != category:
+            score -= 0.25
+
+        return max(0.0, min(score, 1.0)), match_type
+
+    def _normalize_wiki_match_text(self, value: Any) -> str:
+        text = str(value or "").lower()
+        text = re.sub(
+            r"\d+(\.\d+)?\s*"
+            r"(g|kg|ml|l|克|千克|斤|毫升|升|个|只|枚|盒|袋|瓶|份|支|把|片|包)",
+            "",
+            text,
+        )
+        text = re.sub(r"[^\w\u4e00-\u9fff]+", "", text)
+        return text.strip()
+
+    def _format_wiki_match_warning(
+        self,
+        raw_name: str,
+        wiki_item: Dict[str, Any],
+        wiki_match: Dict[str, Any],
+    ) -> str:
+        if wiki_match.get("type") == "manual":
+            return f"已按手动指定归属到物品 Wiki「{wiki_item['name']}」"
+        return f"已将订单商品「{raw_name}」归并到物品 Wiki「{wiki_item['name']}」"
 
     def _estimate_fuzzy_expiry_date(
         self,

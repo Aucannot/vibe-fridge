@@ -7,15 +7,14 @@ from datetime import date
 import pytest
 
 os.environ.setdefault("KIVY_NO_ARGS", "1")
-os.environ.setdefault("KIVY_WINDOW", "mock")
 
-try:
-    pytest.importorskip("kivy")
-    pytest.importorskip("kivymd")
-except BaseException as exc:  # pragma: no cover - headless CI fallback
-    pytest.skip(f"Kivy test environment unavailable: {exc}", allow_module_level=True)
+from kivy_test_utils import ensure_kivymd_app
 
-from app.ui.screens.add_item_screen import AddItemScreen
+ensure_kivymd_app()
+
+from kivy.graphics import Color
+
+from app.ui.screens.add_item_screen import AddItemScreen, FridgeTextInput
 
 
 class DummyPicker:
@@ -34,6 +33,17 @@ def build_screen():
     # 避免测试中真实弹窗
     screen._show_error_dialog = lambda *_args, **_kwargs: None
     return screen
+
+
+def test_fridge_text_input_redraw_preserves_text_canvas_instructions():
+    widget = FridgeTextInput(text="识别内容")
+    sentinel = Color(1, 0, 0, 0)
+    widget.canvas.before.add(sentinel)
+
+    widget._redraw()
+
+    assert widget.text == "识别内容"
+    assert sentinel in widget.canvas.before.children
 
 
 def test_reset_form_keeps_ui_and_form_data_in_sync():
@@ -58,7 +68,7 @@ def test_select_category_updates_label_and_form_data():
 
     screen._select_category("药品")
 
-    assert screen.category_label.text == "药品"
+    assert screen.category_button.text == "药品"
     assert screen.form_data["category"] == "药品"
 
 
@@ -70,10 +80,37 @@ def test_on_date_selected_updates_purchase_and_expiry():
     screen._on_date_selected(purchase, "purchase")
     screen._on_date_selected(expiry, "expiry")
 
-    assert screen.purchase_date_label.text == "2026-01-02"
-    assert screen.expiry_date_label.text == "2026-01-09"
+    assert screen.purchase_date_button.text == "2026-01-02"
+    assert screen.expiry_date_button.text == "2026-01-09"
     assert screen.form_data["purchase_date"] == purchase
     assert screen.form_data["expiry_date"] == expiry
+
+
+def test_on_date_ok_uses_picker_fields_and_dismisses_picker():
+    screen = build_screen()
+    picker = DummyPicker()
+    picker.sel_year = 2026
+    picker.sel_month = 6
+    picker.sel_day = 3
+    screen.date_picker = picker
+
+    screen._on_date_ok(picker, date_type="purchase")
+
+    assert screen.purchase_date_button.text == "2026-06-03"
+    assert screen.form_data["purchase_date"] == date(2026, 6, 3)
+    assert picker.dismiss_called is True
+    assert screen.date_picker is None
+
+
+def test_date_picker_cancel_dismisses_picker():
+    screen = build_screen()
+    picker = DummyPicker()
+    screen.date_picker = picker
+
+    screen._dismiss_date_picker(picker)
+
+    assert picker.dismiss_called is True
+    assert screen.date_picker is None
 
 
 def test_on_leave_dismisses_and_clears_date_picker():

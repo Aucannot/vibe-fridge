@@ -429,8 +429,8 @@ class VibeFridgeApp(MDApp):
                 text=text,
                 icon="add" if is_center else "",
                 on_release=on_press,
-                size_hint_x=None if is_center else 1,
-                width=dp(72) if is_center else dp(0),
+                size_hint_x=None,
+                width=dp(72) if is_center else dp(64),
                 is_center_btn=is_center,
             )
             if is_center:
@@ -459,25 +459,21 @@ class VibeFridgeApp(MDApp):
         settings_btn.icon = "cog-outline"
         settings_btn._build_content()
 
-        left_layout = BoxLayout(orientation='horizontal', size_hint_x=1)
-        left_layout.add_widget(home_btn)
-        left_layout.add_widget(items_btn)
-
-        center_layout = BoxLayout(
-            orientation='horizontal',
-            size_hint=(None, 1),
-            width=dp(84),
-        )
-        center_layout.padding = (0, dp(2), 0, 0)
-        center_layout.add_widget(plus_btn)
-
-        right_layout = BoxLayout(orientation='horizontal', size_hint_x=1)
-        right_layout.add_widget(recipes_btn)
-        right_layout.add_widget(settings_btn)
-
-        nav.add_widget(left_layout)
-        nav.add_widget(center_layout)
-        nav.add_widget(right_layout)
+        for button, top_padding in (
+            (home_btn, 0),
+            (items_btn, 0),
+            (plus_btn, dp(2)),
+            (recipes_btn, 0),
+            (settings_btn, 0),
+        ):
+            slot = AnchorLayout(
+                anchor_x="center",
+                anchor_y="center",
+                size_hint_x=1,
+                padding=(0, top_padding, 0, 0),
+            )
+            slot.add_widget(button)
+            nav.add_widget(slot)
 
         self.home_btn = home_btn
         self.items_btn = items_btn

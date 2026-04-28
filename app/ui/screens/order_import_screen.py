@@ -6,11 +6,13 @@
 import copy
 import os
 import threading
+from datetime import date, datetime
 from typing import Any, Dict, Optional
 
 from kivy.clock import Clock
 from kivy.graphics import Color, Line, Rectangle, RoundedRectangle
 from kivy.metrics import dp
+from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.filechooser import FileChooserListView
 from kivy.uix.image import Image
@@ -30,7 +32,13 @@ from app.services.order_import_service import (
     SUPPORTED_IMAGE_EXTENSIONS,
     order_import_service,
 )
-from app.ui.screens.add_item_screen import FridgeButton, FridgeTextInput, _bind_label_text
+from app.services.wiki_service import wiki_service
+from app.ui.screens.add_item_screen import (
+    ChineseMDModalDatePicker,
+    FridgeButton,
+    FridgeTextInput,
+    _bind_label_text,
+)
 from app.ui.theme.design_tokens import COLOR_PALETTE, get_card_style, get_font_size
 from app.utils.font_helper import CHINESE_FONT_NAME as CHINESE_FONT
 from app.utils.font_helper import apply_font_to_widget
@@ -40,6 +48,8 @@ logger = setup_logger(__name__)
 
 COLORS = COLOR_PALETTE
 SECTION_CARD = get_card_style("section")
+DATE_BUTTON_PLACEHOLDER = "点击选择日期"
+WIKI_BUTTON_PLACEHOLDER = "自动匹配 / 选择 Wiki"
 
 
 class OrderImportScreen(Screen):
@@ -50,6 +60,7 @@ class OrderImportScreen(Screen):
         self.name = "order_import"
         self.draft = OrderImportDraft()
         self._file_dialog: Optional[ModalView] = None
+        self._edit_date_picker: Optional[ChineseMDModalDatePicker] = None
         self._build_ui()
 
         try:
@@ -241,15 +252,13 @@ class OrderImportScreen(Screen):
             size=lambda inst, _val: setattr(inst._bg, "size", inst.size),
         )
         status_row.add_widget(
-            MDIcon(
+            self._create_centered_icon_box(
                 icon="text-box-search-outline",
-                size_hint_x=None,
-                width=dp(42),
-                theme_text_color="Custom",
-                text_color=COLORS["secondary"],
-                halign="center",
-                valign="middle",
-                font_size=dp(32),
+                icon_color=COLORS["secondary"],
+                icon_size=30,
+                box_size=48,
+                radius=0,
+                bg_color=None,
             )
         )
 
@@ -400,13 +409,15 @@ class OrderImportScreen(Screen):
             subtitle=subtitle,
         )
 
-        detail_text = (
-            f"数量：{item.get('quantity', 1)} {item.get('unit') or ''}\n"
-            f"类别：{item.get('category') or '未设置'}\n"
-            f"购买日期：{item.get('purchase_date') or '未识别'}\n"
-            f"过期日期：{item.get('expiry_date') or '未识别'}\n"
-            f"置信度：{(item.get('confidence') or 0) * 100:.0f}%"
-        )
+        detail_lines = [
+            f"数量：{item.get('quantity', 1)} {item.get('unit') or ''}",
+            f"类别：{item.get('category') or '未设置'}",
+            f"购买日期：{item.get('purchase_date') or '未识别'}",
+            f"过期日期：{item.get('expiry_date') or '未识别'}",
+            f"置信度：{(item.get('confidence') or 0) * 100:.0f}%",
+        ]
+        detail_lines.append(self._format_wiki_match_display(item))
+        detail_text = "\n".join(detail_lines)
         detail_label = Label(
             text=detail_text,
             size_hint_y=None,
@@ -417,7 +428,7 @@ class OrderImportScreen(Screen):
         )
         _bind_label_text(detail_label)
         detail_label.bind(
-            texture_size=lambda inst, val: setattr(inst, "height", max(dp(92), val[1]))
+            texture_size=lambda inst, val: setattr(inst, "height", max(dp(132), val[1]))
         )
         if CHINESE_FONT:
             detail_label.font_name = CHINESE_FONT
@@ -485,6 +496,20 @@ class OrderImportScreen(Screen):
         action_row.add_widget(edit_btn)
         body.add_widget(action_row)
         return card
+
+    def _format_wiki_match_display(self, item: Dict[str, Any]) -> str:
+        wiki_name = item.get("wiki_name")
+        if not wiki_name:
+            return "归属 Wiki：未匹配，导入时会新建"
+
+        match_label = {
+            "manual": "手动指定",
+            "exact": "精确匹配",
+            "contains": "名称归并",
+            "alias": "别名归并",
+            "similar": "相似匹配",
+        }.get(item.get("wiki_match_type"), "已匹配")
+        return f"归属 Wiki：{wiki_name}（{match_label}）"
 
     def _create_preview_card(self, image_path: str, compact: bool = False) -> MDCard:
         card, body = self._create_section_card(
@@ -554,25 +579,14 @@ class OrderImportScreen(Screen):
         content.bind(height=lambda inst, val: setattr(card, "height", val))
 
         header = BoxLayout(size_hint_y=None, height=dp(42), spacing=dp(12))
-        icon_box = BoxLayout(size_hint=(None, None), width=dp(38), height=dp(38))
-        with icon_box.canvas.before:
-            Color(*COLORS["primary_container"])
-            icon_box._bg = RoundedRectangle(
-                pos=icon_box.pos, size=icon_box.size, radius=[dp(12)]
-            )
-        icon_box.bind(
-            pos=lambda inst, _val: setattr(inst._bg, "pos", inst.pos),
-            size=lambda inst, _val: setattr(inst._bg, "size", inst.size),
-        )
-        icon_widget = MDIcon(
+        icon_box = self._create_centered_icon_box(
             icon=icon,
-            halign="center",
-            valign="middle",
-            font_size=dp(18),
-            theme_text_color="Custom",
-            text_color=COLORS["primary"],
+            icon_color=COLORS["primary"],
+            icon_size=18,
+            box_size=42,
+            radius=12,
+            bg_color=COLORS["primary_container"],
         )
-        icon_box.add_widget(icon_widget)
         header.add_widget(icon_box)
 
         text_box = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(2))
@@ -617,6 +631,54 @@ class OrderImportScreen(Screen):
         card._content = content
         self._apply_card_outline(card, SECTION_CARD["radius"])
         return card, body
+
+    def _create_centered_icon_box(
+        self,
+        icon: str,
+        icon_color,
+        icon_size: int,
+        box_size: int,
+        radius: int = 0,
+        bg_color=None,
+    ) -> AnchorLayout:
+        box = AnchorLayout(
+            anchor_x="center",
+            anchor_y="center",
+            size_hint=(None, 1),
+            width=dp(box_size),
+            height=dp(box_size),
+        )
+        if bg_color is not None:
+            with box.canvas.before:
+                Color(*bg_color)
+                box._bg = RoundedRectangle(
+                    pos=box.pos,
+                    size=box.size,
+                    radius=[dp(radius)],
+                )
+            box.bind(
+                pos=lambda inst, _val: setattr(inst._bg, "pos", inst.pos),
+                size=lambda inst, _val: setattr(inst._bg, "size", inst.size),
+            )
+
+        icon_widget = MDIcon(
+            icon=icon,
+            size_hint=(None, None),
+            width=dp(self._icon_drawable_size(icon_size, box_size)),
+            height=dp(self._icon_drawable_size(icon_size, box_size)),
+            theme_text_color="Custom",
+            text_color=icon_color,
+            halign="center",
+            valign="middle",
+            font_size=dp(icon_size),
+        )
+        icon_widget.text_size = icon_widget.size
+        icon_widget.bind(size=lambda inst, value: setattr(inst, "text_size", value))
+        box.add_widget(icon_widget)
+        return box
+
+    def _icon_drawable_size(self, icon_size: int, box_size: int) -> int:
+        return min(box_size, max(icon_size + 12, int(icon_size * 1.35)))
 
     def _apply_card_outline(self, widget, radius: int):
         with widget.canvas.after:
@@ -708,13 +770,18 @@ class OrderImportScreen(Screen):
         return f"{order_time}（{source_label}）" if source_label else order_time
 
     def _open_order_metadata_dialog(self, _instance):
-        dialog = ModalView(size_hint=(0.88, None), height=dp(330), auto_dismiss=False)
+        dialog_height = dp(390)
+        dialog = ModalView(
+            size_hint=(0.88, None),
+            height=dialog_height,
+            auto_dismiss=False,
+        )
         root = BoxLayout(
             orientation="vertical",
             padding=dp(18),
             spacing=dp(12),
             size_hint=(1, None),
-            height=dp(330),
+            height=dialog_height,
         )
         self._decorate_modal_panel(root)
 
@@ -733,19 +800,18 @@ class OrderImportScreen(Screen):
             title.font_name = CHINESE_FONT
         root.add_widget(title)
 
-        purchase_input = FridgeTextInput(
-            text=self.draft.import_payload.get("purchase_date") or "",
-            hint_text="YYYY-MM-DD",
+        purchase_row, purchase_button = self._create_edit_date_selector(
+            self.draft.import_payload.get("purchase_date")
         )
         order_time_input = FridgeTextInput(
             text=self.draft.import_payload.get("order_time") or "",
             hint_text="YYYY-MM-DD HH:MM 或 HH:MM",
         )
-        root.add_widget(self._create_field_block("下单日期", purchase_input))
+        root.add_widget(self._create_field_block("下单日期", purchase_row))
         root.add_widget(self._create_field_block("下单时间", order_time_input))
         root.add_widget(
             self._create_hint_box(
-                "可保留截图时间作为估计；如果订单正文里有更准确的下单、支付、结算或完成时间，请在这里修正。",
+                "下单日期点开日历选择；可保留截图时间作为估计，订单正文有更准确时间时再修正。",
                 tone="secondary",
             )
         )
@@ -763,7 +829,8 @@ class OrderImportScreen(Screen):
             on_release=lambda _btn: self._save_order_metadata(
                 dialog,
                 {
-                    "purchase_date": purchase_input.text.strip() or None,
+                    "purchase_date": self._edit_date_button_value(purchase_button)
+                    or None,
                     "order_time": order_time_input.text.strip() or None,
                     "order_time_source": "manual" if order_time_input.text.strip() else None,
                 },
@@ -1001,14 +1068,13 @@ class OrderImportScreen(Screen):
         if item.get("imported"):
             self._show_error_dialog("已导入的条目不能再次编辑")
             return
-        dialog = ModalView(size_hint=(0.88, None), height=dp(520), auto_dismiss=False)
+        dialog = ModalView(size_hint=(0.88, 0.86), auto_dismiss=False)
 
         root = BoxLayout(
             orientation="vertical",
             padding=dp(18),
             spacing=dp(12),
-            size_hint=(1, None),
-            height=dp(520),
+            size_hint=(1, 1),
         )
         self._decorate_modal_panel(root)
 
@@ -1027,39 +1093,63 @@ class OrderImportScreen(Screen):
             title.font_name = CHINESE_FONT
         root.add_widget(title)
 
-        fields = BoxLayout(orientation="vertical", spacing=dp(10))
-        name_input = FridgeTextInput(text=item.get("name") or "", hint_text="物品名称")
-        quantity_input = FridgeTextInput(
-            text=str(item.get("quantity") or 1), hint_text="数量", input_filter="int"
+        scroll = ScrollView(do_scroll_x=False, bar_width=0, size_hint=(1, 1))
+        fields = BoxLayout(
+            orientation="vertical",
+            size_hint_y=None,
+            spacing=dp(10),
         )
-        unit_input = FridgeTextInput(text=item.get("unit") or "", hint_text="单位")
-        category_input = FridgeTextInput(
-            text=item.get("category") or "", hint_text="类别，例如：食品"
+        fields.bind(minimum_height=fields.setter("height"))
+        name_input = self._create_prefilled_text_input(
+            item.get("name"), hint_text="物品名称"
         )
-        purchase_input = FridgeTextInput(
-            text=item.get("purchase_date") or "", hint_text="购买日期 YYYY-MM-DD"
+        quantity_input = self._create_prefilled_text_input(
+            item.get("quantity") or 1,
+            hint_text="数量",
+            input_filter="int",
         )
-        expiry_input = FridgeTextInput(
-            text=item.get("expiry_date") or "", hint_text="过期日期 YYYY-MM-DD"
+        unit_input = self._create_prefilled_text_input(item.get("unit"), hint_text="单位")
+        category_input = self._create_prefilled_text_input(
+            item.get("category"), hint_text="类别，例如：食品"
+        )
+        wiki_row, wiki_button = self._create_wiki_selector(
+            item.get("wiki_name"),
+            name_getter=lambda: name_input.text.strip(),
+            category_getter=lambda: category_input.text.strip(),
+            unit_getter=lambda: unit_input.text.strip(),
+        )
+        purchase_row, purchase_button = self._create_edit_date_selector(
+            item.get("purchase_date")
+        )
+        expiry_row, expiry_button = self._create_edit_date_selector(
+            item.get("expiry_date")
         )
 
         for label_text, widget in (
             ("物品名称", name_input),
+            ("归属 Wiki", wiki_row),
             ("数量", quantity_input),
             ("单位", unit_input),
             ("类别", category_input),
-            ("购买日期", purchase_input),
-            ("过期日期", expiry_input),
+            ("购买日期", purchase_row),
+            ("过期日期", expiry_row),
         ):
             fields.add_widget(self._create_field_block(label_text, widget))
-        root.add_widget(fields)
 
-        root.add_widget(
+        fields.add_widget(
             self._create_hint_box(
-                "日期支持 YYYY-MM-DD；留空则按服务层规则重新回退。",
+                "点击日期字段打开日历；清空后按服务层规则重新回退。",
                 tone="secondary",
             )
         )
+        fields.add_widget(
+            self._create_hint_box(
+                "订单商品名可保留完整识别结果；归属 Wiki 用来决定库存目录、默认单位和保质期。",
+                tone="secondary",
+            )
+        )
+        scroll.add_widget(fields)
+        root.add_widget(scroll)
 
         button_row = BoxLayout(size_hint_y=None, height=dp(48), spacing=dp(10))
         cancel_btn = FridgeButton(
@@ -1076,11 +1166,12 @@ class OrderImportScreen(Screen):
                 index,
                 {
                     "name": name_input.text.strip(),
+                    "wiki_name": self._wiki_button_value(wiki_button),
                     "quantity": quantity_input.text.strip() or "1",
                     "unit": unit_input.text.strip(),
                     "category": category_input.text.strip(),
-                    "purchase_date": purchase_input.text.strip(),
-                    "expiry_date": expiry_input.text.strip(),
+                    "purchase_date": self._edit_date_button_value(purchase_button),
+                    "expiry_date": self._edit_date_button_value(expiry_button),
                     "selected": item.get("selected", True),
                     "confidence": item.get("confidence", 0.0),
                     "imported": item.get("imported", False),
@@ -1094,6 +1185,370 @@ class OrderImportScreen(Screen):
 
         dialog.add_widget(root)
         dialog.open()
+
+    def _create_wiki_selector(
+        self,
+        value,
+        name_getter,
+        category_getter,
+        unit_getter,
+    ) -> tuple[BoxLayout, FridgeButton]:
+        row = BoxLayout(size_hint_y=None, height=dp(50), spacing=dp(8))
+        wiki_button = FridgeButton(
+            text=self._format_wiki_button_text(value),
+            halign="left",
+            size_hint_x=1,
+        )
+        wiki_button.bind(
+            on_release=lambda _btn: self._open_wiki_selector_dialog(
+                wiki_button,
+                name_getter=name_getter,
+                category_getter=category_getter,
+                unit_getter=unit_getter,
+            )
+        )
+        auto_button = FridgeButton(
+            text="自动",
+            size_hint_x=None,
+            width=dp(70),
+            on_release=lambda _btn: self._clear_wiki_button(wiki_button),
+        )
+        row.add_widget(wiki_button)
+        row.add_widget(auto_button)
+        return row, wiki_button
+
+    def _format_wiki_button_text(self, value) -> str:
+        text = str(value or "").strip()
+        return text or WIKI_BUTTON_PLACEHOLDER
+
+    def _wiki_button_value(self, button: FridgeButton) -> str:
+        text = (button.text or "").strip()
+        if text == WIKI_BUTTON_PLACEHOLDER:
+            return ""
+        return text
+
+    def _clear_wiki_button(self, button: FridgeButton):
+        button.text = WIKI_BUTTON_PLACEHOLDER
+
+    def _open_wiki_selector_dialog(
+        self,
+        target_button: FridgeButton,
+        name_getter,
+        category_getter,
+        unit_getter,
+    ):
+        dialog = ModalView(size_hint=(0.9, 0.82), auto_dismiss=False)
+        root = BoxLayout(
+            orientation="vertical",
+            padding=dp(18),
+            spacing=dp(12),
+            size_hint=(1, 1),
+        )
+        self._decorate_modal_panel(root)
+
+        title = Label(
+            text="选择归属 Wiki",
+            size_hint_y=None,
+            height=dp(28),
+            halign="left",
+            valign="middle",
+            font_size=dp(get_font_size("title_large")),
+            bold=True,
+            color=COLORS["text_primary"],
+        )
+        _bind_label_text(title)
+        if CHINESE_FONT:
+            title.font_name = CHINESE_FONT
+        root.add_widget(title)
+
+        query_input = self._create_prefilled_text_input(
+            "",
+            hint_text="搜索现有 Wiki，或输入新 Wiki 名称",
+        )
+        root.add_widget(query_input)
+        root.add_widget(
+            self._create_hint_box(
+                self._format_wiki_selector_context(target_button, name_getter()),
+                tone="secondary",
+            )
+        )
+
+        actions = BoxLayout(size_hint_y=None, height=dp(48), spacing=dp(10))
+        search_btn = FridgeButton(text="搜索", size_hint_x=0.34)
+        create_btn = FridgeButton(text="新建 Wiki", variant="primary", size_hint_x=0.66)
+        actions.add_widget(search_btn)
+        actions.add_widget(create_btn)
+        root.add_widget(actions)
+
+        result_scroll = ScrollView(do_scroll_x=False, bar_width=0, size_hint=(1, 1))
+        result_list = BoxLayout(
+            orientation="vertical",
+            size_hint_y=None,
+            spacing=dp(8),
+        )
+        result_list.bind(minimum_height=result_list.setter("height"))
+        result_scroll.add_widget(result_list)
+        root.add_widget(result_scroll)
+
+        footer = BoxLayout(size_hint_y=None, height=dp(48), spacing=dp(10))
+        cancel_btn = FridgeButton(
+            text="取消",
+            size_hint_x=1,
+            on_release=lambda _btn: dialog.dismiss(),
+        )
+        footer.add_widget(cancel_btn)
+        root.add_widget(footer)
+
+        def _select_wiki(wiki_item):
+            target_button.text = wiki_item["name"]
+            dialog.dismiss()
+
+        def _render_results(_btn=None):
+            result_list.clear_widgets()
+            query = query_input.text.strip()
+            for wiki_item in self._load_wiki_selector_results(query):
+                btn = FridgeButton(
+                    text=self._format_wiki_selector_option(wiki_item),
+                    halign="left",
+                    height=dp(56),
+                    font_size=dp(get_font_size("body_medium")),
+                    on_release=lambda _instance, item=wiki_item: _select_wiki(item),
+                )
+                result_list.add_widget(btn)
+
+            if not result_list.children:
+                result_list.add_widget(
+                    self._create_hint_box(
+                        "没有匹配的 Wiki。确认名称后可点击上方“新建 Wiki”。",
+                        tone="secondary",
+                    )
+                )
+
+        def _create_wiki(_btn=None):
+            wiki_name = query_input.text.strip() or name_getter()
+            wiki_item = self._create_wiki_from_selector(
+                wiki_name=wiki_name,
+                category=category_getter(),
+                unit=unit_getter(),
+            )
+            if not wiki_item:
+                self._show_error_dialog("新建 Wiki 失败，请检查名称后重试")
+                return
+            target_button.text = wiki_item["name"]
+            dialog.dismiss()
+
+        search_btn.bind(on_release=_render_results)
+        create_btn.bind(on_release=_create_wiki)
+        dialog.add_widget(root)
+        _render_results()
+        dialog.open()
+
+    def _format_wiki_selector_context(
+        self,
+        target_button: FridgeButton,
+        raw_name: str,
+    ) -> str:
+        selected_wiki = self._wiki_button_value(target_button)
+        if selected_wiki:
+            return f"当前归属：{selected_wiki}。清空搜索时显示全部 Wiki。"
+        raw_name = (raw_name or "").strip()
+        if raw_name:
+            return f"当前识别：{raw_name}。清空搜索时显示全部 Wiki。"
+        return "清空搜索时显示全部 Wiki。"
+
+    def _load_wiki_selector_results(self, query: str) -> list[Dict[str, Any]]:
+        keyword = (query or "").strip()
+        if keyword:
+            return wiki_service.search_wikis(keyword, limit=30)
+        return wiki_service.get_all_wikis(limit=50, include_inventory_count=False)
+
+    def _format_wiki_selector_option(self, wiki_item: Dict[str, Any]) -> str:
+        parts = [wiki_item.get("name") or "未命名 Wiki"]
+        category = wiki_item.get("category_name")
+        unit = wiki_item.get("default_unit")
+        expiry_days = wiki_item.get("suggested_expiry_days")
+        details = [value for value in (category, unit) if value]
+        if expiry_days:
+            details.append(f"{expiry_days}天")
+        if details:
+            parts.append(" / ".join(details))
+        return "  ·  ".join(parts)
+
+    def _create_wiki_from_selector(
+        self,
+        wiki_name: str,
+        category: str,
+        unit: str,
+    ) -> Optional[Dict[str, Any]]:
+        wiki_name = (wiki_name or "").strip()
+        if not wiki_name:
+            return None
+
+        existing = wiki_service.get_wiki_by_name(wiki_name)
+        if existing:
+            return existing
+
+        return wiki_service.create_wiki(
+            name=wiki_name,
+            default_unit=(unit or "").strip() or None,
+            category_id=self._category_id_for_name(category),
+        )
+
+    def _category_id_for_name(self, category_name: str) -> Optional[str]:
+        category_name = (category_name or "").strip()
+        if not category_name:
+            return None
+        for category in wiki_service.get_all_categories():
+            if getattr(category, "name", None) == category_name:
+                return getattr(category, "id", None)
+        return None
+
+    def _create_prefilled_text_input(self, value, **kwargs) -> FridgeTextInput:
+        widget = FridgeTextInput(**kwargs)
+        widget.text = "" if value is None else str(value)
+        widget.cursor = (len(widget.text), 0)
+        return widget
+
+    def _create_edit_date_selector(self, value) -> tuple[BoxLayout, FridgeButton]:
+        row = BoxLayout(size_hint_y=None, height=dp(50), spacing=dp(8))
+        date_button = FridgeButton(
+            text=self._format_edit_date_button_text(value),
+            halign="left",
+            size_hint_x=1,
+        )
+        date_button.bind(
+            on_release=lambda _btn: self._open_edit_date_picker(date_button)
+        )
+        clear_button = FridgeButton(
+            text="清空",
+            size_hint_x=None,
+            width=dp(70),
+            on_release=lambda _btn: self._clear_edit_date_button(date_button),
+        )
+        row.add_widget(date_button)
+        row.add_widget(clear_button)
+        return row, date_button
+
+    def _format_edit_date_button_text(self, value) -> str:
+        selected_date = self._coerce_edit_date(value)
+        if selected_date is not None:
+            return selected_date.strftime("%Y-%m-%d")
+        return DATE_BUTTON_PLACEHOLDER
+
+    def _edit_date_button_value(self, button: FridgeButton) -> str:
+        text = (button.text or "").strip()
+        if text == DATE_BUTTON_PLACEHOLDER:
+            return ""
+        return text
+
+    def _clear_edit_date_button(self, button: FridgeButton):
+        button.text = DATE_BUTTON_PLACEHOLDER
+
+    def _open_edit_date_picker(self, target_button: FridgeButton):
+        initial_date = (
+            self._coerce_edit_date(self._edit_date_button_value(target_button))
+            or date.today()
+        )
+        picker = ChineseMDModalDatePicker(
+            year=initial_date.year,
+            month=initial_date.month,
+            day=initial_date.day,
+        )
+        self._edit_date_picker = picker
+        picker.bind(
+            on_ok=lambda instance, *args, btn=target_button: self._on_edit_date_ok(
+                instance,
+                *args,
+                target_button=btn,
+            )
+        )
+        picker.bind(
+            on_cancel=lambda instance, *_args: self._on_edit_date_cancel(instance)
+        )
+        picker.bind(on_dismiss=lambda *_args: self._clear_active_date_picker())
+        self._schedule_edit_date_picker_refresh(picker)
+        picker.open()
+
+    def _on_edit_date_ok(
+        self,
+        picker_instance,
+        *args,
+        target_button: FridgeButton,
+    ):
+        selected_date = self._date_picker_selected_date(picker_instance, *args)
+        target_button.text = selected_date.strftime("%Y-%m-%d")
+        self._dismiss_edit_date_picker(picker_instance)
+
+    def _on_edit_date_cancel(self, picker_instance):
+        self._dismiss_edit_date_picker(picker_instance)
+
+    def _dismiss_edit_date_picker(self, picker_instance):
+        try:
+            picker_instance.dismiss()
+        except Exception:
+            pass
+        self._edit_date_picker = None
+
+    def _date_picker_selected_date(self, picker_instance, *args) -> date:
+        selected = args[0] if args else None
+        if selected is None:
+            for attr in ("date", "sel_date", "current_date"):
+                if hasattr(picker_instance, attr):
+                    selected = getattr(picker_instance, attr)
+                    break
+        if selected is None and all(
+            hasattr(picker_instance, attr) for attr in ("sel_year", "sel_month", "sel_day")
+        ):
+            try:
+                selected = date(
+                    picker_instance.sel_year,
+                    picker_instance.sel_month,
+                    picker_instance.sel_day,
+                )
+            except (TypeError, ValueError):
+                selected = None
+
+        return self._coerce_edit_date(selected) or date.today()
+
+    def _coerce_edit_date(self, value) -> Optional[date]:
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            return value.date()
+        if isinstance(value, date):
+            return value
+
+        text = str(value).strip()
+        if not text or text == DATE_BUTTON_PLACEHOLDER:
+            return None
+        for fmt in ("%Y-%m-%d", "%Y-%m-%d %H:%M"):
+            try:
+                return datetime.strptime(text, fmt).date()
+            except ValueError:
+                continue
+        return None
+
+    def _schedule_edit_date_picker_refresh(self, picker_instance):
+        for delay in (0, 0.03, 0.08):
+            Clock.schedule_once(
+                lambda *_args, inst=picker_instance: self._configure_edit_date_picker(
+                    inst
+                ),
+                delay,
+            )
+
+    def _configure_edit_date_picker(self, picker_instance):
+        try:
+            picker_instance.supporting_text = "选择日期"
+            picker_instance.text_button_ok = "确定"
+            picker_instance.text_button_cancel = "取消"
+            if CHINESE_FONT:
+                apply_font_to_widget(picker_instance, CHINESE_FONT)
+        except Exception:
+            pass
+
+    def _clear_active_date_picker(self):
+        self._edit_date_picker = None
 
     def _create_field_block(self, title: str, widget) -> BoxLayout:
         block = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(6))
