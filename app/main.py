@@ -43,6 +43,10 @@ load_dotenv()
 
 # 导入字体辅助工具并注册中文字体
 from app.utils.font_helper import register_chinese_font, apply_font_to_widget
+from app.services.order_import_service import (
+    LEGACY_SILICONFLOW_API_KEY_ENV,
+    SILICONFLOW_API_KEY_ENV,
+)
 
 # 注册中文字体（必须在导入使用字体的模块之前）
 chinese_font_name = register_chinese_font()
@@ -532,7 +536,9 @@ class VibeFridgeApp(MDApp):
             logger.error(f"插入示例物品失败: {e}")
 
         # 检查环境变量配置
-        api_key = os.getenv('SILICON_FLOW_API_KEY')
+        api_key = os.getenv(SILICONFLOW_API_KEY_ENV) or os.getenv(
+            LEGACY_SILICONFLOW_API_KEY_ENV
+        )
         if not api_key or api_key == 'your_api_key_here':
             logger.warning("硅基流动 API 密钥未配置或使用默认值")
 

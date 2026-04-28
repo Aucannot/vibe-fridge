@@ -18,7 +18,17 @@ from kivymd.uix.card import MDCard
 from kivymd.uix.label import MDIcon
 
 from app.services.database import db_service
-from app.services.order_import_service import DEFAULT_MODEL
+from app.services.order_import_service import (
+    DEFAULT_MODEL,
+    LEGACY_SILICONFLOW_API_KEY_ENV,
+    LEGACY_SILICONFLOW_API_KEY_SETTING,
+    LEGACY_SILICONFLOW_MODEL_ENV,
+    LEGACY_SILICONFLOW_MODEL_SETTING,
+    SILICONFLOW_API_KEY_ENV,
+    SILICONFLOW_API_KEY_SETTING,
+    SILICONFLOW_MODEL_ENV,
+    SILICONFLOW_MODEL_SETTING,
+)
 from app.ui.screens.add_item_screen import FridgeButton, FridgeTextInput
 from app.ui.theme.design_tokens import COLOR_PALETTE, get_card_style, get_font_size
 from app.utils.font_helper import CHINESE_FONT_NAME as CHINESE_FONT
@@ -513,15 +523,29 @@ class SettingsScreen(Screen):
         _update_outline(widget, None)
 
     def _current_model_value(self):
-        return db_service.get_setting(
-            "silicon_flow_vision_model",
-            os.getenv("SILICON_FLOW_VISION_MODEL", DEFAULT_MODEL),
+        return (
+            self._stored_model_value()
+            or os.getenv(SILICONFLOW_MODEL_ENV)
+            or os.getenv(LEGACY_SILICONFLOW_MODEL_ENV)
+            or DEFAULT_MODEL
         )
 
     def _current_api_key_value(self):
+        return self._stored_api_key_value() or self._env_api_key_value() or ""
+
+    def _stored_model_value(self):
         return db_service.get_setting(
-            "silicon_flow_api_key",
-            os.getenv("SILICON_FLOW_API_KEY", ""),
+            SILICONFLOW_MODEL_SETTING
+        ) or db_service.get_setting(LEGACY_SILICONFLOW_MODEL_SETTING)
+
+    def _stored_api_key_value(self):
+        return db_service.get_setting(
+            SILICONFLOW_API_KEY_SETTING
+        ) or db_service.get_setting(LEGACY_SILICONFLOW_API_KEY_SETTING)
+
+    def _env_api_key_value(self):
+        return os.getenv(SILICONFLOW_API_KEY_ENV) or os.getenv(
+            LEGACY_SILICONFLOW_API_KEY_ENV
         )
 
     def _mask_secret(self, value: str) -> str:
@@ -536,9 +560,15 @@ class SettingsScreen(Screen):
         if self.model_input is not None:
             self.model_input.text = current_model or ""
 
+        stored_model = self._stored_model_value()
+        env_model = os.getenv(SILICONFLOW_MODEL_ENV) or os.getenv(
+            LEGACY_SILICONFLOW_MODEL_ENV
+        )
         model_source = (
             "来自应用内保存的模型配置"
-            if db_service.get_setting("silicon_flow_vision_model")
+            if stored_model
+            else "来自桌面环境变量模型配置"
+            if env_model
             else "当前使用默认模型"
         )
         if self.model_hint_label is not None:
@@ -550,8 +580,8 @@ class SettingsScreen(Screen):
                 else "恢复默认模型"
             )
 
-        stored_api_key = db_service.get_setting("silicon_flow_api_key")
-        env_api_key = os.getenv("SILICON_FLOW_API_KEY")
+        stored_api_key = self._stored_api_key_value()
+        env_api_key = self._env_api_key_value()
         current_api_key = self._current_api_key_value()
         self._render_api_key_section(current_api_key)
 
@@ -585,14 +615,14 @@ class SettingsScreen(Screen):
         api_key = (
             self.api_key_input.text.strip()
             if self.api_key_input is not None
-            else db_service.get_setting("silicon_flow_api_key", "")
+            else self._stored_api_key_value() or ""
         )
         if not model_name:
             self._show_message_dialog("保存失败", "订单识别模型不能为空。")
             return
 
-        model_success = db_service.set_setting("silicon_flow_vision_model", model_name)
-        key_success = db_service.set_setting("silicon_flow_api_key", api_key)
+        model_success = db_service.set_setting(SILICONFLOW_MODEL_SETTING, model_name)
+        key_success = db_service.set_setting(SILICONFLOW_API_KEY_SETTING, api_key)
         if model_success and key_success:
             self._editing_api_key = False
             self._refresh_ai_settings()
@@ -605,7 +635,7 @@ class SettingsScreen(Screen):
             self._show_message_dialog("保存失败", "AI 配置写入数据库时出错。")
 
     def _restore_default_model(self, _instance):
-        success = db_service.set_setting("silicon_flow_vision_model", DEFAULT_MODEL)
+        success = db_service.set_setting(SILICONFLOW_MODEL_SETTING, DEFAULT_MODEL)
         if success:
             self._refresh_ai_settings()
             self._show_message_dialog("已恢复默认", f"当前默认模型：{DEFAULT_MODEL}")

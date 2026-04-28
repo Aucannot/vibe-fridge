@@ -112,6 +112,16 @@ def _migrate_database(engine) -> None:
                 conn.execute(text("ALTER TABLE items ADD COLUMN source_order_id VARCHAR(100)"))
                 logger.info("source_order_id字段添加成功")
 
+            if 'source_order_time' not in items_columns:
+                logger.info("添加source_order_time字段到items表")
+                conn.execute(text("ALTER TABLE items ADD COLUMN source_order_time DATETIME"))
+                logger.info("source_order_time字段添加成功")
+
+            if 'source_order_time_source' not in items_columns:
+                logger.info("添加source_order_time_source字段到items表")
+                conn.execute(text("ALTER TABLE items ADD COLUMN source_order_time_source VARCHAR(50)"))
+                logger.info("source_order_time_source字段添加成功")
+
             if 'predicted_expiry_date' not in items_columns:
                 logger.info("添加predicted_expiry_date字段到items表")
                 conn.execute(text("ALTER TABLE items ADD COLUMN predicted_expiry_date DATE"))

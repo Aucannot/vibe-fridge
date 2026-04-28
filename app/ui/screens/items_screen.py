@@ -931,6 +931,8 @@ class ItemsScreen(Screen):
         self._category_buttons = {}
         self._item_cards = {}
         self._categories = []
+        self._item_scroll = None
+        self._item_list_min_height = 0
         self._build_ui()
         self._load_categories()
         self._load_wiki_items()
@@ -995,13 +997,17 @@ class ItemsScreen(Screen):
             bar_color=BRIGHT_COLORS['primary'],
             bar_inactive_color=BRIGHT_COLORS['surface_variant'],
         )
+        self._item_scroll = item_scroll
         self._item_list_box = BoxLayout(
             orientation="vertical",
             size_hint_y=None,
             size_hint_x=1,
             spacing=dp(6),
         )
-        self._item_list_box.bind(minimum_height=self._item_list_box.setter("height"))
+        self._item_list_box.bind(
+            minimum_height=lambda *_args: self._sync_item_list_height()
+        )
+        item_scroll.bind(height=lambda *_args: self._sync_item_list_height())
         item_scroll.add_widget(self._item_list_box)
         right_panel.add_widget(item_scroll)
 
@@ -1112,8 +1118,7 @@ class ItemsScreen(Screen):
     def _load_wiki_items(self):
         self._item_list_box.clear_widgets()
         self._item_cards.clear()
-        # 重置高度为 0，然后重新添加 widget 时会累加
-        self._item_list_box.height = 0
+        self._set_item_list_content_height(0)
 
         try:
             all_items = item_service.get_registered_items()
@@ -1165,16 +1170,20 @@ class ItemsScreen(Screen):
                     hint.font_name = CHINESE_FONT
                 empty_box.add_widget(hint)
                 self._item_list_box.add_widget(empty_box)
+                self._set_item_list_content_height(dp(80))
                 return
 
+            content_height = 0
             for item_data in items:
                 card = WikiItemCard(item_data)
                 card.bind(on_release=lambda inst, data=item_data: self._on_item_selected(data))
 
                 self._item_list_box.add_widget(card)
-                # 累加高度：每个卡片高度 + 间距(dp(6))
-                self._item_list_box.height += card.height + dp(6)
+                content_height += card.height
                 self._item_cards[item_data['name']] = card
+            if items:
+                content_height += dp(6) * (len(items) - 1)
+            self._set_item_list_content_height(content_height)
 
         except Exception as e:
             logger.error(f"加载物品目录失败: {e}")
@@ -1204,6 +1213,24 @@ class ItemsScreen(Screen):
                 error.font_name = CHINESE_FONT
             error_box.add_widget(error)
             self._item_list_box.add_widget(error_box)
+            self._set_item_list_content_height(dp(60))
+
+    def _set_item_list_content_height(self, content_height: float):
+        self._item_list_min_height = content_height
+        self._sync_item_list_height()
+        Clock.schedule_once(lambda *_args: self._sync_item_list_height(), 0)
+
+    def _sync_item_list_height(self):
+        if getattr(self, "_item_list_box", None) is None:
+            return
+        viewport_height = self._item_scroll.height if self._item_scroll else 0
+        content_height = max(
+            self._item_list_min_height,
+            self._item_list_box.minimum_height,
+        )
+        self._item_list_box.height = max(content_height, viewport_height)
+        if self._item_scroll:
+            self._item_scroll.scroll_y = 1
 
     def _on_item_selected(self, item_data):
         item_name = item_data['name']

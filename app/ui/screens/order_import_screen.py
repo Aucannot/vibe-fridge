@@ -3,6 +3,7 @@
 订单截图批量导入屏幕
 """
 
+import copy
 import os
 import threading
 from typing import Any, Dict, Optional
@@ -221,21 +222,40 @@ class OrderImportScreen(Screen):
             subtitle="这一步会读取截图、调用视觉模型并规范化商品条目。",
         )
 
-        icon_shell = BoxLayout(size_hint_y=None, height=dp(88), padding=(0, dp(18), 0, dp(6)))
-        icon_shell.add_widget(
+        status_row = BoxLayout(
+            orientation="horizontal",
+            size_hint_y=None,
+            height=dp(72),
+            padding=(dp(12), dp(10), dp(12), dp(10)),
+            spacing=dp(12),
+        )
+        with status_row.canvas.before:
+            Color(*COLORS["surface_variant"])
+            status_row._bg = RoundedRectangle(
+                pos=status_row.pos,
+                size=status_row.size,
+                radius=[dp(14)],
+            )
+        status_row.bind(
+            pos=lambda inst, _val: setattr(inst._bg, "pos", inst.pos),
+            size=lambda inst, _val: setattr(inst._bg, "size", inst.size),
+        )
+        status_row.add_widget(
             MDIcon(
                 icon="text-box-search-outline",
+                size_hint_x=None,
+                width=dp(42),
                 theme_text_color="Custom",
                 text_color=COLORS["secondary"],
                 halign="center",
                 valign="middle",
-                font_size=dp(40),
+                font_size=dp(32),
             )
         )
-        body.add_widget(icon_shell)
 
         progress_text = Label(
             text="正在识别商品名称、数量、订单日期和可推导的保质期线索。",
+            size_hint_x=1,
             size_hint_y=None,
             halign="left",
             valign="middle",
@@ -244,11 +264,15 @@ class OrderImportScreen(Screen):
         )
         _bind_label_text(progress_text)
         progress_text.bind(
-            texture_size=lambda inst, val: setattr(inst, "height", max(dp(28), val[1]))
+            texture_size=lambda inst, val: (
+                setattr(inst, "height", max(dp(28), val[1])),
+                setattr(status_row, "height", max(dp(72), val[1] + dp(20))),
+            )
         )
         if CHINESE_FONT:
             progress_text.font_name = CHINESE_FONT
-        body.add_widget(progress_text)
+        status_row.add_widget(progress_text)
+        body.add_widget(status_row)
 
         if self.draft.image_path:
             body.add_widget(self._create_preview_card(self.draft.image_path, compact=True))
@@ -257,7 +281,7 @@ class OrderImportScreen(Screen):
 
     def _render_review_state(self):
         items = self.draft.import_payload.get("items") or []
-        selected_count = sum(1 for item in items if item.get("selected"))
+        selected_count = self.draft.selected_importable_count()
         summary_card, summary_body = self._create_section_card(
             title="订单概览",
             icon="receipt-text-outline",
@@ -281,6 +305,31 @@ class OrderImportScreen(Screen):
                 self.draft.import_payload.get("purchase_date") or "未识别到日期",
             )
         )
+        summary_body.add_widget(
+            self._create_key_value_row(
+                "下单时间",
+                self._format_order_time_display(),
+            )
+        )
+        summary_body.add_widget(
+            FridgeButton(
+                text="编辑下单时间",
+                variant="tonal",
+                size_hint=(1, None),
+                height=dp(44),
+                on_release=self._open_order_metadata_dialog,
+            )
+        )
+        if self.draft.import_payload.get("order_time_source") in {
+            "image_file_mtime",
+            "model_time_image_date",
+        }:
+            summary_body.add_widget(
+                self._create_hint_box(
+                    "已用截图时间预估下单时间，用于保质期估算。确认导入即表示接受该估计，也可以先编辑修正。",
+                    tone="warning",
+                )
+            )
         self.content_layout.add_widget(summary_card)
 
         if not items:
@@ -322,24 +371,33 @@ class OrderImportScreen(Screen):
             size_hint_x=0.38,
             on_release=self._reset_to_pick,
         )
-        selected_count = sum(
-            1 for item in self.draft.import_payload.get("items", []) if item.get("selected")
-        )
+        selected_count = self.draft.selected_importable_count()
         commit_btn = FridgeButton(
             text=f"批量导入 ({selected_count})",
             variant="primary",
             size_hint_x=0.6,
             on_release=self._commit_import,
         )
+        commit_btn.disabled = selected_count <= 0
         self.footer_bar.add_widget(reset_btn)
         self.footer_bar.add_widget(commit_btn)
 
     def _create_review_item_card(self, index: int, item: Dict[str, Any]) -> MDCard:
         title = item.get("name") or f"条目 {index + 1}"
+        is_imported = bool(item.get("imported"))
+        can_import = bool(item.get("can_import", True))
+        if is_imported:
+            subtitle = "已导入"
+        elif not can_import:
+            subtitle = "不可导入"
+        elif not item.get("selected"):
+            subtitle = "已忽略"
+        else:
+            subtitle = "待导入"
         card, body = self._create_section_card(
             title=title,
             icon="basket-outline",
-            subtitle="已忽略" if not item.get("selected") else "待导入",
+            subtitle=subtitle,
         )
 
         detail_text = (
@@ -370,6 +428,10 @@ class OrderImportScreen(Screen):
             body.add_widget(
                 self._create_hint_box("；".join(warnings), tone="warning")
             )
+        if is_imported:
+            body.add_widget(
+                self._create_hint_box("此条已写入库存，不会再次提交。", tone="secondary")
+            )
 
         action_row = BoxLayout(size_hint_y=None, height=dp(46), spacing=dp(10))
 
@@ -379,7 +441,11 @@ class OrderImportScreen(Screen):
             spacing=dp(6),
             padding=(0, 0, 0, 0),
         )
-        checkbox = MDCheckbox(active=item.get("selected", True), size_hint=(None, None))
+        checkbox = MDCheckbox(
+            active=item.get("selected", True),
+            disabled=is_imported or not can_import,
+            size_hint=(None, None),
+        )
         checkbox.bind(
             active=lambda _checkbox, active, row=index: self._toggle_item_selected(
                 row, active
@@ -388,10 +454,18 @@ class OrderImportScreen(Screen):
         checkbox_shell.add_widget(checkbox)
 
         checkbox_label = Label(
-            text="导入此条" if item.get("can_import") else "名称缺失",
+            text=(
+                "已导入"
+                if is_imported
+                else ("导入此条" if can_import else "名称缺失")
+            ),
             halign="left",
             valign="middle",
-            color=COLORS["text_primary"] if item.get("can_import") else COLORS["error_dark"],
+            color=(
+                COLORS["success_dark"]
+                if is_imported
+                else (COLORS["text_primary"] if can_import else COLORS["error_dark"])
+            ),
             font_size=dp(get_font_size("body_medium")),
         )
         checkbox_label.bind(
@@ -407,6 +481,7 @@ class OrderImportScreen(Screen):
             size_hint_x=0.52,
             on_release=lambda _instance, row=index: self._open_edit_dialog(row),
         )
+        edit_btn.disabled = is_imported
         action_row.add_widget(edit_btn)
         body.add_widget(action_row)
         return card
@@ -619,6 +694,101 @@ class OrderImportScreen(Screen):
         row.add_widget(value_label)
         return row
 
+    def _format_order_time_display(self) -> str:
+        order_time = self.draft.import_payload.get("order_time")
+        if not order_time:
+            return "未识别，可编辑补充"
+
+        source_label = {
+            "model": "模型识别",
+            "image_file_mtime": "截图时间估算",
+            "model_time_image_date": "识别时间+截图日期估算",
+            "manual": "手动填写",
+        }.get(self.draft.import_payload.get("order_time_source"), "")
+        return f"{order_time}（{source_label}）" if source_label else order_time
+
+    def _open_order_metadata_dialog(self, _instance):
+        dialog = ModalView(size_hint=(0.88, None), height=dp(330), auto_dismiss=False)
+        root = BoxLayout(
+            orientation="vertical",
+            padding=dp(18),
+            spacing=dp(12),
+            size_hint=(1, None),
+            height=dp(330),
+        )
+        self._decorate_modal_panel(root)
+
+        title = Label(
+            text="编辑订单时间",
+            size_hint_y=None,
+            height=dp(28),
+            halign="left",
+            valign="middle",
+            font_size=dp(get_font_size("title_large")),
+            bold=True,
+            color=COLORS["text_primary"],
+        )
+        _bind_label_text(title)
+        if CHINESE_FONT:
+            title.font_name = CHINESE_FONT
+        root.add_widget(title)
+
+        purchase_input = FridgeTextInput(
+            text=self.draft.import_payload.get("purchase_date") or "",
+            hint_text="YYYY-MM-DD",
+        )
+        order_time_input = FridgeTextInput(
+            text=self.draft.import_payload.get("order_time") or "",
+            hint_text="YYYY-MM-DD HH:MM 或 HH:MM",
+        )
+        root.add_widget(self._create_field_block("下单日期", purchase_input))
+        root.add_widget(self._create_field_block("下单时间", order_time_input))
+        root.add_widget(
+            self._create_hint_box(
+                "可保留截图时间作为估计；如果订单正文里有更准确的下单、支付、结算或完成时间，请在这里修正。",
+                tone="secondary",
+            )
+        )
+
+        button_row = BoxLayout(size_hint_y=None, height=dp(48), spacing=dp(10))
+        cancel_btn = FridgeButton(
+            text="取消",
+            size_hint_x=0.36,
+            on_release=lambda _btn: dialog.dismiss(),
+        )
+        save_btn = FridgeButton(
+            text="保存时间",
+            variant="primary",
+            size_hint_x=0.64,
+            on_release=lambda _btn: self._save_order_metadata(
+                dialog,
+                {
+                    "purchase_date": purchase_input.text.strip() or None,
+                    "order_time": order_time_input.text.strip() or None,
+                    "order_time_source": "manual" if order_time_input.text.strip() else None,
+                },
+            ),
+        )
+        button_row.add_widget(cancel_btn)
+        button_row.add_widget(save_btn)
+        root.add_widget(button_row)
+
+        dialog.add_widget(root)
+        dialog.open()
+
+    def _save_order_metadata(self, dialog: ModalView, updates: Dict[str, Any]):
+        payload = copy.deepcopy(self.draft.import_payload)
+        payload.update(updates)
+        normalized_payload = order_import_service._normalize_import_payload(
+            payload,
+            image_path=payload.get("image_path") or self.draft.image_path,
+        )
+        if updates.get("order_time"):
+            normalized_payload["order_time_source"] = "manual"
+        self.draft.load_review_payload(normalized_payload)
+        dialog.dismiss()
+        self._render_current_state()
+
     def _open_file_dialog(self, _instance):
         dialog = ModalView(size_hint=(0.92, 0.88), auto_dismiss=False)
 
@@ -698,7 +868,7 @@ class OrderImportScreen(Screen):
             return os.path.dirname(self.draft.image_path)
 
         for candidate in (
-            os.path.expanduser("~/Pictures"),
+            os.path.expanduser("~/Downloads"),
             os.path.expanduser("~"),
         ):
             if os.path.isdir(candidate):
@@ -828,6 +998,9 @@ class OrderImportScreen(Screen):
 
     def _open_edit_dialog(self, index: int):
         item = self.draft.import_payload["items"][index]
+        if item.get("imported"):
+            self._show_error_dialog("已导入的条目不能再次编辑")
+            return
         dialog = ModalView(size_hint=(0.88, None), height=dp(520), auto_dismiss=False)
 
         root = BoxLayout(
@@ -909,6 +1082,8 @@ class OrderImportScreen(Screen):
                     "purchase_date": purchase_input.text.strip(),
                     "expiry_date": expiry_input.text.strip(),
                     "selected": item.get("selected", True),
+                    "confidence": item.get("confidence", 0.0),
+                    "imported": item.get("imported", False),
                     "warnings": [],
                 },
             ),
@@ -951,12 +1126,14 @@ class OrderImportScreen(Screen):
 
     def _commit_import(self, _instance):
         payload = self.draft.build_commit_payload()
-        selected_count = sum(1 for item in payload.get("items", []) if item.get("selected"))
+        selected_count = self.draft.selected_importable_count()
         if selected_count <= 0:
             self._show_error_dialog("当前没有勾选可导入的条目")
             return
 
         result = order_import_service.commit_import(payload)
+        self.draft.mark_created_rows(result.get("created_rows", []))
+        self._render_current_state()
         self._show_success_dialog(result)
 
     def _show_error_dialog(self, message: str):

@@ -10,7 +10,7 @@ import mimetypes
 import os
 import re
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -31,6 +31,25 @@ DEFAULT_UNIT = "件"
 DEFAULT_MODEL = "Qwen/Qwen2-VL-72B-Instruct"
 SUPPORTED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
 CANONICAL_CATEGORIES = ("食品", "日用品", "药品", "化妆品", "其他")
+FUZZY_EXPIRY_RULES = (
+    (("三明治", "便当", "寿司", "饭团", "沙拉", "熟食", "鲜切"), 1, "即食/鲜食类"),
+    (("香蕉", "甜蕉", "草莓", "蓝莓", "叶菜", "生菜", "青菜"), 3, "短保生鲜"),
+    (("面包", "吐司", "蛋糕", "烘焙"), 3, "烘焙短保"),
+    (("牛奶", "鲜奶", "酸奶", "奶酪", "乳"), 7, "乳制品"),
+    (("鸡蛋", "溏心蛋", "蛋"), 14, "蛋类"),
+    (("姜", "蒜", "土豆", "洋葱", "胡萝卜"), 30, "耐储蔬菜"),
+)
+FUZZY_CATEGORY_EXPIRY_DAYS = {
+    "食品": (7, "食品默认短保"),
+}
+SILICONFLOW_MODEL_SETTING = "siliconflow_vision_model"
+LEGACY_SILICONFLOW_MODEL_SETTING = "silicon_flow_vision_model"
+SILICONFLOW_API_KEY_SETTING = "siliconflow_api_key"
+LEGACY_SILICONFLOW_API_KEY_SETTING = "silicon_flow_api_key"
+SILICONFLOW_MODEL_ENV = "SILICONFLOW_VISION_MODEL"
+LEGACY_SILICONFLOW_MODEL_ENV = "SILICON_FLOW_VISION_MODEL"
+SILICONFLOW_API_KEY_ENV = "SILICONFLOW_API_KEY"
+LEGACY_SILICONFLOW_API_KEY_ENV = "SILICON_FLOW_API_KEY"
 
 
 @dataclass
@@ -44,6 +63,8 @@ class OrderImportDraft:
             "source_app": DEFAULT_SOURCE_APP,
             "source_order_id": None,
             "purchase_date": None,
+            "order_time": None,
+            "order_time_source": None,
             "image_path": "",
             "items": [],
         }
@@ -56,6 +77,8 @@ class OrderImportDraft:
             "source_app": DEFAULT_SOURCE_APP,
             "source_order_id": None,
             "purchase_date": None,
+            "order_time": None,
+            "order_time_source": None,
             "image_path": "",
             "items": [],
         }
@@ -72,13 +95,48 @@ class OrderImportDraft:
         self.view_state = "review"
 
     def set_item_selected(self, index: int, selected: bool) -> None:
-        self.import_payload["items"][index]["selected"] = bool(selected)
+        item = self.import_payload["items"][index]
+        if item.get("imported") or not item.get("can_import", True):
+            item["selected"] = False
+            return
+        item["selected"] = bool(selected)
 
     def update_item(self, index: int, updates: Dict[str, Any]) -> None:
         self.import_payload["items"][index].update(copy.deepcopy(updates))
 
+    def selected_importable_count(self) -> int:
+        return sum(
+            1
+            for item in self.import_payload.get("items", [])
+            if self._is_item_ready_to_import(item)
+        )
+
+    def mark_created_rows(self, created_rows: List[Dict[str, Any]]) -> None:
+        for row in created_rows or []:
+            try:
+                index = int(row.get("row", 0)) - 1
+            except (TypeError, ValueError):
+                continue
+            if 0 <= index < len(self.import_payload.get("items", [])):
+                item = self.import_payload["items"][index]
+                item["imported"] = True
+                item["selected"] = False
+
     def build_commit_payload(self) -> Dict[str, Any]:
-        return copy.deepcopy(self.import_payload)
+        payload = copy.deepcopy(self.import_payload)
+        payload["items"] = [
+            {**item, "_row_number": index}
+            for index, item in enumerate(payload.get("items", []), start=1)
+            if not item.get("imported")
+        ]
+        return payload
+
+    def _is_item_ready_to_import(self, item: Dict[str, Any]) -> bool:
+        return (
+            bool(item.get("selected"))
+            and bool(item.get("can_import", True))
+            and not bool(item.get("imported"))
+        )
 
 
 class OrderImportService:
@@ -103,16 +161,26 @@ class OrderImportService:
         source_app = payload.get("source_app") or DEFAULT_SOURCE_APP
         source_order_id = payload.get("source_order_id") or None
         image_path = payload.get("image_path") or None
+        payload_purchase_date = self._parse_date_value(payload.get("purchase_date"))
+        source_order_time = self._parse_datetime_value(
+            payload.get("order_time"),
+            default_date=payload_purchase_date,
+        )
+        source_order_time_source = (
+            payload.get("order_time_source") or None
+        ) if source_order_time else None
         default_purchase_date = self._format_date_string(
-            self._parse_date_value(payload.get("purchase_date"))
+            payload_purchase_date or (source_order_time.date() if source_order_time else None)
         )
 
         created_count = 0
         skipped_count = 0
         failed_rows: List[Dict[str, Any]] = []
+        created_rows: List[Dict[str, Any]] = []
 
         for index, item_data in enumerate(items, start=1):
-            if not item_data.get("selected", True):
+            row_number = self._resolve_row_number(item_data, index)
+            if item_data.get("imported") or not item_data.get("selected", True):
                 skipped_count += 1
                 continue
 
@@ -123,7 +191,7 @@ class OrderImportService:
             if not normalized_item["can_import"]:
                 failed_rows.append(
                     {
-                        "row": index,
+                        "row": row_number,
                         "name": normalized_item["name"] or "未命名条目",
                         "reason": "物品名称不能为空",
                     }
@@ -139,12 +207,16 @@ class OrderImportService:
                 unit=normalized_item["unit"],
                 source_app=source_app,
                 source_order_id=source_order_id,
+                source_order_time=source_order_time,
+                source_order_time_source=source_order_time_source,
                 image_path=image_path,
+                predicted_expiry_date=self._parse_date_value(normalized_item["expiry_date"]),
+                prediction_confidence=normalized_item["confidence"],
             )
             if created_item is None:
                 failed_rows.append(
                     {
-                        "row": index,
+                        "row": row_number,
                         "name": normalized_item["name"],
                         "reason": "创建库存记录失败",
                     }
@@ -152,24 +224,48 @@ class OrderImportService:
                 continue
 
             created_count += 1
+            created_rows.append(
+                {
+                    "row": row_number,
+                    "name": normalized_item["name"],
+                    "item_id": created_item.id,
+                }
+            )
 
         return {
             "created_count": created_count,
             "skipped_count": skipped_count,
             "failed_rows": failed_rows,
+            "created_rows": created_rows,
         }
 
+    def _resolve_row_number(self, item_data: Dict[str, Any], fallback: int) -> int:
+        try:
+            return int(item_data.get("_row_number") or fallback)
+        except (TypeError, ValueError):
+            return fallback
+
     def _resolve_vision_model(self) -> str:
-        stored_model = db_service.get_setting("silicon_flow_vision_model")
+        stored_model = db_service.get_setting(SILICONFLOW_MODEL_SETTING)
+        if not stored_model:
+            stored_model = db_service.get_setting(LEGACY_SILICONFLOW_MODEL_SETTING)
         if stored_model:
             return stored_model
-        return os.getenv("SILICON_FLOW_VISION_MODEL", DEFAULT_MODEL)
+        return (
+            os.getenv(SILICONFLOW_MODEL_ENV)
+            or os.getenv(LEGACY_SILICONFLOW_MODEL_ENV)
+            or DEFAULT_MODEL
+        )
 
     def _resolve_api_key(self) -> Optional[str]:
-        stored_key = db_service.get_setting("silicon_flow_api_key")
+        stored_key = db_service.get_setting(SILICONFLOW_API_KEY_SETTING)
+        if not stored_key:
+            stored_key = db_service.get_setting(LEGACY_SILICONFLOW_API_KEY_SETTING)
         if stored_key:
             return stored_key
-        return os.getenv("SILICON_FLOW_API_KEY")
+        return os.getenv(SILICONFLOW_API_KEY_ENV) or os.getenv(
+            LEGACY_SILICONFLOW_API_KEY_ENV
+        )
 
     def _call_vision_model(self, image_path: str, api_key: str) -> Dict[str, Any]:
         mime_type = mimetypes.guess_type(image_path)[0] or "image/png"
@@ -237,22 +333,57 @@ class OrderImportService:
             "请读取这张中文订单截图，提取订单来源、订单号、下单日期和商品列表。"
             "必须只返回一个 JSON 对象，结构严格如下："
             '{"source_app": "...", "source_order_id": "...", "purchase_date": "YYYY-MM-DD 或 null", '
+            '"order_time": "YYYY-MM-DD HH:MM 或 HH:MM 或 null", '
             '"items": [{"name": "...", "quantity": 1, "unit": "...", "category": "...", '
             '"purchase_date": "YYYY-MM-DD 或 null", "expiry_date": "YYYY-MM-DD 或 null", '
-            '"confidence": 0.0, "warnings": ["..."]}]}.'
+            '"confidence": 0.85, "warnings": ["..."]}]}.'
             "如果截图中没有明确值，请填 null 或空数组。"
+            "order_time 只能来自订单正文中的下单、支付、结算、送达或完成时间。"
+            "不要把手机状态栏时间、截图时间或系统时间当作下单时间。"
+            "如果订单正文没有明确下单时间，请填 null。"
+            "如果订单正文只有时间没有日期，可只填 HH:MM。"
             f'category 仅可使用 {", ".join(CANONICAL_CATEGORIES)} 中的一个。'
             "quantity 必须是整数。"
+            "confidence 必须是 0 到 1 之间的识别置信度；只有完全无法判断时才填 0。"
+            "如果商品名称在截图中被省略号截断，请保留可见名称并在 warnings 中说明。"
         )
 
     def _normalize_import_payload(
         self, response_payload: Dict[str, Any], image_path: str
     ) -> Dict[str, Any]:
-        purchase_date = self._format_date_string(
-            self._parse_date_value(response_payload.get("purchase_date"))
-        )
+        image_mtime = self._image_mtime_datetime(image_path)
+        parsed_purchase_date = self._parse_date_value(response_payload.get("purchase_date"))
         source_app = response_payload.get("source_app") or DEFAULT_SOURCE_APP
         source_order_id = response_payload.get("source_order_id") or None
+        raw_order_time = response_payload.get("order_time")
+        order_time = self._parse_datetime_value(
+            raw_order_time,
+            default_date=parsed_purchase_date or (image_mtime.date() if image_mtime else None),
+        )
+        order_time_source = "model" if order_time else None
+        if (
+            order_time is not None
+            and parsed_purchase_date is None
+            and source_order_id is None
+            and image_mtime is not None
+            and self._same_minute(order_time, image_mtime)
+        ):
+            order_time_source = "image_file_mtime"
+        elif (
+            order_time is not None
+            and parsed_purchase_date is None
+            and image_mtime is not None
+            and not self._has_explicit_date_component(raw_order_time)
+        ):
+            order_time_source = "model_time_image_date"
+        if order_time is None and parsed_purchase_date is None and image_mtime is not None:
+            order_time = image_mtime
+            order_time_source = "image_file_mtime"
+
+        purchase_date_value = parsed_purchase_date or (
+            order_time.date() if order_time else None
+        )
+        purchase_date = self._format_date_string(purchase_date_value)
 
         normalized_items = [
             self.normalize_review_item(item, default_purchase_date=purchase_date)
@@ -263,6 +394,8 @@ class OrderImportService:
             "source_app": source_app,
             "source_order_id": source_order_id,
             "purchase_date": purchase_date,
+            "order_time": self._format_datetime_string(order_time),
+            "order_time_source": order_time_source,
             "image_path": image_path,
             "items": normalized_items,
         }
@@ -291,25 +424,52 @@ class OrderImportService:
         if category != (item_payload.get("category") or "").strip():
             warnings.append(f"类别已标准化为：{category}")
 
-        purchase_date = self._parse_date_value(
-            item_payload.get("purchase_date") or default_purchase_date
-        )
+        purchase_date_value = item_payload.get("purchase_date")
+        if item_payload.get("purchase_date_source") == "default":
+            purchase_date_value = None
+        purchase_date = self._parse_date_value(purchase_date_value or default_purchase_date)
         purchase_date_str = self._format_date_string(purchase_date)
+        purchase_date_source = (
+            "item"
+            if purchase_date_value
+            else ("default" if default_purchase_date and purchase_date else None)
+        )
 
-        expiry_date = self._parse_date_value(item_payload.get("expiry_date"))
+        expiry_source = item_payload.get("expiry_date_source")
+        expiry_date_value = item_payload.get("expiry_date")
+        if expiry_source in {"wiki_estimate", "fuzzy_estimate"}:
+            expiry_date_value = None
+        expiry_date = self._parse_date_value(expiry_date_value)
+        expiry_date_source = "item" if expiry_date_value and expiry_date else None
         if expiry_date is None and wiki_item and purchase_date and wiki_item.get(
             "suggested_expiry_days"
         ):
             expiry_date = purchase_date + timedelta(
                 days=int(wiki_item["suggested_expiry_days"])
             )
+            expiry_date_source = "wiki_estimate"
             warnings.append(
                 f"根据 Wiki 建议保质期推导过期日期：{self._format_date_string(expiry_date)}"
             )
+        if expiry_date is None and purchase_date:
+            estimated = self._estimate_fuzzy_expiry_date(
+                raw_name,
+                category,
+                purchase_date,
+            )
+            if estimated:
+                expiry_date, estimate_reason, estimate_days = estimated
+                expiry_date_source = "fuzzy_estimate"
+                warnings.append(
+                    "根据下单时间和"
+                    f"{estimate_reason}（约 {estimate_days} 天）模糊估计过期日期："
+                    f"{self._format_date_string(expiry_date)}"
+                )
         expiry_date_str = self._format_date_string(expiry_date)
 
         confidence = self._normalize_confidence(item_payload.get("confidence"))
         can_import = bool(raw_name)
+        imported = bool(item_payload.get("imported", False))
         if not can_import:
             warnings.append("未识别到物品名称，当前条目不可导入")
 
@@ -319,13 +479,36 @@ class OrderImportService:
             "unit": unit,
             "category": category,
             "purchase_date": purchase_date_str,
+            "purchase_date_source": purchase_date_source,
             "expiry_date": expiry_date_str,
+            "expiry_date_source": expiry_date_source,
             "confidence": confidence,
             "warnings": warnings,
-            "selected": bool(item_payload.get("selected", True)) and can_import,
+            "selected": bool(item_payload.get("selected", True)) and can_import and not imported,
             "can_import": can_import,
+            "imported": imported,
         }
         return normalized_item
+
+    def _estimate_fuzzy_expiry_date(
+        self,
+        name: str,
+        category: str,
+        purchase_date: date,
+    ) -> Optional[tuple[date, str, int]]:
+        if category != "食品":
+            return None
+
+        normalized_name = name or ""
+        for keywords, days, reason in FUZZY_EXPIRY_RULES:
+            if any(keyword in normalized_name for keyword in keywords):
+                return purchase_date + timedelta(days=days), reason, days
+
+        category_rule = FUZZY_CATEGORY_EXPIRY_DAYS.get(category)
+        if not category_rule:
+            return None
+        days, reason = category_rule
+        return purchase_date + timedelta(days=days), reason, days
 
     def _normalize_quantity(self, quantity_value: Any) -> tuple[int, Optional[str]]:
         if quantity_value in (None, ""):
@@ -446,10 +629,137 @@ class OrderImportService:
         except (ValueError, TypeError, OverflowError):
             return None
 
+    def _parse_datetime_value(
+        self,
+        value: Any,
+        default_date: Optional[date] = None,
+    ) -> Optional[datetime]:
+        if value in (None, ""):
+            return None
+        if isinstance(value, datetime):
+            return value.replace(second=0, microsecond=0)
+        if isinstance(value, date):
+            return datetime.combine(value, datetime.min.time())
+
+        text = str(value).strip()
+        if not text or text.lower() == "null":
+            return None
+
+        text = (
+            text.replace("年", "-")
+            .replace("月", "-")
+            .replace("日", "")
+            .replace("时", ":")
+            .replace("点", ":")
+            .replace("分", "")
+            .replace("/", "-")
+            .replace(".", "-")
+        )
+        parse_default = None
+        if default_date:
+            parse_default = datetime.combine(default_date, datetime.min.time())
+        try:
+            parsed = date_parser.parse(
+                text,
+                fuzzy=True,
+                dayfirst=False,
+                default=parse_default,
+            )
+        except (ValueError, TypeError, OverflowError):
+            return None
+        return parsed.replace(second=0, microsecond=0)
+
+    def _has_explicit_date_component(self, value: Any) -> bool:
+        if isinstance(value, datetime):
+            return True
+        if isinstance(value, date):
+            return True
+        text = str(value or "")
+        if re.search(r"\d{4}\s*[-/年.]\s*\d{1,2}", text):
+            return True
+        return bool(re.search(r"\d{1,2}\s*[-/月.]\s*\d{1,2}\s*(日)?", text))
+
+    def _same_minute(self, first: datetime, second: datetime) -> bool:
+        return first.replace(second=0, microsecond=0) == second.replace(
+            second=0,
+            microsecond=0,
+        )
+
+    def _image_mtime_datetime(self, image_path: Optional[str]) -> Optional[datetime]:
+        if not image_path:
+            return None
+        android_datetime = self._android_media_datetime(image_path)
+        if android_datetime:
+            return android_datetime
+        try:
+            return datetime.fromtimestamp(Path(image_path).stat().st_mtime).replace(
+                second=0,
+                microsecond=0,
+            )
+        except (OSError, TypeError, ValueError):
+            return None
+
+    def _android_media_datetime(self, image_path: str) -> Optional[datetime]:
+        """Best-effort Android screenshot timestamp lookup via ContentResolver."""
+        try:
+            from jnius import autoclass
+
+            PythonActivity = autoclass("org.kivy.android.PythonActivity")
+            Uri = autoclass("android.net.Uri")
+            MediaStoreImages = autoclass("android.provider.MediaStore$Images$Media")
+
+            activity = PythonActivity.mActivity
+            resolver = activity.getContentResolver()
+            uri = Uri.parse(image_path)
+            projection = [
+                MediaStoreImages.DATE_TAKEN,
+                MediaStoreImages.DATE_ADDED,
+                MediaStoreImages.DATE_MODIFIED,
+            ]
+            cursor = resolver.query(uri, projection, None, None, None)
+            if cursor is None:
+                return None
+            try:
+                if not cursor.moveToFirst():
+                    return None
+                for column_name in projection:
+                    column_index = cursor.getColumnIndex(column_name)
+                    if column_index < 0:
+                        continue
+                    parsed = self._datetime_from_media_timestamp(
+                        cursor.getLong(column_index)
+                    )
+                    if parsed:
+                        return parsed
+            finally:
+                cursor.close()
+        except Exception:
+            return None
+        return None
+
+    def _datetime_from_media_timestamp(self, timestamp_value: Any) -> Optional[datetime]:
+        try:
+            timestamp = int(timestamp_value)
+        except (TypeError, ValueError, OverflowError):
+            return None
+        if timestamp <= 0:
+            return None
+        if timestamp > 10_000_000_000:
+            timestamp = timestamp / 1000
+        try:
+            return datetime.fromtimestamp(timestamp).replace(second=0, microsecond=0)
+        except (OSError, ValueError, OverflowError):
+            return None
+
     def _format_date_string(self, value: Optional[date]) -> Optional[str]:
         if value is None:
             return None
         return value.strftime("%Y-%m-%d")
+
+    def _format_datetime_string(self, value: Optional[datetime]) -> Optional[str]:
+        if value is None:
+            return None
+        return value.strftime("%Y-%m-%d %H:%M")
 
 
 order_import_service = OrderImportService()

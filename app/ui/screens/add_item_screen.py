@@ -167,12 +167,14 @@ class FridgeButton(Button):
         self.valign = "middle"
         if CHINESE_FONT:
             self.font_name = CHINESE_FONT
-        self.bind(pos=self._redraw, size=self._redraw)
+        self.bind(pos=self._redraw, size=self._redraw, disabled=self._redraw)
         self.bind(size=self._update_text_size)
         self._update_text_size()
         self._redraw()
 
     def _palette(self):
+        if self.disabled:
+            return (COLORS["surface_variant"], COLORS["divider"], COLORS["text_hint"])
         if self.variant == "primary":
             return (
                 COLORS["primary_dark"] if self._pressed else COLORS["primary"],
@@ -218,6 +220,8 @@ class FridgeButton(Button):
                 )
 
     def on_touch_down(self, touch):
+        if self.disabled:
+            return super().on_touch_down(touch)
         if self.collide_point(*touch.pos):
             self._pressed = True
             self._redraw()
