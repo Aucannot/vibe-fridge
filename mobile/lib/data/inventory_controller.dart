@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../models/inventory_item.dart';
 import '../models/inventory_stats.dart';
 import '../models/item_wiki_category.dart';
+import '../models/order_recognition.dart';
 import '../models/registered_item.dart';
 import 'inventory_repository.dart';
 
@@ -60,7 +61,8 @@ class InventoryController extends ChangeNotifier {
     String? categoryId,
     String? keyword,
   }) {
-    return repository.getRegisteredItems(categoryId: categoryId, keyword: keyword);
+    return repository.getRegisteredItems(
+        categoryId: categoryId, keyword: keyword);
   }
 
   Future<void> createItem({
@@ -71,6 +73,11 @@ class InventoryController extends ChangeNotifier {
     String? unit,
     DateTime? purchaseDate,
     DateTime? expiryDate,
+    DateTime? predictedExpiryDate,
+    double? predictionConfidence,
+    String? imagePath,
+    String? sourceApp,
+    String? sourceOrderId,
   }) async {
     await repository.createItem(
       name: name,
@@ -80,8 +87,41 @@ class InventoryController extends ChangeNotifier {
       unit: unit,
       purchaseDate: purchaseDate,
       expiryDate: expiryDate,
+      predictedExpiryDate: predictedExpiryDate,
+      predictionConfidence: predictionConfidence,
+      imagePath: imagePath,
+      sourceApp: sourceApp,
+      sourceOrderId: sourceOrderId,
     );
     await refresh();
+  }
+
+  Future<int> createItemsFromOrder({
+    required OrderRecognitionResult result,
+    required Iterable<OrderRecognitionItem> items,
+    String? imagePath,
+  }) async {
+    var count = 0;
+    final sourceApp = result.sourceApp ?? result.merchant;
+    for (final item in items) {
+      await repository.createItem(
+        name: item.name,
+        categoryId: _categoryIdForName(item.categoryName),
+        description: item.notes,
+        quantity: item.quantity,
+        unit: item.unit,
+        purchaseDate: item.purchaseDate ?? result.purchaseDate,
+        expiryDate: item.inventoryExpiryDate,
+        predictedExpiryDate: item.predictedExpiryDate,
+        predictionConfidence: item.confidence,
+        imagePath: imagePath,
+        sourceApp: sourceApp,
+        sourceOrderId: result.orderId,
+      );
+      count += 1;
+    }
+    await refresh();
+    return count;
   }
 
   Future<void> updateItemQuantity(String itemId, int delta) async {
@@ -165,9 +205,29 @@ class InventoryController extends ChangeNotifier {
 
   Future<String> _loadLegacyImportAsset() async {
     try {
-      return await rootBundle.loadString('assets/import/legacy_inventory.local.json');
+      return await rootBundle
+          .loadString('assets/import/legacy_inventory.local.json');
     } catch (_) {
       return rootBundle.loadString('assets/import/legacy_inventory.json');
     }
+  }
+
+  String? _categoryIdForName(String? categoryName) {
+    final normalized = categoryName?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+    for (final category in categories) {
+      if (category.name == normalized) {
+        return category.id;
+      }
+    }
+    for (final category in categories) {
+      if (normalized.contains(category.name) ||
+          category.name.contains(normalized)) {
+        return category.id;
+      }
+    }
+    return null;
   }
 }

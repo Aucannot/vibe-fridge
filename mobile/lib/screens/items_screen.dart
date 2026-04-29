@@ -92,7 +92,8 @@ class _ItemsScreenState extends State<ItemsScreen> {
                             child: ChoiceChip(
                               label: const Text('全部'),
                               selected: _categoryId == null,
-                              onSelected: (_) => setState(() => _categoryId = null),
+                              onSelected: (_) =>
+                                  setState(() => _categoryId = null),
                             ),
                           ),
                           ...widget.controller.categories.map(
@@ -101,7 +102,8 @@ class _ItemsScreenState extends State<ItemsScreen> {
                               child: ChoiceChip(
                                 label: Text(category.name),
                                 selected: _categoryId == category.id,
-                                avatar: Icon(iconForName(category.icon), size: 18),
+                                avatar:
+                                    Icon(iconForName(category.icon), size: 18),
                                 onSelected: (_) {
                                   setState(() => _categoryId = category.id);
                                 },
@@ -180,7 +182,8 @@ class _ItemsScreenState extends State<ItemsScreen> {
   List<RegisteredItem> _filteredItems() {
     final keyword = _searchController.text.trim().toLowerCase();
     return widget.controller.registeredItems.where((item) {
-      final matchesCategory = _categoryId == null || item.categoryId == _categoryId;
+      final matchesCategory =
+          _categoryId == null || item.categoryId == _categoryId;
       final matchesKeyword = keyword.isEmpty ||
           item.name.toLowerCase().contains(keyword) ||
           (item.description ?? '').toLowerCase().contains(keyword);
@@ -293,7 +296,8 @@ class _HistoryItemTile extends StatelessWidget {
             ? '已过期'
             : item.status.label;
     final statusColor = isConsumed ? AppColors.success : AppColors.error;
-    final statusBackground = isConsumed ? AppColors.successContainer : AppColors.errorContainer;
+    final statusBackground =
+        isConsumed ? AppColors.successContainer : AppColors.errorContainer;
 
     return SectionCard(
       onTap: onTap,
@@ -307,7 +311,9 @@ class _HistoryItemTile extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
             ),
             child: Icon(
-              isConsumed ? Icons.check_circle_outline : Icons.warning_amber_outlined,
+              isConsumed
+                  ? Icons.check_circle_outline
+                  : Icons.warning_amber_outlined,
               color: statusColor,
             ),
           ),

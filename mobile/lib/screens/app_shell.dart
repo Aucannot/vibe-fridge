@@ -43,7 +43,8 @@ class _AppShellState extends State<AppShell> {
         child: AnimatedBuilder(
           animation: widget.controller,
           builder: (context, _) {
-            if (widget.controller.isLoading && widget.controller.activeItems.isEmpty) {
+            if (widget.controller.isLoading &&
+                widget.controller.activeItems.isEmpty) {
               return const Center(child: CircularProgressIndicator());
             }
             return IndexedStack(index: _index, children: screens);

@@ -287,6 +287,11 @@ class InventoryRepository {
     String? unit,
     DateTime? purchaseDate,
     DateTime? expiryDate,
+    DateTime? predictedExpiryDate,
+    double? predictionConfidence,
+    String? imagePath,
+    String? sourceApp,
+    String? sourceOrderId,
     int reminderDaysBefore = 3,
   }) async {
     final normalizedName = name.trim();
@@ -359,11 +364,11 @@ class InventoryRepository {
         'status': ItemStatus.active.dbValue,
         'is_reminder_enabled': 1,
         'consumed_at': null,
-        'predicted_expiry_date': null,
-        'prediction_confidence': null,
-        'image_path': null,
-        'source_app': null,
-        'source_order_id': null,
+        'predicted_expiry_date': _dateText(predictedExpiryDate),
+        'prediction_confidence': predictionConfidence,
+        'image_path': _blankToNull(imagePath),
+        'source_app': _blankToNull(sourceApp),
+        'source_order_id': _blankToNull(sourceOrderId),
         'created_at': nowText,
         'updated_at': nowText,
       });
@@ -553,7 +558,8 @@ class InventoryRepository {
     await _db.delete('item_wikis', where: 'id = ?', whereArgs: [wikiId]);
   }
 
-  Future<LegacyImportResult> importLegacyData(Map<String, dynamic> payload) async {
+  Future<LegacyImportResult> importLegacyData(
+      Map<String, dynamic> payload) async {
     final categories = _payloadList(payload['categories']);
     final wikis = _payloadList(payload['wikis']);
     final items = _payloadList(payload['items']);
@@ -615,7 +621,8 @@ class InventoryRepository {
         final name = _requiredText(row['name'], fallback: '未命名物品');
         final categoryId = row['category_id'] == null
             ? null
-            : categoryIdMap[row['category_id'] as String] ?? row['category_id'] as String;
+            : categoryIdMap[row['category_id'] as String] ??
+                row['category_id'] as String;
         final data = {
           'name': name,
           'icon': _blankToNull(row['icon'] as String?),
@@ -638,7 +645,8 @@ class InventoryRepository {
         );
         if (existingById.isNotEmpty) {
           wikiIdMap[oldId] = oldId;
-          await txn.update('item_wikis', data, where: 'id = ?', whereArgs: [oldId]);
+          await txn
+              .update('item_wikis', data, where: 'id = ?', whereArgs: [oldId]);
           continue;
         }
 
@@ -652,7 +660,8 @@ class InventoryRepository {
         if (existingByName.isNotEmpty) {
           final existingId = existingByName.first['id'] as String;
           wikiIdMap[oldId] = existingId;
-          await txn.update('item_wikis', data, where: 'id = ?', whereArgs: [existingId]);
+          await txn.update('item_wikis', data,
+              where: 'id = ?', whereArgs: [existingId]);
           continue;
         }
 
@@ -679,7 +688,8 @@ class InventoryRepository {
         }
 
         final oldWikiId = row['wiki_id'] as String?;
-        final wikiId = oldWikiId == null ? null : wikiIdMap[oldWikiId] ?? oldWikiId;
+        final wikiId =
+            oldWikiId == null ? null : wikiIdMap[oldWikiId] ?? oldWikiId;
         if (wikiId == null) {
           continue;
         }
@@ -697,8 +707,10 @@ class InventoryRepository {
           'status': ItemStatus.fromDbValue(row['status'] as String?).dbValue,
           'is_reminder_enabled': _boolAsInt(row['is_reminder_enabled']),
           'consumed_at': _blankToNull(row['consumed_at'] as String?),
-          'predicted_expiry_date': _blankToNull(row['predicted_expiry_date'] as String?),
-          'prediction_confidence': (row['prediction_confidence'] as num?)?.toDouble(),
+          'predicted_expiry_date':
+              _blankToNull(row['predicted_expiry_date'] as String?),
+          'prediction_confidence':
+              (row['prediction_confidence'] as num?)?.toDouble(),
           'image_path': _blankToNull(row['image_path'] as String?),
           'source_app': _blankToNull(row['source_app'] as String?),
           'source_order_id': _blankToNull(row['source_order_id'] as String?),
@@ -818,7 +830,10 @@ List<Map<String, dynamic>> _payloadList(Object? value) {
   if (value is! List) {
     return [];
   }
-  return value.whereType<Map>().map((row) => Map<String, dynamic>.from(row)).toList();
+  return value
+      .whereType<Map>()
+      .map((row) => Map<String, dynamic>.from(row))
+      .toList();
 }
 
 String _requiredText(Object? value, {required String fallback}) {

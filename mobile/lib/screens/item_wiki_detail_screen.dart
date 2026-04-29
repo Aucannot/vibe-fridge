@@ -35,7 +35,8 @@ class _ItemWikiDetailScreenState extends State<ItemWikiDetailScreen> {
 
   Future<_WikiDetailData> _load() async {
     final wiki = await widget.controller.repository.getWiki(widget.wikiId);
-    final items = await widget.controller.repository.getInventoryByWikiId(widget.wikiId);
+    final items =
+        await widget.controller.repository.getInventoryByWikiId(widget.wikiId);
     return _WikiDetailData(wiki: wiki, items: items);
   }
 
@@ -163,7 +164,8 @@ class _ItemWikiDetailScreenState extends State<ItemWikiDetailScreen> {
   }
 
   Future<void> _deleteWiki(ItemWiki wiki) async {
-    final inventoryCount = await widget.controller.repository.getWikiInventoryCount(wiki.id);
+    final inventoryCount =
+        await widget.controller.repository.getWikiInventoryCount(wiki.id);
     if (!mounted) {
       return;
     }
@@ -266,7 +268,9 @@ class _WikiFacts extends StatelessWidget {
           _FactRow(label: '默认单位', value: wiki.defaultUnit ?? '未设置'),
           _FactRow(
             label: '建议保质期',
-            value: wiki.suggestedExpiryDays == null ? '未设置' : '${wiki.suggestedExpiryDays} 天',
+            value: wiki.suggestedExpiryDays == null
+                ? '未设置'
+                : '${wiki.suggestedExpiryDays} 天',
           ),
           _FactRow(label: '存放位置', value: wiki.storageLocation ?? '未设置'),
           _FactRow(label: '库存批次', value: '${wiki.inventoryCount}'),

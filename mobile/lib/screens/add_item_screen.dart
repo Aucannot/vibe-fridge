@@ -1,9 +1,13 @@
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../data/inventory_controller.dart';
+import '../data/vlm_order_service.dart';
+import '../data/vlm_settings_store.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_cards.dart';
+import 'order_import_review_screen.dart';
 
 class AddItemScreen extends StatefulWidget {
   const AddItemScreen({
@@ -25,10 +29,13 @@ class _AddItemScreenState extends State<AddItemScreen> {
   final _quantityController = TextEditingController(text: '1');
   final _unitController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _settingsStore = VlmSettingsStore();
+  final _orderService = VlmOrderService();
   DateTime? _purchaseDate = DateTime.now();
   DateTime? _expiryDate;
   String? _categoryId;
   bool _saving = false;
+  bool _recognizing = false;
 
   @override
   void dispose() {
@@ -36,13 +43,15 @@ class _AddItemScreenState extends State<AddItemScreen> {
     _quantityController.dispose();
     _unitController.dispose();
     _descriptionController.dispose();
+    _orderService.close();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final categories = widget.controller.categories;
-    final selectedCategoryId = _categoryId ?? (categories.isEmpty ? null : categories.first.id);
+    final selectedCategoryId =
+        _categoryId ?? (categories.isEmpty ? null : categories.first.id);
 
     return ListView(
       padding: const EdgeInsets.only(bottom: 24),
@@ -58,6 +67,65 @@ class _AddItemScreenState extends State<AddItemScreen> {
               key: _formKey,
               child: Column(
                 children: [
+                  SectionCard(
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Icon(
+                            Icons.document_scanner_outlined,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '订单截图识别',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '识别后预览确认，再批量添加库存',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(
+                                      color: AppColors.textSecondary,
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        FilledButton.icon(
+                          onPressed: _recognizing ? null : _recognizeOrder,
+                          icon: _recognizing
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.image_search_outlined),
+                          label: Text(_recognizing ? '识别中' : '选择图片'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
                   SectionCard(
                     child: Column(
                       children: [
@@ -90,7 +158,8 @@ class _AddItemScreenState extends State<AddItemScreen> {
                                 ),
                               )
                               .toList(),
-                          onChanged: (value) => setState(() => _categoryId = value),
+                          onChanged: (value) =>
+                              setState(() => _categoryId = value),
                         ),
                         const SizedBox(height: 12),
                         TextFormField(
@@ -147,7 +216,8 @@ class _AddItemScreenState extends State<AddItemScreen> {
                           value: _purchaseDate,
                           onTap: () => _pickDate(
                             initialDate: _purchaseDate ?? DateTime.now(),
-                            onPicked: (date) => setState(() => _purchaseDate = date),
+                            onPicked: (date) =>
+                                setState(() => _purchaseDate = date),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -155,8 +225,10 @@ class _AddItemScreenState extends State<AddItemScreen> {
                           label: '过期日期',
                           value: _expiryDate,
                           onTap: () => _pickDate(
-                            initialDate: _expiryDate ?? DateTime.now().add(const Duration(days: 7)),
-                            onPicked: (date) => setState(() => _expiryDate = date),
+                            initialDate: _expiryDate ??
+                                DateTime.now().add(const Duration(days: 7)),
+                            onPicked: (date) =>
+                                setState(() => _expiryDate = date),
                           ),
                         ),
                       ],
@@ -166,7 +238,8 @@ class _AddItemScreenState extends State<AddItemScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
-                      onPressed: _saving ? null : () => _save(selectedCategoryId),
+                      onPressed:
+                          _saving ? null : () => _save(selectedCategoryId),
                       icon: _saving
                           ? const SizedBox(
                               width: 18,
@@ -215,7 +288,9 @@ class _AddItemScreenState extends State<AddItemScreen> {
             ? null
             : _descriptionController.text.trim(),
         quantity: int.parse(_quantityController.text),
-        unit: _unitController.text.trim().isEmpty ? null : _unitController.text.trim(),
+        unit: _unitController.text.trim().isEmpty
+            ? null
+            : _unitController.text.trim(),
         purchaseDate: _purchaseDate,
         expiryDate: _expiryDate,
       );
@@ -239,6 +314,88 @@ class _AddItemScreenState extends State<AddItemScreen> {
       }
     }
   }
+
+  Future<void> _recognizeOrder() async {
+    setState(() => _recognizing = true);
+    try {
+      final file = await openFile(
+        acceptedTypeGroups: const [
+          XTypeGroup(
+            label: '订单截图',
+            extensions: ['png', 'jpg', 'jpeg', 'webp', 'heic'],
+          ),
+        ],
+      );
+      if (file == null) {
+        return;
+      }
+
+      final settings = await _settingsStore.load();
+      if (!settings.isConfigured) {
+        if (!mounted) {
+          return;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('请先在设置里配置 VLM endpoint、model 和 API key')),
+        );
+        return;
+      }
+      final bytes = await file.readAsBytes();
+      final result = await _orderService.recognizeOrderImage(
+        imageBytes: bytes,
+        mimeType: _mimeTypeForFile(file),
+        settings: settings,
+        categoryNames: widget.controller.categories
+            .map((category) => category.name)
+            .toList(),
+      );
+      if (!mounted) {
+        return;
+      }
+      final imported = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => OrderImportReviewScreen(
+            controller: widget.controller,
+            result: result,
+            imagePath: file.path,
+          ),
+        ),
+      );
+      if (imported == true && mounted) {
+        widget.onItemSaved();
+      }
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('订单识别失败：$error')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _recognizing = false);
+      }
+    }
+  }
+}
+
+String _mimeTypeForFile(XFile file) {
+  final mimeType = file.mimeType;
+  if (mimeType != null && mimeType.isNotEmpty) {
+    return mimeType;
+  }
+  final name = file.name.toLowerCase();
+  if (name.endsWith('.png')) {
+    return 'image/png';
+  }
+  if (name.endsWith('.webp')) {
+    return 'image/webp';
+  }
+  if (name.endsWith('.heic')) {
+    return 'image/heic';
+  }
+  return 'image/jpeg';
 }
 
 class _DateField extends StatelessWidget {
@@ -254,7 +411,8 @@ class _DateField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = value == null ? '未设置' : DateFormat('yyyy-MM-dd').format(value!);
+    final text =
+        value == null ? '未设置' : DateFormat('yyyy-MM-dd').format(value!);
     return InkWell(
       borderRadius: BorderRadius.circular(14),
       onTap: onTap,

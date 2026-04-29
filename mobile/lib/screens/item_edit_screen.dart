@@ -36,7 +36,8 @@ class _ItemEditScreenState extends State<ItemEditScreen> {
     final item = widget.item;
     _quantityController = TextEditingController(text: '${item.quantity}');
     _unitController = TextEditingController(text: item.unit ?? '');
-    _descriptionController = TextEditingController(text: item.description ?? '');
+    _descriptionController =
+        TextEditingController(text: item.description ?? '');
     _purchaseDate = item.purchaseDate;
     _expiryDate = item.expiryDate;
     _isReminderEnabled = item.isReminderEnabled;
@@ -111,7 +112,8 @@ class _ItemEditScreenState extends State<ItemEditScreen> {
                           value: _purchaseDate,
                           onTap: () => _pickDate(
                             initialDate: _purchaseDate ?? DateTime.now(),
-                            onPicked: (date) => setState(() => _purchaseDate = date),
+                            onPicked: (date) =>
+                                setState(() => _purchaseDate = date),
                           ),
                           onClear: () => setState(() => _purchaseDate = null),
                         ),
@@ -120,8 +122,10 @@ class _ItemEditScreenState extends State<ItemEditScreen> {
                           label: '过期日期',
                           value: _expiryDate,
                           onTap: () => _pickDate(
-                            initialDate: _expiryDate ?? DateTime.now().add(const Duration(days: 7)),
-                            onPicked: (date) => setState(() => _expiryDate = date),
+                            initialDate: _expiryDate ??
+                                DateTime.now().add(const Duration(days: 7)),
+                            onPicked: (date) =>
+                                setState(() => _expiryDate = date),
                           ),
                           onClear: () => setState(() => _expiryDate = null),
                         ),
@@ -219,7 +223,8 @@ class _DateField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = value == null ? '未设置' : DateFormat('yyyy-MM-dd').format(value!);
+    final text =
+        value == null ? '未设置' : DateFormat('yyyy-MM-dd').format(value!);
     return InkWell(
       borderRadius: BorderRadius.circular(14),
       onTap: onTap,

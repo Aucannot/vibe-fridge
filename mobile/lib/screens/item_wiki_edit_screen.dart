@@ -36,15 +36,19 @@ class _ItemWikiEditScreenState extends State<ItemWikiEditScreen> {
     final wiki = widget.wiki;
     _nameController = TextEditingController(text: wiki.name);
     _iconController = TextEditingController(text: wiki.icon ?? '');
-    _descriptionController = TextEditingController(text: wiki.description ?? '');
+    _descriptionController =
+        TextEditingController(text: wiki.description ?? '');
     _unitController = TextEditingController(text: wiki.defaultUnit ?? '');
     _expiryDaysController = TextEditingController(
       text: wiki.suggestedExpiryDays?.toString() ?? '',
     );
-    _storageController = TextEditingController(text: wiki.storageLocation ?? '');
+    _storageController =
+        TextEditingController(text: wiki.storageLocation ?? '');
     _notesController = TextEditingController(text: wiki.notes ?? '');
     _categoryId = wiki.categoryId ??
-        (widget.controller.categories.isEmpty ? null : widget.controller.categories.first.id);
+        (widget.controller.categories.isEmpty
+            ? null
+            : widget.controller.categories.first.id);
   }
 
   @override
@@ -103,7 +107,8 @@ class _ItemWikiEditScreenState extends State<ItemWikiEditScreen> {
                                 ),
                               )
                               .toList(),
-                          onChanged: (value) => setState(() => _categoryId = value),
+                          onChanged: (value) =>
+                              setState(() => _categoryId = value),
                         ),
                         const SizedBox(height: 12),
                         TextFormField(

@@ -92,7 +92,8 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: _working ? null : () => _changeQuantity(-1),
+                          onPressed:
+                              _working ? null : () => _changeQuantity(-1),
                           icon: const Icon(Icons.remove),
                           label: const Text('减少'),
                         ),
@@ -237,7 +238,8 @@ class _Header extends StatelessWidget {
               color: AppColors.primaryContainer,
               borderRadius: BorderRadius.circular(18),
             ),
-            child: Icon(iconForName(item.wikiIcon), color: AppColors.primary, size: 30),
+            child: Icon(iconForName(item.wikiIcon),
+                color: AppColors.primary, size: 30),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -262,9 +264,11 @@ class _Header extends StatelessWidget {
                     ),
                     StatusPill(
                       label: label,
-                      color: item.isExpired ? AppColors.error : AppColors.warning,
-                      backgroundColor:
-                          item.isExpired ? AppColors.errorContainer : AppColors.warningContainer,
+                      color:
+                          item.isExpired ? AppColors.error : AppColors.warning,
+                      backgroundColor: item.isExpired
+                          ? AppColors.errorContainer
+                          : AppColors.warningContainer,
                       icon: Icons.schedule_outlined,
                     ),
                   ],
