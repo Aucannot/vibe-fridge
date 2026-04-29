@@ -282,7 +282,7 @@ label.font_name = font_name
 APP_NAME=vibe-fridge
 
 # AI 配置
-SILICON_FLOW_API_KEY=your_api_key_here
+SILICONFLOW_API_KEY=your_api_key_here
 
 # 提醒配置
 REMINDER_DAYS_BEFORE=3

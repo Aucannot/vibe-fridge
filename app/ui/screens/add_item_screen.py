@@ -11,7 +11,7 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.button import Button
 from kivy.clock import Clock
 from kivy.metrics import dp
-from kivy.graphics import Color, Rectangle, RoundedRectangle, Line
+from kivy.graphics import Color, InstructionGroup, Rectangle, RoundedRectangle, Line
 from kivymd.app import MDApp
 from kivymd.uix.card import MDCard
 from kivymd.uix.button import MDIconButton
@@ -131,23 +131,46 @@ class FridgeTextInput(TextInput):
         self.write_tab = False
         if CHINESE_FONT:
             self.font_name = CHINESE_FONT
+        self._input_radius = dp(14)
+        self._input_bg_group = InstructionGroup()
+        self._input_bg_color = Color(*COLORS["surface_variant"])
+        self._input_bg_rect = RoundedRectangle(
+            pos=self.pos,
+            size=self.size,
+            radius=[self._input_radius],
+        )
+        self._input_bg_group.add(self._input_bg_color)
+        self._input_bg_group.add(self._input_bg_rect)
+        self.canvas.before.insert(0, self._input_bg_group)
+        with self.canvas.after:
+            self._input_outline_color = Color(*COLORS["divider"])
+            self._input_outline = Line(
+                width=dp(1),
+                rounded_rectangle=(
+                    self.x,
+                    self.y,
+                    self.width,
+                    self.height,
+                    self._input_radius,
+                ),
+            )
         self.bind(pos=self._redraw, size=self._redraw, focus=self._redraw)
+        self._redraw()
 
     def _redraw(self, *_args):
-        radius = dp(14)
         fill = COLORS["surface"] if self.focus else COLORS["surface_variant"]
         outline = COLORS["primary"] if self.focus else COLORS["divider"]
-        self.canvas.before.clear()
-        self.canvas.after.clear()
-        with self.canvas.before:
-            Color(*fill)
-            RoundedRectangle(pos=self.pos, size=self.size, radius=[radius])
-        with self.canvas.after:
-            Color(*outline)
-            Line(
-                width=dp(1),
-                rounded_rectangle=(self.x, self.y, self.width, self.height, radius),
-            )
+        self._input_bg_color.rgba = fill
+        self._input_bg_rect.pos = self.pos
+        self._input_bg_rect.size = self.size
+        self._input_outline_color.rgba = outline
+        self._input_outline.rounded_rectangle = (
+            self.x,
+            self.y,
+            self.width,
+            self.height,
+            self._input_radius,
+        )
 
 
 class FridgeButton(Button):
@@ -167,12 +190,14 @@ class FridgeButton(Button):
         self.valign = "middle"
         if CHINESE_FONT:
             self.font_name = CHINESE_FONT
-        self.bind(pos=self._redraw, size=self._redraw)
+        self.bind(pos=self._redraw, size=self._redraw, disabled=self._redraw)
         self.bind(size=self._update_text_size)
         self._update_text_size()
         self._redraw()
 
     def _palette(self):
+        if self.disabled:
+            return (COLORS["surface_variant"], COLORS["divider"], COLORS["text_hint"])
         if self.variant == "primary":
             return (
                 COLORS["primary_dark"] if self._pressed else COLORS["primary"],
@@ -218,6 +243,8 @@ class FridgeButton(Button):
                 )
 
     def on_touch_down(self, touch):
+        if self.disabled:
+            return super().on_touch_down(touch)
         if self.collide_point(*touch.pos):
             self._pressed = True
             self._redraw()
@@ -791,6 +818,7 @@ class AddItemScreen(Screen):
             on_ok=lambda instance, *args, dt=date_type: self._on_date_ok(
                 instance, *args, date_type=dt
             ),
+            on_cancel=lambda instance, *_args: self._dismiss_date_picker(instance),
         )
         self.date_picker.open()
 
@@ -809,11 +837,31 @@ class AddItemScreen(Screen):
                 if hasattr(picker_instance, attr):
                     selected = getattr(picker_instance, attr)
                     break
+        if selected is None and all(
+            hasattr(picker_instance, attr)
+            for attr in ("sel_year", "sel_month", "sel_day")
+        ):
+            try:
+                selected = _date(
+                    picker_instance.sel_year,
+                    picker_instance.sel_month,
+                    picker_instance.sel_day,
+                )
+            except (TypeError, ValueError):
+                selected = None
         if selected is None:
             selected = _date.today()
 
         if date_type:
             self._on_date_selected(selected, date_type)
+        self._dismiss_date_picker(picker_instance)
+
+    def _dismiss_date_picker(self, picker_instance):
+        try:
+            picker_instance.dismiss()
+        except Exception:
+            pass
+        self.date_picker = None
 
     def _apply_font_to_date_picker(self, picker_instance):
         """在日期选择器真正打开后，递归应用中文字体，避免标题/星期/按钮显示为方块"""

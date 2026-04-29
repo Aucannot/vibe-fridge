@@ -43,6 +43,10 @@ load_dotenv()
 
 # 导入字体辅助工具并注册中文字体
 from app.utils.font_helper import register_chinese_font, apply_font_to_widget
+from app.services.order_import_service import (
+    LEGACY_SILICONFLOW_API_KEY_ENV,
+    SILICONFLOW_API_KEY_ENV,
+)
 
 # 注册中文字体（必须在导入使用字体的模块之前）
 chinese_font_name = register_chinese_font()
@@ -77,6 +81,7 @@ from app.ui.screens.item_wiki_detail_screen import ItemWikiDetailScreen
 from app.ui.screens.item_wiki_edit_screen import ItemWikiEditScreen
 from app.ui.screens.add_item_screen import AddItemScreen
 from app.ui.screens.add_entry_screen import AddEntryScreen
+from app.ui.screens.order_import_screen import OrderImportScreen
 from app.ui.screens.recipes_screen import RecipesScreen
 from app.ui.screens.settings_screen import SettingsScreen
 from app.ui.screens.history_screen import HistoryScreen
@@ -203,6 +208,10 @@ class VibeFridgeApp(MDApp):
         # 选择添加方式屏幕
         add_entry_screen = AddEntryScreen(name="add_entry")
         self.screen_manager.add_widget(add_entry_screen)
+
+        # 订单截图导入屏幕
+        order_import_screen = OrderImportScreen(name="order_import")
+        self.screen_manager.add_widget(order_import_screen)
 
         # 添加物品屏幕（手动添加）
         add_item_screen = AddItemScreen(name='add_item')
@@ -420,8 +429,8 @@ class VibeFridgeApp(MDApp):
                 text=text,
                 icon="add" if is_center else "",
                 on_release=on_press,
-                size_hint_x=None if is_center else 1,
-                width=dp(72) if is_center else dp(0),
+                size_hint_x=None,
+                width=dp(72) if is_center else dp(64),
                 is_center_btn=is_center,
             )
             if is_center:
@@ -450,25 +459,21 @@ class VibeFridgeApp(MDApp):
         settings_btn.icon = "cog-outline"
         settings_btn._build_content()
 
-        left_layout = BoxLayout(orientation='horizontal', size_hint_x=1)
-        left_layout.add_widget(home_btn)
-        left_layout.add_widget(items_btn)
-
-        center_layout = BoxLayout(
-            orientation='horizontal',
-            size_hint=(None, 1),
-            width=dp(84),
-        )
-        center_layout.padding = (0, dp(2), 0, 0)
-        center_layout.add_widget(plus_btn)
-
-        right_layout = BoxLayout(orientation='horizontal', size_hint_x=1)
-        right_layout.add_widget(recipes_btn)
-        right_layout.add_widget(settings_btn)
-
-        nav.add_widget(left_layout)
-        nav.add_widget(center_layout)
-        nav.add_widget(right_layout)
+        for button, top_padding in (
+            (home_btn, 0),
+            (items_btn, 0),
+            (plus_btn, dp(2)),
+            (recipes_btn, 0),
+            (settings_btn, 0),
+        ):
+            slot = AnchorLayout(
+                anchor_x="center",
+                anchor_y="center",
+                size_hint_x=1,
+                padding=(0, top_padding, 0, 0),
+            )
+            slot.add_widget(button)
+            nav.add_widget(slot)
 
         self.home_btn = home_btn
         self.items_btn = items_btn
@@ -527,7 +532,9 @@ class VibeFridgeApp(MDApp):
             logger.error(f"插入示例物品失败: {e}")
 
         # 检查环境变量配置
-        api_key = os.getenv('SILICON_FLOW_API_KEY')
+        api_key = os.getenv(SILICONFLOW_API_KEY_ENV) or os.getenv(
+            LEGACY_SILICONFLOW_API_KEY_ENV
+        )
         if not api_key or api_key == 'your_api_key_here':
             logger.warning("硅基流动 API 密钥未配置或使用默认值")
 

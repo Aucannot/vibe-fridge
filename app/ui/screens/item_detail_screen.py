@@ -824,7 +824,26 @@ class ItemDetailScreen(Screen):
 
             # 更新来源信息
             if self.current_item.source_app:
-                self.source_info = f"{self.current_item.source_app} - {self.current_item.source_order_id or '无订单号'}"
+                source_parts = [
+                    self.current_item.source_app,
+                    self.current_item.source_order_id or "无订单号",
+                ]
+                if self.current_item.source_order_time:
+                    source_label = {
+                        "model": "订单识别",
+                        "image_file_mtime": "截图时间估算",
+                        "model_time_image_date": "识别时间+截图日期估算",
+                        "manual": "手动确认",
+                    }.get(self.current_item.source_order_time_source)
+                    time_text = self.current_item.source_order_time.strftime(
+                        "%Y-%m-%d %H:%M"
+                    )
+                    if source_label:
+                        time_text = f"{time_text}（{source_label}）"
+                    source_parts.append(
+                        time_text
+                    )
+                self.source_info = " - ".join(source_parts)
             else:
                 self.source_info = "手动添加"
 

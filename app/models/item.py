@@ -64,6 +64,8 @@ class Item(Base):
     image_path = Column(String(255), nullable=True)
     source_app = Column(String(50), nullable=True)  # 来源应用：盒马、淘宝等
     source_order_id = Column(String(100), nullable=True)  # 来源订单ID
+    source_order_time = Column(DateTime, nullable=True)  # 来源订单下单时间
+    source_order_time_source = Column(String(50), nullable=True)  # 时间来源：模型/截图估算/手动确认
 
     # 元数据
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
