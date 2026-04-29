@@ -1,5 +1,5 @@
 kivy==2.3.0
-https://github.com/kivymd/KivyMD/archive/master.zip  # Use KivyMD version 2.0.0
+git+https://github.com/kivymd/KivyMD.git@6422e4a7c331905bd581cc34bb3af4d4108cb041
 
 sqlalchemy==2.0.30
 alembic==1.13.1
