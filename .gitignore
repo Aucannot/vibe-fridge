@@ -191,6 +191,17 @@ cython_debug/
 # Ruff stuff:
 .ruff_cache/
 
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+mobile/.dart_tool/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/.packages
+mobile/coverage/
+
 # PyPI configuration file
 .pypirc
 

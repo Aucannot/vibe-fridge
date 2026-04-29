@@ -1,5 +1,18 @@
 ## vibe-fridge
 
+> Migration note: the app is being rewritten from Kivy to Flutter. The new source lives in `mobile/`; the current Python/Kivy app remains in `app/` while migration is in progress.
+
+### Flutter rewrite
+
+```bash
+cd mobile
+flutter create --platforms=android,macos .
+flutter pub get
+flutter run -d macos
+```
+
+See `docs/flutter_migration.md` for migration details.
+
 ### 🚀 快速开始
 
 #### 1. 克隆代码仓库
