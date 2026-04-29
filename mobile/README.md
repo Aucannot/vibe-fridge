@@ -11,11 +11,10 @@ This directory is the Flutter rewrite of the existing Kivy app. The old Python i
 
 ## Bootstrap
 
-Flutter is not installed in the current Codex environment, so the generated Android/macOS platform folders are intentionally not checked in yet. After installing Flutter, run:
+After installing Flutter, run:
 
 ```bash
 cd mobile
-flutter create --platforms=android,macos .
 flutter pub get
 flutter run -d macos
 ```
@@ -31,4 +30,15 @@ flutter run -d <android-device-id>
 
 The Flutter app creates its own SQLite database through `path_provider` and `sqflite`. It does not mutate the legacy Python database at `../data/vibe_fridge.db`.
 
-The first migration target is data export/import from the existing SQLAlchemy database into the Flutter schema.
+To export legacy data into the Flutter import asset:
+
+```bash
+cd ..
+python tools/export_legacy_inventory.py \
+  --source data/vibe_fridge.db \
+  --output mobile/assets/import/legacy_inventory.local.json
+cd mobile
+flutter run -d macos
+```
+
+Then open Settings and tap `导入 legacy_inventory.json`. The `.local.json` export is ignored by Git.
