@@ -1,0 +1,31 @@
+name: vibe_fridge
+description: Cross-platform Flutter rewrite of the vibe-fridge inventory app.
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  file_selector: ^1.0.3
+  http: ^1.5.0
+  intl: ">=0.19.0 <0.21.0"
+  path: ^1.9.0
+  path_provider: ^2.1.5
+  shared_preferences: ^2.5.3
+  sqflite: ^2.4.1
+  uuid: ^4.5.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/import/
