@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
 
 import '../data/inventory_controller.dart';
+import '../data/todo_controller.dart';
 import 'add_item_screen.dart';
 import 'home_screen.dart';
 import 'items_screen.dart';
-import 'recipes_screen.dart';
 import 'settings_screen.dart';
+import 'todo_screen.dart';
 
 class AppShell extends StatefulWidget {
-  const AppShell({super.key, required this.controller});
+  const AppShell({
+    super.key,
+    required this.controller,
+    required this.todoController,
+  });
 
   final InventoryController controller;
+  final TodoController todoController;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -34,7 +40,7 @@ class _AppShellState extends State<AppShell> {
         controller: widget.controller,
         onItemSaved: () => _select(1),
       ),
-      const RecipesScreen(),
+      TodoScreen(controller: widget.todoController),
       SettingsScreen(controller: widget.controller),
     ];
 
@@ -71,9 +77,9 @@ class _AppShellState extends State<AppShell> {
             label: '添加',
           ),
           NavigationDestination(
-            icon: Icon(Icons.restaurant_menu_outlined),
-            selectedIcon: Icon(Icons.restaurant_menu),
-            label: '食谱',
+            icon: Icon(Icons.checklist_rtl_outlined),
+            selectedIcon: Icon(Icons.checklist_rtl),
+            label: '任务',
           ),
           NavigationDestination(
             icon: Icon(Icons.settings_outlined),
