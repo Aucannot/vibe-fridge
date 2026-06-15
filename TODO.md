@@ -4,6 +4,17 @@
 >
 > 约定：这里的 TODO 指项目要完成的功能清单，不是 app 内的 TodoList 功能。
 
+## 当前已选 UI 方向
+
+- 当前方向：**方案 C · Warm Lifestyle**。
+- Codex 执行 harness：`docs/codex-goals/warm-lifestyle-ui-refresh.md`。
+- 文字版视觉规范：`docs/ui-drafts/warm-lifestyle-spec.md`。
+- 设计稿文件名约定：
+  - `docs/ui-drafts/warm-lifestyle-refined.png`
+  - `docs/ui-drafts/warm-lifestyle-design-system.png`
+
+Codex 做新 UI 时，不要直接吃整份 TODO；应把 `docs/codex-goals/warm-lifestyle-ui-refresh.md` 作为 goal，把本文件作为 roadmap 背景资料。
+
 ## 当前基线
 
 - [x] 仓库处于 Kivy -> Flutter 迁移期：legacy Python/Kivy 仍在 `app/`，Flutter 新工程在 `mobile/`。
