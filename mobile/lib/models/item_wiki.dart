@@ -8,6 +8,7 @@ class ItemWiki {
     this.categoryName,
     this.defaultUnit,
     this.suggestedExpiryDays,
+    required this.defaultReminderDays,
     this.storageLocation,
     this.notes,
     this.imagePath,
@@ -24,6 +25,7 @@ class ItemWiki {
   final String? categoryName;
   final String? defaultUnit;
   final int? suggestedExpiryDays;
+  final int defaultReminderDays;
   final String? storageLocation;
   final String? notes;
   final String? imagePath;
@@ -41,6 +43,7 @@ class ItemWiki {
       categoryName: map['category_name'] as String?,
       defaultUnit: map['default_unit'] as String?,
       suggestedExpiryDays: map['suggested_expiry_days'] as int?,
+      defaultReminderDays: (map['default_reminder_days'] as int?) ?? 3,
       storageLocation: map['storage_location'] as String?,
       notes: map['notes'] as String?,
       imagePath: map['image_path'] as String?,
@@ -59,6 +62,7 @@ class ItemWiki {
       'category_id': categoryId,
       'default_unit': defaultUnit,
       'suggested_expiry_days': suggestedExpiryDays,
+      'default_reminder_days': defaultReminderDays,
       'storage_location': storageLocation,
       'notes': notes,
       'image_path': imagePath,
