@@ -1,4 +1,0 @@
-storePassword=change-me
-keyPassword=change-me
-keyAlias=vibe-fridge
-storeFile=../release/vibe-fridge-upload-keystore.jks

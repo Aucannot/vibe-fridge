@@ -11,18 +11,14 @@ class InventoryItem {
     this.purchaseDate,
     this.expiryDate,
     this.reminderDate,
-    required this.reminderDaysBefore,
     required this.status,
     required this.isReminderEnabled,
     this.consumedAt,
     this.predictedExpiryDate,
     this.predictionConfidence,
-    this.recognitionConfidence,
     this.imagePath,
-    this.storageLocation,
     this.sourceApp,
     this.sourceOrderId,
-    this.importBatchId,
     required this.createdAt,
     required this.updatedAt,
     this.categoryName,
@@ -39,18 +35,14 @@ class InventoryItem {
   final DateTime? purchaseDate;
   final DateTime? expiryDate;
   final DateTime? reminderDate;
-  final int reminderDaysBefore;
   final ItemStatus status;
   final bool isReminderEnabled;
   final DateTime? consumedAt;
   final DateTime? predictedExpiryDate;
   final double? predictionConfidence;
-  final double? recognitionConfidence;
   final String? imagePath;
-  final String? storageLocation;
   final String? sourceApp;
   final String? sourceOrderId;
-  final String? importBatchId;
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? categoryName;
@@ -88,7 +80,6 @@ class InventoryItem {
   }
 
   factory InventoryItem.fromMap(Map<String, Object?> map) {
-    final tagText = map['tag_names'] as String?;
     return InventoryItem(
       id: map['id'] as String,
       wikiId: map['wiki_id'] as String,
@@ -99,26 +90,19 @@ class InventoryItem {
       purchaseDate: _dateFromDb(map['purchase_date']),
       expiryDate: _dateFromDb(map['expiry_date']),
       reminderDate: _dateFromDb(map['reminder_date']),
-      reminderDaysBefore: (map['reminder_days_before'] as int?) ?? 3,
       status: ItemStatus.fromDbValue(map['status'] as String?),
       isReminderEnabled: ((map['is_reminder_enabled'] as int?) ?? 1) == 1,
       consumedAt: _dateTimeFromDb(map['consumed_at']),
       predictedExpiryDate: _dateFromDb(map['predicted_expiry_date']),
       predictionConfidence: (map['prediction_confidence'] as num?)?.toDouble(),
-      recognitionConfidence:
-          (map['recognition_confidence'] as num?)?.toDouble(),
       imagePath: map['image_path'] as String?,
-      storageLocation: map['storage_location'] as String?,
       sourceApp: map['source_app'] as String?,
       sourceOrderId: map['source_order_id'] as String?,
-      importBatchId: map['import_batch_id'] as String?,
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
       categoryName: map['category_name'] as String?,
       wikiIcon: map['wiki_icon'] as String?,
-      tags: tagText == null || tagText.isEmpty
-          ? const []
-          : tagText.split('||').where((tag) => tag.isNotEmpty).toList(),
+      tags: const [],
     );
   }
 
@@ -133,18 +117,14 @@ class InventoryItem {
       'purchase_date': _dateToDb(purchaseDate),
       'expiry_date': _dateToDb(expiryDate),
       'reminder_date': _dateToDb(reminderDate),
-      'reminder_days_before': reminderDaysBefore,
       'status': status.dbValue,
       'is_reminder_enabled': isReminderEnabled ? 1 : 0,
       'consumed_at': consumedAt?.toIso8601String(),
       'predicted_expiry_date': _dateToDb(predictedExpiryDate),
       'prediction_confidence': predictionConfidence,
-      'recognition_confidence': recognitionConfidence,
       'image_path': imagePath,
-      'storage_location': storageLocation,
       'source_app': sourceApp,
       'source_order_id': sourceOrderId,
-      'import_batch_id': importBatchId,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -165,18 +145,14 @@ class InventoryItem {
       purchaseDate: purchaseDate,
       expiryDate: expiryDate,
       reminderDate: reminderDate,
-      reminderDaysBefore: reminderDaysBefore,
       status: status ?? this.status,
       isReminderEnabled: isReminderEnabled,
       consumedAt: consumedAt ?? this.consumedAt,
       predictedExpiryDate: predictedExpiryDate,
       predictionConfidence: predictionConfidence,
-      recognitionConfidence: recognitionConfidence,
       imagePath: imagePath,
-      storageLocation: storageLocation,
       sourceApp: sourceApp,
       sourceOrderId: sourceOrderId,
-      importBatchId: importBatchId,
       createdAt: createdAt,
       updatedAt: updatedAt,
       categoryName: categoryName,

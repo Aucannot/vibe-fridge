@@ -1,97 +1,29 @@
-import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 
 class AppDatabase {
   AppDatabase._(this.database);
-  AppDatabase.forTesting(this.database);
 
   final Database database;
-  static const schemaVersion = 4;
 
   static Future<AppDatabase> open() async {
-    final databasePath = await path;
-    final database = await _databaseFactory.openDatabase(
-      databasePath,
-      options: OpenDatabaseOptions(
-        version: schemaVersion,
-        onConfigure: (db) async {
-          await db.execute('PRAGMA foreign_keys = ON');
-        },
-        onCreate: (db, version) async {
-          await _createSchema(db, version: version);
-        },
-        onUpgrade: (db, oldVersion, newVersion) async {
-          await _migrateSchema(db, oldVersion, newVersion);
-        },
-      ),
+    final directory = await getApplicationSupportDirectory();
+    final path = p.join(directory.path, 'vibe_fridge_flutter.db');
+    final database = await openDatabase(
+      path,
+      version: 1,
+      onConfigure: (db) async {
+        await db.execute('PRAGMA foreign_keys = ON');
+      },
+      onCreate: (db, version) async {
+        await _createSchema(db);
+      },
     );
     return AppDatabase._(database);
   }
 
-  static DatabaseFactory get _databaseFactory {
-    if (kIsWeb) {
-      return databaseFactoryFfiWeb;
-    }
-    return databaseFactory;
-  }
-
-  static Future<String> get path async {
-    if (kIsWeb) {
-      return 'vibe_fridge_flutter_web.db';
-    }
-    final directory = await getApplicationSupportDirectory();
-    return p.join(directory.path, 'vibe_fridge_flutter.db');
-  }
-
-  static Future<void> createSchemaForTesting(
-    Database db, {
-    int version = schemaVersion,
-  }) {
-    return _createSchema(db, version: version);
-  }
-
-  static Future<void> migrateSchemaForTesting(
-    Database db,
-    int oldVersion,
-    int newVersion,
-  ) {
-    return _migrateSchema(db, oldVersion, newVersion);
-  }
-
-  static Future<void> _createSchema(
-    Database db, {
-    required int version,
-  }) async {
-    await _createV1Schema(db);
-    await _migrateSchema(db, 1, version);
-  }
-
-  static Future<void> _migrateSchema(
-    Database db,
-    int oldVersion,
-    int newVersion,
-  ) async {
-    for (var version = oldVersion + 1; version <= newVersion; version += 1) {
-      switch (version) {
-        case 2:
-          await _migrateToV2(db);
-          break;
-        case 3:
-          await _migrateToV3(db);
-          break;
-        case 4:
-          await _migrateToV4(db);
-          break;
-        default:
-          throw StateError('Unsupported database migration version: $version');
-      }
-    }
-  }
-
-  static Future<void> _createV1Schema(Database db) async {
+  static Future<void> _createSchema(Database db) async {
     await db.execute('''
       CREATE TABLE item_wiki_categories (
         id TEXT PRIMARY KEY,
@@ -187,165 +119,6 @@ class AppDatabase {
     await db.execute('CREATE INDEX idx_items_reminder ON items(reminder_date)');
   }
 
-  static Future<void> _migrateToV2(Database db) async {
-    await _addColumnIfMissing(
-      db,
-      table: 'item_wikis',
-      column: 'default_reminder_days',
-      definition: 'INTEGER NOT NULL DEFAULT 3',
-    );
-    await _addColumnIfMissing(
-      db,
-      table: 'items',
-      column: 'storage_location',
-      definition: 'TEXT',
-    );
-    await _addColumnIfMissing(
-      db,
-      table: 'items',
-      column: 'reminder_days_before',
-      definition: 'INTEGER NOT NULL DEFAULT 3',
-    );
-    await _addColumnIfMissing(
-      db,
-      table: 'items',
-      column: 'import_batch_id',
-      definition: 'TEXT',
-    );
-    await _addColumnIfMissing(
-      db,
-      table: 'items',
-      column: 'recognition_confidence',
-      definition: 'REAL',
-    );
-
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS backup_snapshots (
-        id TEXT PRIMARY KEY,
-        created_at TEXT NOT NULL,
-        schema_version INTEGER NOT NULL,
-        label TEXT,
-        payload_json TEXT NOT NULL
-      )
-    ''');
-
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS app_metadata (
-        key TEXT PRIMARY KEY,
-        value TEXT NOT NULL,
-        updated_at TEXT NOT NULL
-      )
-    ''');
-
-    await db.execute(
-      'CREATE INDEX IF NOT EXISTS idx_items_import_batch '
-      'ON items(import_batch_id)',
-    );
-
-    final nowText = DateTime.now().toIso8601String();
-    await db.insert(
-      'app_metadata',
-      {
-        'key': 'schema_version',
-        'value': '2',
-        'updated_at': nowText,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
-  }
-
-  static Future<void> _migrateToV3(Database db) async {
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS shopping_list_items (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        category_id TEXT REFERENCES item_wiki_categories(id) ON DELETE SET NULL,
-        source_wiki_id TEXT REFERENCES item_wikis(id) ON DELETE SET NULL,
-        source_item_id TEXT REFERENCES items(id) ON DELETE SET NULL,
-        quantity INTEGER NOT NULL DEFAULT 1,
-        unit TEXT,
-        note TEXT,
-        source TEXT NOT NULL DEFAULT 'manual',
-        is_checked INTEGER NOT NULL DEFAULT 0,
-        checked_at TEXT,
-        converted_at TEXT,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
-      )
-    ''');
-
-    await db.execute(
-      'CREATE INDEX IF NOT EXISTS idx_shopping_list_category '
-      'ON shopping_list_items(category_id)',
-    );
-    await db.execute(
-      'CREATE INDEX IF NOT EXISTS idx_shopping_list_open '
-      'ON shopping_list_items(converted_at, is_checked)',
-    );
-    await db.execute(
-      'CREATE INDEX IF NOT EXISTS idx_shopping_list_source_wiki '
-      'ON shopping_list_items(source_wiki_id)',
-    );
-
-    final nowText = DateTime.now().toIso8601String();
-    await db.insert(
-      'app_metadata',
-      {
-        'key': 'schema_version',
-        'value': '3',
-        'updated_at': nowText,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
-  }
-
-  static Future<void> _migrateToV4(Database db) async {
-    await db.execute(
-      'CREATE INDEX IF NOT EXISTS idx_items_status_expiry '
-      'ON items(status, expiry_date)',
-    );
-    await db.execute(
-      'CREATE INDEX IF NOT EXISTS idx_items_status_reminder '
-      'ON items(status, is_reminder_enabled, reminder_date)',
-    );
-    await db.execute(
-      'CREATE INDEX IF NOT EXISTS idx_items_wiki_status '
-      'ON items(wiki_id, status)',
-    );
-    await db.execute(
-      'CREATE INDEX IF NOT EXISTS idx_reminder_logs_item_type_sent '
-      'ON reminder_logs(item_id, reminder_type, sent_at)',
-    );
-    await db.execute(
-      'CREATE INDEX IF NOT EXISTS idx_item_wikis_category_name '
-      'ON item_wikis(category_id, lower(name))',
-    );
-
-    final nowText = DateTime.now().toIso8601String();
-    await db.insert(
-      'app_metadata',
-      {
-        'key': 'schema_version',
-        'value': '4',
-        'updated_at': nowText,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
-  }
-
-  static Future<void> _addColumnIfMissing(
-    Database db, {
-    required String table,
-    required String column,
-    required String definition,
-  }) async {
-    final columns = await db.rawQuery('PRAGMA table_info($table)');
-    final hasColumn = columns.any((row) => row['name'] == column);
-    if (!hasColumn) {
-      await db.execute('ALTER TABLE $table ADD COLUMN $column $definition');
-    }
-  }
-
   Future<void> seedDefaults() async {
     final categoryCount = Sqflite.firstIntValue(
       await database.rawQuery('SELECT COUNT(*) FROM item_wiki_categories'),
@@ -360,11 +133,6 @@ class AppDatabase {
     if ((wikiCount ?? 0) == 0) {
       await _seedWikisAndItems(database);
     }
-  }
-
-  Future<void> seedDemoData() async {
-    await _seedCategories(database);
-    await _seedWikisAndItems(database);
   }
 
   static Future<void> _seedCategories(Database db) async {
@@ -481,7 +249,6 @@ class AppDatabase {
         'item_wikis',
         {
           ...wiki,
-          'default_reminder_days': 3,
           'notes': null,
           'image_path': null,
           'created_at': nowText,
@@ -544,16 +311,12 @@ class AppDatabase {
           'reminder_date': dateOnly(expiry.subtract(const Duration(days: 3))),
           'status': 'active',
           'is_reminder_enabled': 1,
-          'reminder_days_before': 3,
           'consumed_at': null,
           'predicted_expiry_date': null,
           'prediction_confidence': null,
-          'recognition_confidence': null,
           'image_path': null,
-          'storage_location': null,
           'source_app': null,
           'source_order_id': null,
-          'import_batch_id': null,
           'created_at': nowText,
           'updated_at': nowText,
         },

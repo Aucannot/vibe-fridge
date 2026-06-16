@@ -24,12 +24,8 @@
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>$(PRODUCT_COPYRIGHT)</string>
-	<key>NSCameraUsageDescription</key>
-	<string>vibe-fridge uses the camera only when you choose to take an inventory or order photo.</string>
 	<key>NSMainNibFile</key>
 	<string>MainMenu</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>vibe-fridge reads selected photos only when you attach inventory images or import order screenshots.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>

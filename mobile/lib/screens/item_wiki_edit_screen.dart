@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../data/inventory_controller.dart';
 import '../models/item_wiki.dart';
-import '../theme/app_theme.dart';
 import '../widgets/app_cards.dart';
 
 class ItemWikiEditScreen extends StatefulWidget {
@@ -26,7 +25,6 @@ class _ItemWikiEditScreenState extends State<ItemWikiEditScreen> {
   late final TextEditingController _descriptionController;
   late final TextEditingController _unitController;
   late final TextEditingController _expiryDaysController;
-  late final TextEditingController _defaultReminderDaysController;
   late final TextEditingController _storageController;
   late final TextEditingController _notesController;
   late String? _categoryId;
@@ -44,8 +42,6 @@ class _ItemWikiEditScreenState extends State<ItemWikiEditScreen> {
     _expiryDaysController = TextEditingController(
       text: wiki.suggestedExpiryDays?.toString() ?? '',
     );
-    _defaultReminderDaysController =
-        TextEditingController(text: '${wiki.defaultReminderDays}');
     _storageController =
         TextEditingController(text: wiki.storageLocation ?? '');
     _notesController = TextEditingController(text: wiki.notes ?? '');
@@ -62,7 +58,6 @@ class _ItemWikiEditScreenState extends State<ItemWikiEditScreen> {
     _descriptionController.dispose();
     _unitController.dispose();
     _expiryDaysController.dispose();
-    _defaultReminderDaysController.dispose();
     _storageController.dispose();
     _notesController.dispose();
     super.dispose();
@@ -71,9 +66,9 @@ class _ItemWikiEditScreenState extends State<ItemWikiEditScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('编辑物品资料')),
+      appBar: AppBar(title: const Text('编辑 Wiki')),
       body: ListView(
-        padding: AppSpacing.detailListPadding,
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         children: [
           ContentWidth(
             child: Form(
@@ -87,17 +82,17 @@ class _ItemWikiEditScreenState extends State<ItemWikiEditScreen> {
                           controller: _nameController,
                           textInputAction: TextInputAction.next,
                           decoration: const InputDecoration(
-                            labelText: '物品名称',
+                            labelText: 'Wiki 名称',
                             prefixIcon: Icon(Icons.inventory_2_outlined),
                           ),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
-                              return '请输入物品名称';
+                              return '请输入 Wiki 名称';
                             }
                             return null;
                           },
                         ),
-                        const SizedBox(height: AppSpacing.cardGap),
+                        const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
                           initialValue: _categoryId,
                           decoration: const InputDecoration(
@@ -115,7 +110,7 @@ class _ItemWikiEditScreenState extends State<ItemWikiEditScreen> {
                           onChanged: (value) =>
                               setState(() => _categoryId = value),
                         ),
-                        const SizedBox(height: AppSpacing.cardGap),
+                        const SizedBox(height: 12),
                         TextFormField(
                           controller: _iconController,
                           decoration: const InputDecoration(
@@ -123,7 +118,7 @@ class _ItemWikiEditScreenState extends State<ItemWikiEditScreen> {
                             prefixIcon: Icon(Icons.emoji_symbols_outlined),
                           ),
                         ),
-                        const SizedBox(height: AppSpacing.cardGap),
+                        const SizedBox(height: 12),
                         TextFormField(
                           controller: _descriptionController,
                           minLines: 2,
@@ -137,7 +132,7 @@ class _ItemWikiEditScreenState extends State<ItemWikiEditScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.fieldGap),
+                  const SizedBox(height: 14),
                   SectionCard(
                     child: Column(
                       children: [
@@ -148,7 +143,7 @@ class _ItemWikiEditScreenState extends State<ItemWikiEditScreen> {
                             prefixIcon: Icon(Icons.straighten_outlined),
                           ),
                         ),
-                        const SizedBox(height: AppSpacing.cardGap),
+                        const SizedBox(height: 12),
                         TextFormField(
                           controller: _expiryDaysController,
                           keyboardType: TextInputType.number,
@@ -167,24 +162,7 @@ class _ItemWikiEditScreenState extends State<ItemWikiEditScreen> {
                             return null;
                           },
                         ),
-                        const SizedBox(height: AppSpacing.cardGap),
-                        TextFormField(
-                          controller: _defaultReminderDaysController,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: '默认提醒提前天数',
-                            prefixIcon: Icon(Icons.alarm_outlined),
-                            suffixText: '天',
-                          ),
-                          validator: (value) {
-                            final parsed = int.tryParse(value ?? '');
-                            if (parsed == null || parsed < 0) {
-                              return '请输入 0 或更大的整数';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: AppSpacing.cardGap),
+                        const SizedBox(height: 12),
                         TextFormField(
                           controller: _storageController,
                           decoration: const InputDecoration(
@@ -192,7 +170,7 @@ class _ItemWikiEditScreenState extends State<ItemWikiEditScreen> {
                             prefixIcon: Icon(Icons.kitchen_outlined),
                           ),
                         ),
-                        const SizedBox(height: AppSpacing.cardGap),
+                        const SizedBox(height: 12),
                         TextFormField(
                           controller: _notesController,
                           minLines: 2,
@@ -206,7 +184,7 @@ class _ItemWikiEditScreenState extends State<ItemWikiEditScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.sectionGap),
+                  const SizedBox(height: 18),
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
@@ -218,7 +196,7 @@ class _ItemWikiEditScreenState extends State<ItemWikiEditScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.save_outlined),
-                      label: Text(_saving ? '保存中' : '保存资料'),
+                      label: Text(_saving ? '保存中' : '保存 Wiki'),
                     ),
                   ),
                 ],
@@ -247,7 +225,6 @@ class _ItemWikiEditScreenState extends State<ItemWikiEditScreen> {
         suggestedExpiryDays: _expiryDaysController.text.trim().isEmpty
             ? null
             : int.parse(_expiryDaysController.text),
-        defaultReminderDays: int.parse(_defaultReminderDaysController.text),
         storageLocation: _storageController.text,
         notes: _notesController.text,
       );

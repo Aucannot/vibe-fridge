@@ -217,10 +217,10 @@ Include:
 - Export/backup card
 - VLM settings card
 - Notification settings card
+- Migration status card
 - About card
 
-Keep existing settings functionality. Do not expose engineering migration
-status, SDK setup state, or internal implementation progress in the app UI.
+Keep existing settings functionality.
 
 ## Implementation guardrails
 

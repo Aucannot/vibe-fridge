@@ -240,12 +240,11 @@ Target layout:
 - Local data card
 - VLM settings card
 - Notification settings card
+- Migration status card
 - About card
 - Same Warm Lifestyle component style
 
-Keep existing import and VLM settings functionality. Do not expose engineering
-migration status, SDK setup state, or internal implementation progress in the
-app UI.
+Keep existing import and VLM settings functionality.
 
 ## Phase 3: Small functional improvements allowed
 

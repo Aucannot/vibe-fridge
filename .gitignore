@@ -203,10 +203,6 @@ mobile/.flutter-plugins
 mobile/.flutter-plugins-dependencies
 mobile/.packages
 mobile/coverage/
-mobile/android/key.properties
-mobile/android/*.jks
-mobile/android/*.keystore
-.tools/
 
 # PyPI configuration file
 .pypirc
