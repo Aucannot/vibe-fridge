@@ -1,427 +1,245 @@
 # AGENTS.md
 
-This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
+This file provides guidance to Codex when working with code in this repository.
 
-## 项目概述 (Project Overview)
+## 项目概述
 
-**"vibe-fridge"** 是一个基于 Python 的移动端应用，采用 Wiki 体系管理物品，结合了库存管理和过期提醒功能。项目使用 Conda 虚拟环境进行依赖管理（环境名：kivy）。
+**vibe-fridge** 是一个 Flutter 跨平台库存管理应用，核心目标是用「物品资料 + 库存批次」管理家中物品，并提供过期提醒、采购建议、食谱建议、订单识别和本地备份能力。
 
-### 核心架构：Wiki 体系
+当前主要实现位于 `mobile/`。早期 Python/Kivy 版本只作为迁移来源和历史参考；日常开发、测试和构建都以 Flutter 代码为准。
 
-项目采用双层架构设计：
+## 当前技术栈
 
-1. **ItemWiki（物品 Wiki）**：物品的「类定义」
-   - 存储物品的通用属性：名称、描述、分类、默认单位、建议保质期、存放位置、备注等
-   - 类似于 Wiki 页面，每种物品只有一个 Wiki 条目
-   - 关联 `ItemWikiCategory` 分类系统
+| 组件 | 当前实现 |
+|------|----------|
+| UI | Flutter + Material 3 |
+| 状态协调 | `InventoryController` |
+| 本地数据库 | SQLite via `sqflite` |
+| Web SQLite | `sqflite_common_ffi_web` + `web/sqlite3.wasm` |
+| 安全存储 | `flutter_secure_storage` |
+| 偏好存储 | `shared_preferences` |
+| 文件导入导出 | `file_selector` |
+| 图片来源 | `image_picker` + 本地图片存储 |
+| 网络请求 | `http`，仅 VLM 订单识别和 AI 食谱动作使用 |
+| 本地通知 | Flutter method channel + Android/macOS 原生实现 |
+| 测试 | `flutter_test` + `sqflite_common_ffi` |
 
-2. **Item（库存记录）**：具体的库存实例
-   - 存储具体的库存信息：数量、过期日期、购买日期等
-   - 关联到 `ItemWiki`，继承 Wiki 的通用属性
-   - 每个 Wiki 可以有多条库存记录（不同批次的同类物品）
+## 当前目录结构
 
-### 已实现的核心功能
-
-1. **物品 Wiki 体系**：ItemWiki + Item 双层架构
-2. **库存管理**：跟踪物品的库存数量、过期日期、购买日期
-3. **过期提醒**：自动计算提醒日期，支持提醒开关
-4. **分类管理**：内置食品、日用品、化妆品、药品等分类
-5. **标签系统**：为物品添加自定义标签
-6. **中文字体支持**：自动检测并应用中文字体
-
-### UI 页面结构
-
-| 页面 | 说明 |
-|------|------|
-| `MainScreen` | 首页 - 统计概览 |
-| `ItemsScreen` | 物品目录 - 左侧分类 + 右侧物品列表 |
-| `ItemDetailScreen` | 库存详情页 - 单条库存记录的详细信息 |
-| `ItemWikiDetailScreen` | 物品 Wiki 详情页 - 展示物品定义和所有关联库存 |
-| `ItemWikiEditScreen` | 物品 Wiki 编辑页 |
-| `AddItemScreen` | 添加物品表单 |
-| `RecipesScreen` | 食谱页 |
-| `SettingsScreen` | 设置页 |
-| `AddEntryScreen` | 选择添加方式页 |
-
-### 底部导航栏
-
-- 首页 (home-outline)
-- 物品 (fridge-outline)
-- ➕ (plus)
-- 食谱 (silverware-fork-knife)
-- 设置 (cog-outline)
-
-## 技术栈
-
-### 现有技术栈
-
-| 组件 | 技术 |
-|------|------|
-| **UI 框架** | Kivy + KivyMD (Material Design 3) |
-| **数据库** | SQLite + SQLAlchemy ORM |
-| **Python 版本** | 3.x |
-| **依赖管理** | Conda (环境名: kivy) |
-| **样式系统** | Material Design 3 (designed_tokens.py) |
-| **字体** | 自动中文字体检测支持 |
-
-## 项目结构
-
-```
+```text
 vibe-fridge/
-├── app/
-│   ├── __init__.py
-│   ├── main.py                 # 应用入口和主应用类
-│   ├── models/                 # 数据模型
-│   │   ├── __init__.py
-│   │   ├── item.py             # Item（库存记录）模型
-│   │   └── item_wiki.py        # ItemWiki 和 ItemWikiCategory 模型
-│   ├── services/               # 业务服务层
-│   │   ├── database.py         # 数据库服务和会话管理
-│   │   ├── item_service.py     # 物品 CRUD 服务
-│   │   └── wiki_service.py     # Wiki CRUD 服务
-│   ├── ui/                     # UI 层
-│   │   ├── screens/            # 各页面 Screen
-│   │   └── theme/              # 主题和设计令牌
-│   └── utils/                  # 工具函数
-│       ├── logger.py           # 日志配置
-│       └── font_helper.py      # 字体辅助工具
-├── tests/                      # 测试代码
-├── check_wiki.py               # Wiki 检查脚本
-├── requirements.txt            # Python 依赖
-└── AGENTS.md                   # 本文件
+├── mobile/
+│   ├── lib/
+│   │   ├── main.dart
+│   │   ├── data/
+│   │   │   ├── app_database.dart
+│   │   │   ├── inventory_controller.dart
+│   │   │   ├── inventory_repository.dart
+│   │   │   ├── local_image_store.dart
+│   │   │   ├── local_notification_service.dart
+│   │   │   ├── vlm_order_service.dart
+│   │   │   ├── ai_recipe_service.dart
+│   │   │   └── acceptance_test_service.dart
+│   │   ├── models/
+│   │   ├── screens/
+│   │   ├── theme/
+│   │   ├── utils/
+│   │   └── widgets/
+│   ├── test/
+│   ├── assets/
+│   ├── android/
+│   ├── macos/
+│   ├── web/
+│   └── pubspec.yaml
+├── docs/
+├── tools/
+└── AGENTS.md
 ```
 
-## 数据模型详解
+## 领域模型
 
-### ItemWiki（物品 Wiki）
+代码中仍使用 `ItemWiki` 命名表达「物品资料」，但用户界面应优先使用「物品资料」这个产品语言。
 
-```python
-class ItemWiki(Base):
-    id: str                      # UUID
-    name: str                    # 物品名称（如"鲜牛奶"）
-    description: str             # 描述
-    category_id: str             # 分类 ID（外键）
-    default_unit: str            # 默认单位（如"盒"、"瓶"）
-    suggested_expiry_days: int   # 建议保质期（天）
-    storage_location: str        # 建议存放位置
-    notes: str                   # 备注信息
-    image_path: str              # 物品图片路径
+1. **ItemWikiCategory（分类）**
+   - 食品、日用品、化妆品、药品、其他等分类。
+   - 对应图标、颜色和排序。
 
-    # 关系
-    category: ItemWikiCategory   # 分类
-    items: List[Item]            # 关联的库存记录
-```
+2. **ItemWiki（物品资料）**
+   - 某种物品的类定义。
+   - 保存名称、描述、分类、默认单位、建议保质期、默认提醒提前天数、存放位置、备注、图片路径等。
+   - 一个物品资料可以关联多条库存批次。
 
-### ItemWikiCategory（物品分类）
+3. **InventoryItem / Item（库存批次）**
+   - 某次实际持有的库存。
+   - 保存数量、单位、购买日期、过期日期、提醒日期、提醒开关、状态、标签、图片路径、来源订单等。
+   - 状态包括 `active`、`expired`、`consumed`。
 
-```python
-class ItemWikiCategory(Base):
-    id: str          # UUID
-    name: str        # 分类名称（如"食品"、"日用品"）
-    icon: str        # 图标名称
-    color: str       # 颜色（十六进制）
-    sort_order: int  # 排序顺序
+4. **RegisteredItem**
+   - 物品目录里的聚合视图。
+   - 以物品资料为主，合并展示关联库存批次、总数量、最近过期信息等。
 
-    items: List[ItemWiki]  # 关联的 Wiki
-```
+5. **ShoppingListItem**
+   - 采购清单记录。
+   - 可由低库存/常买建议生成，也可勾选后转换回库存批次。
 
-### Item（库存记录）
+## 主要页面
 
-```python
-class Item(Base):
-    id: str                    # UUID
-    name: str                  # 继承自 Wiki 的名称
-    wiki_id: str               # 关联的 Wiki ID
-    quantity: int              # 数量
-    unit: str                  # 单位
-    expiry_date: date          # 过期日期
-    purchase_date: date        # 购买日期
-    status: ItemStatus         # 状态（ACTIVE/EXPIRED/CONSUMED）
-    reminder_date: date        # 提醒日期
-    is_reminder_enabled: bool  # 是否启用提醒
+| 页面 | 文件 | 说明 |
+|------|------|------|
+| App shell | `mobile/lib/screens/app_shell.dart` | 底部导航、路由协调、深链参数处理 |
+| 首页 | `home_screen.dart` | 统计、今天要处理、即将过期、采购/食谱入口 |
+| 物品 | `items_screen.dart` | 物品目录、历史、采购清单、分类筛选 |
+| 添加物品 | `add_item_screen.dart` | 手动添加、拍照/相册、订单识别入口 |
+| 订单复核 | `order_import_review_screen.dart` | 识别结果复核并批量入库 |
+| 库存详情 | `item_detail_screen.dart` | 单条库存批次详情、消耗/恢复/删除、图片 |
+| 库存编辑 | `item_edit_screen.dart` | 单条库存批次编辑 |
+| 物品资料详情 | `item_wiki_detail_screen.dart` | 物品资料与所有关联库存 |
+| 物品资料编辑 | `item_wiki_edit_screen.dart` | 默认单位、提醒、分类等资料编辑 |
+| 食谱 | `recipes_screen.dart` | 本地规则食谱和 AI 食谱建议 |
+| 设置 | `settings_screen.dart` | 备份、通知、VLM、食谱偏好、自验收 |
 
-    # 关系
-    wiki: ItemWiki             # 关联的 Wiki
-    tags: List[Tag]            # 标签
-```
+## 关键服务
 
-## 服务层使用
+- `AppDatabase`
+  - 负责 SQLite 打开、建表、迁移、索引、默认数据。
+  - schema 版本由 `AppDatabase.schemaVersion` 管理。
 
-### DatabaseService (db_service)
+- `InventoryRepository`
+  - 主要数据访问层。
+  - 覆盖库存、物品资料、分类、标签、提醒日志、购物清单、备份、旧版库存导入、数据健康检查。
 
-```python
-from app.services.database import db_service
+- `InventoryController`
+  - UI 与 repository 之间的协调层。
+  - 维护分类、统计、通知权限、备份提醒等页面状态。
 
-# 会话上下文管理器（推荐）
-with db_service.session_scope() as session:
-    # 执行数据库操作
-    pass
+- `LocalImageStore`
+  - 管理用户拍摄、相册选择、文件选择得到的物品图片。
 
-# 获取会话（需要手动关闭）
-session = db_service.get_session()
-try:
-    # 执行操作
-    pass
-finally:
-    session.close()
-```
+- `LocalNotificationService`
+  - 通过 platform channel 调用 Android/macOS 原生通知能力。
 
-### ItemService (item_service)
+- `VlmOrderService`
+  - 调用 OpenAI-compatible VLM endpoint 识别订单截图或订单文本。
 
-```python
-from app.services.item_service import item_service
+- `AiRecipeService` / `RecipeSuggestionService`
+  - AI 食谱请求和本地规则食谱建议。
 
-# 创建物品（会自动创建/关联 ItemWiki）
-item = item_service.create_item(
-    name="鲜牛奶",
-    category="食品",
-    quantity=2,
-    unit="盒",
-    expiry_date=date(2025, 2, 5),
-)
+- `AcceptanceTestService`
+  - 设置页里的应用自验收流程。
+  - 用临时数据验证核心 CRUD、提醒、购物清单、食谱建议和数据健康检查。
 
-# 获取物品
-item = item_service.get_item(item_id)
+## 本地运行与验证
 
-# 更新物品
-success = item_service.update_item(item_id, quantity=3)
-
-# 删除物品
-success = item_service.delete_item(item_id)
-
-# 获取库存列表（按类名）
-items = item_service.get_inventory_by_name("鲜牛奶")
-
-# 获取即将过期物品
-expiring = item_service.get_expiring_items(days=7)
-```
-
-### WikiService (wiki_service)
-
-```python
-from app.services.wiki_service import wiki_service
-
-# 创建 Wiki
-wiki = wiki_service.create_wiki(
-    name="鲜牛奶",
-    description="巴氏杀菌鲜牛奶",
-    default_unit="盒",
-    suggested_expiry_days=7,
-    storage_location="冷藏",
-)
-
-# 获取 Wiki
-wiki = wiki_service.get_wiki_by_name("鲜牛奶")
-
-# 更新 Wiki
-success = wiki_service.update_wiki(wiki_id, description="新描述")
-
-# 获取所有分类
-categories = wiki_service.get_all_categories()
-
-# 创建分类
-category = wiki_service.create_category(
-    name="食品",
-    icon="food-apple",
-    sort_order=1,
-)
-```
-
-## 样式系统
-
-### Color Palette (app/ui/theme/design_tokens.py)
-
-```python
-COLOR_PALETTE = {
-    'primary': [0.25, 0.55, 0.9, 1],
-    'success': [0.13, 0.77, 0.37, 1],
-    'warning': [0.96, 0.35, 0.07, 1],
-    'error': [0.94, 0.27, 0.27, 1],
-    'surface': [1, 1, 1, 1],
-    'text_primary': [0.15, 0.15, 0.15, 1],
-    'text_secondary': [0.50, 0.50, 0.50, 1],
-    # ...
-}
-```
-
-### Design Tokens
-
-```python
-from app.ui.theme.design_tokens import COLOR_PALETTE, DESIGN_TOKENS
-
-COLORS = COLOR_PALETTE
-FONTS = DESIGN_TOKENS
-```
-
-## 中文字体支持
-
-应用会自动检测并应用中文字体：
-
-1. **macOS**: 优先查找 PingFang 字体
-2. **Windows/Linux**: 使用系统备选字体
-
-```python
-from app.utils.font_helper import register_chinese_font, CHINESE_FONT_NAME
-
-# 注册并获取中文字体名称
-font_name = register_chinese_font()
-
-# 应用字体到组件
-label = Label(text="你好")
-label.font_name = font_name
-```
-
-## 开发设置
-
-### 环境变量
-
-创建 `.env` 文件（不提交到版本控制）：
-
-```env
-# 应用配置
-APP_NAME=vibe-fridge
-
-# AI 配置
-SILICONFLOW_API_KEY=your_api_key_here
-
-# 提醒配置
-REMINDER_DAYS_BEFORE=3
-```
-
-### 运行应用
+仓库自带 Flutter SDK 时优先使用：
 
 ```bash
-# 激活 Conda 环境
-conda activate kivy
-
-# 运行应用
-python -m app.main
+export PATH="$PWD/.tools/flutter/bin:$PATH"
+cd mobile
+flutter pub get
+flutter analyze
+flutter test
+flutter run -d macos
 ```
+
+当前 Codex 环境里也可以直接使用绝对路径：
+
+```bash
+cd mobile
+HOME=/private/tmp/vibe-fridge-flutter-home ../.tools/flutter/bin/flutter analyze
+HOME=/private/tmp/vibe-fridge-flutter-home ../.tools/flutter/bin/flutter test
+HOME=/private/tmp/vibe-fridge-flutter-home ../.tools/flutter/bin/flutter build web --debug --no-wasm-dry-run
+```
+
+Web 本地预览：
+
+```bash
+cd mobile
+flutter build web --debug --no-wasm-dry-run
+python3 -m http.server 54324 --bind 127.0.0.1 --directory build/web
+```
+
+打开 `http://127.0.0.1:54324/`。
+
+如果 `web/` 目录被重新生成，需确保 Web SQLite 资产存在：
+
+```bash
+cd mobile
+dart run sqflite_common_ffi_web:setup
+```
+
+## 数据库与迁移
+
+- Flutter 应用使用自己的 SQLite 数据库，不直接写旧 Python 数据库。
+- schema 迁移集中在 `mobile/lib/data/app_database.dart`。
+- 迁移测试在 `mobile/test/app_database_migration_test.dart`。
+- 数据健康检查由 `InventoryRepository.checkDataHealth()` 提供，覆盖数量、状态、日期、提醒顺序、关联完整性、消耗状态等。
+- 设置页的备份/恢复最终调用 repository 的 JSON-ready backup payload，但 UI 文案应使用「备份」「库存表格」等用户语言，不暴露 JSON、SQLite、数据库等实现细节。
+
+## 用户界面文案规范
+
+- 不要在普通用户界面暴露 `数据库`、`SQLite`、`迁移状态`、`legacy`、`Wiki`、`id`、`ISO-8601` 等工程术语。
+- `ItemWiki` 在代码中保留为领域名，但界面文案使用「物品资料」。
+- 旧数据导入面向用户时使用「旧版库存」。
+- CSV 面向用户时使用「库存表格」。
+- JSON backup 面向用户时使用「备份」。
+- 设置页不展示数据库类型、迁移状态或底层存储实现。
+- 错误信息应说明用户能理解和处理的问题，必要的技术详情放入可复制错误详情或日志中。
+
+## 网络与隐私
+
+- 默认库存、目录、采购清单、备份、提醒和本地规则食谱均应离线可用。
+- 只有用户主动触发 VLM 订单识别或 AI 食谱时，才可向用户配置的 endpoint 发送请求。
+- API key 通过 `flutter_secure_storage` 保存。
+- 订单截图、订单文本和库存上下文只能在用户主动触发相关 AI 动作时发送。
+- 新增网络能力时必须明确入口、触发条件、用户可见文案和测试覆盖。
+
+## 本地通知
+
+- Flutter 侧入口在 `LocalNotificationService`。
+- Android 通过 `vibe_fridge/local_notifications` method channel 调用 `AlarmManager` 和通知 receiver。
+- macOS 通过 `UNUserNotificationCenter`。
+- 通知点击会把库存 `itemId` 返回 Flutter，并打开库存详情页。
+- 修改通知相关代码后，至少跑 `flutter analyze` 和相关 repository tests；平台行为还需要真机或桌面运行验证。
+
+## 测试规范
+
+- 长期保留的测试放在 `mobile/test/`，必须服务于 CI、回归验证或长期质量保障。
+- 一次性测试代码、临时调试脚本、探索性验证代码无需上传至仓库；如果确实需要保留，应沉淀为长期 CI 测试或正式工具。
+- 不要提交只为当前调试服务、没有长期维护价值的测试文件。
+- 对 repository、数据库迁移、解析器、AI fallback、通知 payload、备份恢复等共享逻辑的修改，应优先补充或更新长期测试。
+- UI 文案调整至少做 targeted grep；功能性 UI 调整应配合 widget test、浏览器烟测或手动运行说明。
 
 ## 代码规范
 
-### 导入顺序
+- 保持 Flutter/Dart 现有分层：UI screen 不直接写 SQL；共享数据逻辑放入 repository/controller/service。
+- 优先使用现有 widget、theme、spacing 和 helper，不为单个页面发明孤立样式体系。
+- 数据库 schema 变化必须通过 migration 和测试覆盖，不直接假设用户是新库。
+- 文件、图片、备份等本地 I/O 通过已有 store/service 封装，避免在 screen 内散落路径处理。
+- 手动编辑文件使用 `apply_patch`。
+- 提交前运行与改动范围匹配的验证；常规 Flutter 改动至少跑 `flutter analyze`，数据层改动跑 `flutter test`。
+- 完成一个功能并验证完善后，需要 commit 并 push 到当前工作分支，保持良好的版本管理。
+- 工作区可能存在其他人的未提交改动；只 stage/commit 本次任务相关文件，不回滚无关改动。
 
-```python
-# 标准库
-import os
-from datetime import datetime
+## 版本管理规范
 
-# 第三方库
-from kivy.uix.screenmanager import Screen
-from sqlalchemy.orm import Session
+- 开始任务先确认当前分支。
+- 提交前查看 `git status --short` 和相关 `git diff`。
+- 只 stage 本次任务相关文件。
+- commit message 使用简洁、可追踪的英文祈使句，例如 `Update agent guidance for Flutter app`。
+- 功能完成并验证通过后推送当前分支。
+- 如果验证失败，不要为了提交而掩盖失败；先修复或在交付说明中明确阻塞点。
 
-# 本地模块
-from app.models.item import Item
-from app.services.database import db_service
-```
+## 发布与平台注意事项
 
-### 服务层返回值规范
+- Android release 签名使用 `mobile/android/key.properties`，真实 key 和 keystore 不提交。
+- macOS 分发证书、notarization 凭据和导出配置不要提交真实秘密。
+- 图标资源已在 Android mipmap 和 macOS AppIcon 中维护，源图在 `mobile/assets/brand/app_icon.png`。
+- Android/macOS 权限文案需要和实际功能匹配，尤其是相机、相册、通知、网络。
 
-- **创建方法**: 返回 `Optional[Dict]` (成功返回字典，失败返回 None)
-- **更新/删除方法**: 返回 `bool` (成功返回 True，失败返回 False)
-- **查询方法**: 返回列表或单个对象
+## Codex 工作约定
 
-### 会话管理规范
-
-```python
-# 使用 session_scope（推荐）
-with db_service.session_scope() as session:
-    item = session.query(Item).first()
-
-# 手动管理会话
-session = db_service.get_session()
-try:
-    item = session.query(Item).first()
-finally:
-    session.close()
-```
-
-## 待实现功能
-
-### AI 集成
-
-1. **硅基流动 API 集成**
-   - 物品过期日期预测
-   - 智能分类建议
-
-2. **OCR 功能**
-   - 拍照识别生产/过期日期
-   - 订单截图文字提取
-
-### 高级功能
-
-1. **Android 通知系统**
-   - 过期提醒推送
-   - 后台服务
-
-2. **订单导入**
-   - 盒马等购物应用订单解析
-
-## 代码审查 TODO 列表（2025-12）
-
-### 一、数据库与服务层
-
-1. **已修复：SQLAlchemy 标签关联的 SAWarning**
-   - `ItemService._add_tags_to_item` 已使用 `object_session(item)` 判断
-   - 确保会话正确管理
-
-2. **统一数据库会话创建方式**
-   - `DatabaseService` 维护单例 `engine` 和 `SessionLocal`
-   - 所有会话获取统一走 `db_service.get_session()`
-
-3. **处理 `datetime.utcnow()` 弃用警告**
-   - 模型字段使用 `datetime.utcnow()`，需改用 `datetime.now(datetime.UTC)`
-
-4. **优化统计查询的会话使用**
-   - `ItemStatisticsService.get_expiry_stats` 内部多次调用服务导致多次会话开启
-   - 应统一使用一个 `session_scope`
-
-### 二、UI 修复
-
-1. **AddItemScreen**
-   - 修复成功弹窗的关闭逻辑（`success_dialog` 未正确设置）
-   - 移除对不存在属性 `category_menu` 的访问
-   - 修复类别按钮文字更新问题
-
-2. **ItemDetailScreen & MainScreen**
-   - 实现编辑功能
-   - 统一 item_id 传递方式
-   - 优化统计刷新逻辑
-
-3. **字体应用**
-   - 减少重复字体应用逻辑
-
-### 三、测试与质量改进
-
-1. **修复 pytest 返回非 None 的警告**
-   - 移除测试函数末尾的 `return True`
-
-2. **补充 UI 流程集成测试**
-   - 添加物品表单验证测试
-   - 添加删除流程测试
-
-## Codex 特别说明
-
-### .Codex/settings.local.json
-
-已配置特定 Bash 命令的权限。
-
-### 关键约定
-
-1. **创建物品时自动创建 Wiki**
-   - `ItemService.create_item` 会检查是否存在同名 Wiki
-   - 不存在则创建新 Wiki
-
-2. **Wiki 和 Item 的关系**
-   - Item 必须关联到 Wiki
-   - 删除 Wiki 时需检查是否有关联库存记录
-
-3. **状态管理**
-   - `ACTIVE`: 正常使用中
-   - `EXPIRED`: 已过期
-   - `CONSUMED`: 已消耗
-
-4. **默认分类**
-   - 应用启动时会自动创建缺失的默认分类
-   - 分类包括：食品、日用品、化妆品、药品、其他
+- 默认以 `mobile/` Flutter 应用为当前产品实现。
+- 当用户反馈「app 内不该出现某词」时，同时检查设置页、首页、详情页、弹窗、snackbar、错误信息和导入日志。
+- 对用户可见功能不要只改代码路径，也要验证可运行状态。
+- 若本地浏览器服务没有刷新到最新 build，不要把浏览器旧页面当作最终视觉验证。
+- 文档改动通常不需要跑完整 Flutter 测试，但如果文档同步了测试或命令约定，应至少检查格式和 diff。
