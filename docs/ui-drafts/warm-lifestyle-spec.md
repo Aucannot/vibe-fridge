@@ -6,12 +6,9 @@ The selected direction is **Scheme C · Warm Lifestyle**.
 
 ## Intended reference assets
 
-When binary UI draft images are committed, use these filenames:
-
-- `docs/ui-drafts/warm-lifestyle-refined.png`
-- `docs/ui-drafts/warm-lifestyle-design-system.png`
-
-If those image files are not present in a working branch, use this document as the textual visual spec and ask the owner to attach the PNG drafts before final implementation review.
+Use this document and the checked-in SVG references as the long-lived visual
+spec. Generated PNG captures are temporary review artifacts and should not be
+committed by default.
 
 ## Product feeling
 
@@ -217,10 +214,10 @@ Include:
 - Export/backup card
 - VLM settings card
 - Notification settings card
-- Migration status card
 - About card
 
-Keep existing settings functionality.
+Keep existing settings functionality. Do not expose engineering migration
+status, SDK setup state, or internal implementation progress in the app UI.
 
 ## Implementation guardrails
 
