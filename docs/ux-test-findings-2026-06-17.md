@@ -45,6 +45,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
   row for `面包` opened the inventory detail page and kept the address bar at
   `?route=items%2Fitem%2Fitem-bread-1` with no hash fragment and no browser
   warning or error logs.
+- Targeted UI-copy grep for engineering terms found no new actionable
+  user-facing leaks. The remaining AI `JSON` wording is confined to prompts or
+  internal exceptions and is wrapped by the user-friendly recipe fallback copy.
 - `flutter build macos --debug`: blocked by local environment. Flutter reached
   Xcode dependency resolution, then failed because the active developer
   directory is Command Line Tools and `xcodebuild` is unavailable to `xcrun`.
