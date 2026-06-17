@@ -50,6 +50,11 @@ check confirmed it hands off cleanly to the rendered Home screen.
   `?route=recipes`, saw `库存已扣减`, and verified priority counts dropped
   from `鸡蛋 12个` / `鲜牛奶 2盒` to `鸡蛋 11个` / `鲜牛奶 1盒` with no
   browser warning or error logs.
+- Mobile Web shopping-loop smoke check on port 54333: opened the shopping tab,
+  added the `感冒药` replenishment suggestion to the list, checked it as
+  purchased, confirmed `采购项入库`, saw `已入库 1 项`, and verified the
+  catalog count for `感冒药` increased from 1 to 2 with no browser warning or
+  error logs.
 - Targeted UI-copy grep for engineering terms found no new actionable
   user-facing leaks. The remaining AI `JSON` wording is confined to prompts or
   internal exceptions and is wrapped by the user-friendly recipe fallback copy.
@@ -100,7 +105,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Manual add flow saved a test item and returned to the catalog with feedback.
 - Inventory detail quantity controls update visibly.
 - Shopping list checkbox moves a pending item into the purchased section.
-- Purchased shopping items can be converted into inventory after confirmation.
+- Purchased shopping items can be converted into inventory after confirmation,
+  and the catalog count updates in the live mobile Web UI.
 - Recipes page lists priority consumables and concrete recipe suggestions.
 - Recipe detail shows consumed inventory, missing ingredients, steps, and the
   inventory deduction action.
