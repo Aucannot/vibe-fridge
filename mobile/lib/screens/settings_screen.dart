@@ -235,6 +235,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ],
                       ),
+                      if (widget.controller.notificationPermission
+                              .availabilityHint
+                          case final hint?) ...[
+                        const SizedBox(height: AppSpacing.compactPadding),
+                        Text(
+                          hint,
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

@@ -165,6 +165,13 @@ class LocalNotificationPermissionSnapshot {
     }
     return '未确认';
   }
+
+  String? get availabilityHint {
+    if (!supported) {
+      return '当前平台暂不支持本地通知，提醒仍会显示在首页「今天要处理」。';
+    }
+    return null;
+  }
 }
 
 class LocalNotificationSyncResult {

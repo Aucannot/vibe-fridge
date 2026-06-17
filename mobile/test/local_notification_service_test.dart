@@ -56,6 +56,11 @@ void main() {
       '当前平台不可用',
     );
     expect(
+      LocalNotificationPermissionSnapshot.unsupported.availabilityHint,
+      '当前平台暂不支持本地通知，提醒仍会显示在首页「今天要处理」。',
+    );
+    expect(granted.availabilityHint, isNull);
+    expect(
       const LocalNotificationSyncResult(
         permission: granted,
         scheduledCount: 0,

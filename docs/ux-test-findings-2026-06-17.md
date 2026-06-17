@@ -100,6 +100,8 @@ visual smoke check when browser automation is available.
   unsupported, missing implementation, and unknown failure copy.
 - Local notification permission channel tests now cover native status parsing
   and platform-exception fallback copy.
+- Local notification permission copy tests now cover the unsupported-platform
+  hint shown in Settings when native scheduling actions are disabled.
 - Local notification channel tests now cover tap callbacks, malformed tap
   payloads, and safe launch-target fallback when the platform call fails.
 
@@ -124,6 +126,8 @@ visual smoke check when browser automation is available.
 - Disabled local notification action buttons on unsupported platforms so users
   do not have to click a dead-end action to learn that reminders cannot be
   scheduled there.
+- Added a short Settings hint for unsupported local notification platforms so
+  users know reminder items still appear in the home-page action list.
 - Added backup structure validation before restore so malformed backup files
   fail early without changing current inventory data.
 - Simplified the backup restore success message so it does not expose an
