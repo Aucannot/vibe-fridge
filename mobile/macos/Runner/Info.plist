@@ -25,11 +25,11 @@
 	<key>NSHumanReadableCopyright</key>
 	<string>$(PRODUCT_COPYRIGHT)</string>
 	<key>NSCameraUsageDescription</key>
-	<string>vibe-fridge uses the camera only when you choose to take an inventory or order photo.</string>
+	<string>仅在你选择拍摄库存或订单照片时使用相机。</string>
 	<key>NSMainNibFile</key>
 	<string>MainMenu</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>vibe-fridge reads selected photos only when you attach inventory images or import order screenshots.</string>
+	<string>仅在你选择添加物品照片或导入订单截图时读取所选照片。</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>
