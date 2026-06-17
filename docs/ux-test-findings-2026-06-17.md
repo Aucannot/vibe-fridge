@@ -18,14 +18,15 @@ inventory, open recipe suggestions, and deduct inventory after cooking.
 
 The strongest remaining product gap is platform-specific notification
 validation. Flutter Web cold-start text now has a native HTML loading screen to
-cover the short CanvasKit font fallback window, though it still needs a browser
-visual smoke check when browser automation is available.
+cover the short CanvasKit font fallback window, and the latest mobile Web smoke
+check confirmed it hands off cleanly to the rendered Home screen.
 
 ## Verification
 
-- `flutter test`: passed after the latest beta fixes including Web route
-  cleanup, notification channel coverage, and startup error copy coverage,
-  plus AI recipe and order-recognition error-copy coverage, 48 tests.
+- `flutter test`: passed after the latest beta fixes including Android reminder
+  restoration, Web route cleanup, notification channel coverage, startup error
+  copy coverage, plus AI recipe and order-recognition error-copy coverage,
+  48 tests.
 - `flutter analyze`: passed after the latest beta fixes including Web route
   cleanup and notification channel coverage.
 - `flutter test test/local_notification_service_test.dart`: passed after the
