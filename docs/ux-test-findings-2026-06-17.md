@@ -52,6 +52,11 @@ check confirmed it hands off cleanly to the rendered Home screen.
   `?route=recipes`, saw `库存已扣减`, and verified priority counts dropped
   from `鸡蛋 12个` / `鲜牛奶 2盒` to `鸡蛋 11个` / `鲜牛奶 1盒` with no
   browser warning or error logs.
+- Mobile Web AI-recipe fallback smoke check on port 54364: opened Recipes with
+  no AI service configured, tapped `生成食谱`, saw the AI card switch to
+  `规则兜底` with `AI 食谱未配置，已使用规则建议`, verified rule suggestions stayed
+  visible, then used the reset button to return to the initial `生成食谱` state
+  with no browser warning or error logs.
 - Mobile Web shopping-loop smoke check on port 54333: opened the shopping tab,
   added the `感冒药` replenishment suggestion to the list, checked it as
   purchased, confirmed `采购项入库`, saw `已入库 1 项`, and verified the
@@ -258,6 +263,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Purchased shopping items can be converted into inventory after confirmation,
   and the catalog count updates in the live mobile Web UI.
 - Recipes page lists priority consumables and concrete recipe suggestions.
+- AI recipe generation falls back to rule suggestions when the AI service is
+  not configured, with user-facing copy and a reset action.
 - Recipe detail shows consumed inventory, missing ingredients, steps, and the
   inventory deduction action.
 - Running a recipe deduction updates priority consumable counts in the live
