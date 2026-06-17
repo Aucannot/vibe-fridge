@@ -219,6 +219,13 @@ check confirmed it hands off cleanly to the rendered Home screen.
   error logs. The first pass exposed that the facts card said `库存批次 1`
   while the batch list showed both active and consumed rows, so the facts label
   was clarified to `使用中批次`.
+- Mobile Web item-profile batch-delete smoke check on port 54390: manually
+  added `batch-delete-test` twice and verified the catalog merged them into
+  one item profile with `2` batches, opened the item-profile detail, entered
+  `批量` mode, used `全选`, confirmed `批量删除库存`, saw the detail page exit
+  selection mode with `使用中批次 0`, `暂无库存`, and `已删除 2 条库存记录`,
+  returned to the catalog and verified the profile count was `0` batches, then
+  deleted the empty test profile, with no browser warning or error logs.
 - Mobile Web consume-restore smoke check on port 54355: opened `面包`
   inventory detail, confirmed `标记已消耗`, verified it appeared in History as
   `已消耗`, opened the consumed detail, used `恢复为使用中`, then verified
@@ -340,6 +347,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
   the inventory detail fact row consistently.
 - Item-profile batch consume can split a multi-quantity batch into active and
   consumed rows while keeping the active-batch count understandable.
+- Item-profile batch delete can select all visible inventory batches, remove
+  them together, clear selection mode, and keep profile/catalog counts in sync.
 - Direct Web detail URLs now clean up late Flutter hash fragments and keep the
   copyable address bar on the app's query-route format.
 - Marking an inventory batch consumed removes it from active priority handling
