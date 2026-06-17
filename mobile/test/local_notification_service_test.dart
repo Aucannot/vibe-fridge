@@ -65,6 +65,61 @@ void main() {
     );
   });
 
+  test('permission calls parse platform status snapshots', () async {
+    final service = LocalNotificationService(channel: channel);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+      return switch (call.method) {
+        'initialize' => {
+            'supported': true,
+            'granted': true,
+            'status': 'granted',
+          },
+        'getPermissionStatus' => {
+            'supported': true,
+            'granted': false,
+            'status': 'denied',
+          },
+        'requestPermission' => {
+            'supported': false,
+            'granted': false,
+            'status': 'unsupported',
+          },
+        _ => null,
+      };
+    });
+
+    final initialized = await service.initialize();
+    expect(initialized.supported, isTrue);
+    expect(initialized.granted, isTrue);
+    expect(initialized.displayText, '已允许');
+
+    final status = await service.getPermissionStatus();
+    expect(status.supported, isTrue);
+    expect(status.granted, isFalse);
+    expect(status.displayText, '未授权');
+
+    final requested = await service.requestPermission();
+    expect(requested.supported, isFalse);
+    expect(requested.granted, isFalse);
+    expect(requested.displayText, '当前平台不可用');
+  });
+
+  test('permission calls degrade safely when platform throws', () async {
+    final service = LocalNotificationService(channel: channel);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+      throw PlatformException(code: 'permission_check_failed');
+    });
+
+    final status = await service.getPermissionStatus();
+
+    expect(status.supported, isTrue);
+    expect(status.granted, isFalse);
+    expect(status.status, 'permission_check_failed');
+    expect(status.displayText, '未确认');
+  });
+
   test('notification tap callback receives valid item id from platform',
       () async {
     final service = LocalNotificationService(channel: channel);
