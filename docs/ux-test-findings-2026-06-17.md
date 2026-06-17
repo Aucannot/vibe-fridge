@@ -70,6 +70,9 @@ square placeholders on a cold port before the font becomes available.
 - Reworded the self-check notification item to avoid exposing `payload`.
 - Reworded the add-item order-recognition prerequisite snackbar to ask for the
   order-recognition service configuration instead of VLM endpoint/model details.
+- Moved the order-recognition configuration check before local image copying,
+  so an unconfigured order-recognition attempt does not leave an unused order
+  screenshot in app storage.
 - Fixed nullable SQL query arguments in shopping-list de-duplication and legacy
   duplicate detection so sqflite no longer logs a future-breaking null argument
   warning.

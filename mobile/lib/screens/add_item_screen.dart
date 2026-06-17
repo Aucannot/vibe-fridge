@@ -338,8 +338,16 @@ class _AddItemScreenState extends State<AddItemScreen> {
       if (image == null) {
         return;
       }
+      final settings = await _loadConfiguredOrderSettings();
+      if (settings == null || !mounted) {
+        return;
+      }
       final imagePath = await _saveSelectedImage(image, 'order_imports');
-      await _recognizeSelectedOrderImage(image, imagePath: imagePath);
+      await _recognizeSelectedOrderImage(
+        image,
+        settings: settings,
+        imagePath: imagePath,
+      );
     } catch (error, stackTrace) {
       if (!mounted) {
         return;
@@ -485,8 +493,16 @@ class _AddItemScreenState extends State<AddItemScreen> {
     setState(() => _recognizing = true);
     try {
       final image = await _SelectedOrderImage.fromImagePicker(file);
+      final settings = await _loadConfiguredOrderSettings();
+      if (settings == null || !mounted) {
+        return;
+      }
       final imagePath = await _saveSelectedImage(image, 'order_imports');
-      await _recognizeSelectedOrderImage(image, imagePath: imagePath);
+      await _recognizeSelectedOrderImage(
+        image,
+        settings: settings,
+        imagePath: imagePath,
+      );
     } finally {
       if (mounted) {
         setState(() => _recognizing = false);
@@ -494,23 +510,28 @@ class _AddItemScreenState extends State<AddItemScreen> {
     }
   }
 
+  Future<VlmSettings?> _loadConfiguredOrderSettings() async {
+    final settings = await _settingsStore.load();
+    if (settings.isConfigured) {
+      return settings;
+    }
+    if (!mounted) {
+      return null;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('请先在设置里配置订单识别服务和 API Key'),
+      ),
+    );
+    return null;
+  }
+
   Future<void> _recognizeSelectedOrderImage(
     _SelectedOrderImage image, {
+    required VlmSettings settings,
     String? imagePath,
   }) async {
     final effectiveImagePath = imagePath ?? image.path;
-    final settings = await _settingsStore.load();
-    if (!settings.isConfigured) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('请先在设置里配置订单识别服务和 API Key'),
-        ),
-      );
-      return;
-    }
     final result = await _orderService.recognizeOrderImage(
       imageBytes: image.bytes,
       mimeType: image.mimeType,
