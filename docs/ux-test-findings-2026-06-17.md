@@ -90,6 +90,14 @@ check confirmed it hands off cleanly to the rendered Home screen.
   `内测手动橙子` with the default quantity and purchase date, saved it, returned
   to the catalog, saw the new item with `1` batch, then opened its item-profile
   detail at `?route=items%2Fwiki%2F...` with no browser warning or error logs.
+- Mobile Web full-field manual-add smoke check on port 54368: opened Add,
+  selected category `日用品`, selected storage location `冷藏`, entered
+  `field-test-cleanser`, set unit `瓶`, chose expiry date `2026-06-25` from the
+  date picker, and saved. The catalog immediately showed `日用品 · 冷藏 · 单位 瓶`
+  with `7 天后到期`, the item-profile detail showed category, default unit,
+  storage location, and the inventory batch dates, and the inventory detail
+  showed expiry `2026-06-25`, reminder date `2026-06-22`, lead time `3 天`,
+  and storage `冷藏`, with no browser warning or error logs.
 - Mobile Web inventory-detail quantity smoke check on port 54336: opened the
   Home priority row for `鲜牛奶`, reached `?route=items%2Fitem%2Fitem-milk-1`,
   increased quantity from `2 盒` to `3 盒`, verified the fact row updated, then
@@ -247,6 +255,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
   the full catalog without stale route state.
 - Manual add flow saved a test item, returned to the catalog, and the new
   item-profile detail opened from the live mobile Web UI.
+- Manual add also handles category, storage location, unit, and expiry-date
+  fields end to end, with catalog, item-profile detail, and inventory detail
+  staying consistent.
 - Inventory detail quantity controls update visibly in both directions and the
   detail fact row stays in sync.
 - Inventory edit now opens without Flutter debug assertions in the live mobile
