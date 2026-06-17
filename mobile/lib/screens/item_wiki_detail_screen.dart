@@ -636,7 +636,7 @@ class _WikiFacts extends StatelessWidget {
             value: '提前 ${wiki.defaultReminderDays} 天',
           ),
           _FactRow(label: '存放位置', value: wiki.storageLocation ?? '未设置'),
-          _FactRow(label: '库存批次', value: '${wiki.inventoryCount}'),
+          _FactRow(label: '使用中批次', value: '${wiki.inventoryCount}'),
         ],
       ),
     );

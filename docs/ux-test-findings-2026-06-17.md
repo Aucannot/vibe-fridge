@@ -112,6 +112,13 @@ check confirmed it hands off cleanly to the rendered Home screen.
   pass exposed misleading success copy that described the change as one
   inventory batch's category even though category is stored on the item
   profile, so the sheet title and success feedback were clarified.
+- Mobile Web item-profile batch-consume smoke check on port 54353: opened
+  `鲜牛奶`, selected one active inventory batch from item-profile batch mode,
+  confirmed `批量标记消耗`, and verified the original `2盒` batch became one
+  `1盒` active batch plus one `1盒` consumed batch with no browser warning or
+  error logs. The first pass exposed that the facts card said `库存批次 1`
+  while the batch list showed both active and consumed rows, so the facts label
+  was clarified to `使用中批次`.
 - Mobile Web direct detail URL smoke check on port 54344: loaded
   `?route=items%2Fitem%2Fitem-milk-1` directly, waited for route cleanup, and
   verified the address bar stayed on the query route without a Flutter hash
@@ -178,6 +185,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
   both the batch card and inventory detail fact row stay in sync.
 - Item-profile batch category changes update the profile-level category and
   the inventory detail fact row consistently.
+- Item-profile batch consume can split a multi-quantity batch into active and
+  consumed rows while keeping the active-batch count understandable.
 - Direct Web detail URLs now clean up late Flutter hash fragments and keep the
   copyable address bar on the app's query-route format.
 - Marking an inventory batch consumed removes it from active priority handling
@@ -304,6 +313,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Clarified item-profile batch category copy so the picker and success
   feedback describe the profile-level category being changed instead of
   implying only one inventory batch owns the category.
+- Clarified the item-profile facts card count from `库存批次` to `使用中批次`
+  because the batch list also includes consumed rows after partial
+  consumption.
 
 ## Remaining Risks
 
