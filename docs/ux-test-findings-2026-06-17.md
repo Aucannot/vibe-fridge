@@ -22,9 +22,10 @@ square placeholders on a cold port before the font becomes available.
 
 ## Verification
 
-- `flutter analyze`: passed.
-- `flutter test`: passed.
-- `flutter build web --debug --no-wasm-dry-run`: passed.
+- `flutter test`: passed after the latest beta fixes, 40 tests.
+- `flutter analyze`: passed after the latest beta fixes.
+- `flutter build web --debug --no-wasm-dry-run`: passed after the latest beta
+  fixes.
 - App self-check from Settings: passed, 15/15.
 - Fresh Web smoke check on a new local port: no new console warnings or errors
   for the latest build.
