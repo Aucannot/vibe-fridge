@@ -250,6 +250,14 @@ check confirmed it hands off cleanly to the rendered Home screen.
   searched for `牛奶`, saw the catalog narrow to `鲜牛奶` while keeping the
   expiring mini-card visible, then opened the result to
   `?route=items%2Fwiki%2Fwiki-milk` with no browser warning or error logs.
+- Mobile Web browser-history smoke check on ports 54404-54408: loaded
+  `?route=items&q=牛奶`, opened the `鲜牛奶` item-profile detail, and used the
+  browser Back/Forward controls. Back correctly returned to the searched
+  catalog state with `q=牛奶`, but Forward stayed on the searched catalog
+  instead of reopening `?route=items%2Fwiki%2Fwiki-milk`. Several route-restore
+  experiments did not produce a verified fix, so the trial code was discarded
+  and the issue is kept as a remaining Web navigation risk. No browser warning
+  or error logs appeared.
 - Mobile Web catalog category-filter smoke check on port 54361: opened the
   Items tab, selected the `日用品` category chip, verified the URL changed to
   `?route=items&category=cat-daily` and the catalog list narrowed to `牙膏`,
@@ -447,6 +455,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
   them together, clear selection mode, and keep profile/catalog counts in sync.
 - Direct Web detail URLs now clean up late Flutter hash fragments and keep the
   copyable address bar on the app's query-route format.
+- Browser Back from a searched catalog detail returns to the searched catalog
+  state with the keyword preserved.
 - Marking an inventory batch consumed removes it from active priority handling
   and shows it in the history tab as `已消耗`.
 - History search keeps matching consumed records visible and shows a
@@ -674,3 +684,7 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - The native notification implementations still need runtime proof even though
   the Dart service degrades cleanly when permission is missing, unsupported, or
   the platform channel is absent.
+- Web browser Forward after returning from a detail page can lose the detail
+  entry. Reproduced from `?route=items&q=牛奶` -> `鲜牛奶` detail -> browser
+  Back -> browser Forward; the Forward action remained on the searched catalog
+  instead of reopening the detail route.
