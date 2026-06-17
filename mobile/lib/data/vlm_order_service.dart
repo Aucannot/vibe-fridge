@@ -40,7 +40,7 @@ class VlmOrderService {
       rethrow;
     } catch (_) {
       throw const OrderRecognitionException(
-        '模型返回不可解析，请确认 endpoint 是 OpenAI-compatible chat completions。',
+        '模型返回不可解析，请检查服务地址和模型名称。',
         type: OrderRecognitionErrorType.responseFormat,
       );
     }
@@ -215,7 +215,7 @@ Map<String, dynamic> extractOrderRecognitionJson(String content) {
   }
 
   throw const OrderRecognitionException(
-    'VLM 返回内容不是可解析的 JSON',
+    '模型返回不可解析，请确认当前模型支持订单识别。',
     type: OrderRecognitionErrorType.responseFormat,
   );
 }
@@ -239,14 +239,14 @@ String _assistantText(Map<String, dynamic> payload) {
   final choices = payload['choices'];
   if (choices is! List || choices.isEmpty) {
     throw const OrderRecognitionException(
-      'VLM 返回缺少 choices',
+      '模型返回不可解析，请检查服务地址和模型名称。',
       type: OrderRecognitionErrorType.responseFormat,
     );
   }
   final first = choices.first;
   if (first is! Map) {
     throw const OrderRecognitionException(
-      'VLM 返回 choices 格式无效',
+      '模型返回不可解析，请检查服务地址和模型名称。',
       type: OrderRecognitionErrorType.responseFormat,
     );
   }
@@ -277,7 +277,7 @@ String _contentText(Object? content) {
         .join('\n');
   }
   throw const OrderRecognitionException(
-    'VLM 返回缺少文本内容',
+    '模型返回不可解析，请确认当前模型支持订单识别。',
     type: OrderRecognitionErrorType.responseFormat,
   );
 }
@@ -291,19 +291,19 @@ void _validateSettings(VlmSettings settings) {
       !uri.hasAuthority ||
       (uri.scheme != 'https' && uri.scheme != 'http')) {
     throw const OrderRecognitionException(
-      'Endpoint 格式无效，请填写完整的 http(s) 地址。',
+      '服务地址格式无效，请填写完整的 http(s) 地址。',
       type: OrderRecognitionErrorType.configuration,
     );
   }
   if (settings.model.trim().isEmpty) {
     throw const OrderRecognitionException(
-      'Model 不能为空。',
+      '模型名称不能为空。',
       type: OrderRecognitionErrorType.configuration,
     );
   }
   if (settings.apiKey.trim().isEmpty) {
     throw const OrderRecognitionException(
-      'API key 未配置或无法从安全存储读取。',
+      'API 密钥未配置或无法从安全存储读取。',
       type: OrderRecognitionErrorType.configuration,
     );
   }
@@ -321,8 +321,7 @@ void _throwForHttpFailure(http.Response response) {
     );
   }
   if (response.statusCode == 415 ||
-      (response.statusCode == 400 &&
-          body.toLowerCase().contains('image'))) {
+      (response.statusCode == 400 && body.toLowerCase().contains('image'))) {
     throw OrderRecognitionException(
       '图片格式不支持：HTTP ${response.statusCode} $body',
       type: OrderRecognitionErrorType.unsupportedImage,
@@ -335,9 +334,8 @@ void _throwForHttpFailure(http.Response response) {
 }
 
 String _systemPrompt(List<String> categoryNames) {
-  final categories = categoryNames.isEmpty
-      ? '食品、日用品、化妆品、药品、其他'
-      : categoryNames.join('、');
+  final categories =
+      categoryNames.isEmpty ? '食品、日用品、化妆品、药品、其他' : categoryNames.join('、');
   return '''
 你是库存应用的订单识别器。只输出 JSON，不要输出 Markdown 或解释。
 从订单截图、购物小票、配送清单中提取适合入库的实物商品。

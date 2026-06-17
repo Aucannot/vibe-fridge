@@ -441,7 +441,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         const _SettingRow(
                           icon: Icons.security_outlined,
-                          label: 'API key 存储',
+                          label: '密钥存储',
                           value: '系统安全存储',
                         ),
                         const SizedBox(height: AppSpacing.cardGap),
@@ -449,7 +449,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           controller: _vlmEndpointController,
                           textInputAction: TextInputAction.next,
                           decoration: const InputDecoration(
-                            labelText: 'Endpoint',
+                            labelText: '服务地址',
                             prefixIcon: Icon(Icons.link_outlined),
                           ),
                         ),
@@ -458,7 +458,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           controller: _vlmModelController,
                           textInputAction: TextInputAction.next,
                           decoration: const InputDecoration(
-                            labelText: 'Model',
+                            labelText: '模型名称',
                             prefixIcon: Icon(Icons.memory_outlined),
                           ),
                         ),
@@ -468,12 +468,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           obscureText: true,
                           onChanged: (_) => setState(() {}),
                           decoration: InputDecoration(
-                            labelText: 'API Key',
+                            labelText: 'API 密钥',
                             hintText: _hasStoredVlmApiKey
                                 ? '已安全保存，留空保持不变'
                                 : '只保存在系统安全存储',
                             helperText: _hasStoredVlmApiKey
-                                ? '已保存的 key 不会明文显示'
+                                ? '已保存的密钥不会明文显示'
                                 : '仅保存在本机安全区域',
                             prefixIcon: const Icon(Icons.key_outlined),
                           ),
@@ -768,7 +768,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context) => AlertDialog(
         title: const Text('清空订单识别配置'),
         content: const Text(
-          'Endpoint、model 和已保存的 API key 都会被清空。',
+          '服务地址、模型名称和已保存的 API 密钥都会被清空。',
         ),
         actions: [
           TextButton(
@@ -1683,13 +1683,13 @@ String _vlmErrorMessage(OrderRecognitionException error) {
     case OrderRecognitionErrorType.configuration:
       return '配置错误：${error.message}';
     case OrderRecognitionErrorType.network:
-      return '网络错误：请检查 endpoint 或网络连接';
+      return '网络错误：请检查服务地址或网络连接';
     case OrderRecognitionErrorType.authentication:
-      return '鉴权失败：请检查 API key';
+      return '鉴权失败：请检查 API 密钥';
     case OrderRecognitionErrorType.server:
-      return '服务端错误：请检查 endpoint 和 model';
+      return '服务端错误：请检查服务地址和模型名称';
     case OrderRecognitionErrorType.responseFormat:
-      return '返回不可解析：请确认模型兼容 chat completions';
+      return '返回不可解析：请确认当前模型支持订单识别';
     case OrderRecognitionErrorType.unsupportedImage:
       return '图片格式不支持：请换 PNG/JPG/WebP 再试';
   }

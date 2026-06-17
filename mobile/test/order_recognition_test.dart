@@ -105,7 +105,8 @@ Organic Milk x2
     );
     expect(result.items.map((item) => item.name), isNot(contains('草莓酸奶')));
 
-    final milk = result.items.singleWhere((item) => item.name == 'Organic Milk');
+    final milk =
+        result.items.singleWhere((item) => item.name == 'Organic Milk');
     expect(milk.quantity, 2);
 
     final gift = result.items.singleWhere((item) => item.name == '赠品纸巾');
@@ -154,11 +155,20 @@ Organic Milk x2
     expect(
       () => service.validateConfiguration(_settings(endpoint: 'not-a-url')),
       throwsA(
-        isA<OrderRecognitionException>().having(
-          (error) => error.type,
-          'type',
-          OrderRecognitionErrorType.configuration,
-        ),
+        isA<OrderRecognitionException>()
+            .having(
+              (error) => error.type,
+              'type',
+              OrderRecognitionErrorType.configuration,
+            )
+            .having(
+              (error) => error.message,
+              'message',
+              allOf(
+                contains('服务地址'),
+                isNot(contains('Endpoint')),
+              ),
+            ),
       ),
     );
   });
@@ -208,11 +218,21 @@ Organic Milk x2
     expect(
       () => service.validateConfiguration(_settings()),
       throwsA(
-        isA<OrderRecognitionException>().having(
-          (error) => error.type,
-          'type',
-          OrderRecognitionErrorType.responseFormat,
-        ),
+        isA<OrderRecognitionException>()
+            .having(
+              (error) => error.type,
+              'type',
+              OrderRecognitionErrorType.responseFormat,
+            )
+            .having(
+              (error) => error.message,
+              'message',
+              allOf(
+                contains('服务地址'),
+                isNot(contains('endpoint')),
+                isNot(contains('chat completions')),
+              ),
+            ),
       ),
     );
   });
