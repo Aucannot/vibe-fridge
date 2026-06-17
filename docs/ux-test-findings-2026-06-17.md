@@ -85,6 +85,12 @@ check confirmed it hands off cleanly to the rendered Home screen.
   purchased, confirmed `采购项入库`, saw `已入库 1 项`, and verified the
   catalog count for `感冒药` increased from 1 to 2 with no browser warning or
   error logs.
+- Mobile Web catalog-to-shopping smoke check on port 54391: opened the item
+  catalog, tapped the cart action on the `感冒药` row, saw
+  `已加入采购清单：感冒药` without leaving the catalog, opened the Shopping view,
+  verified `待采购 1` contained `感冒药` with quantity `1` and source-note copy,
+  then deleted the pending item and verified `待采购 0` while `感冒药` returned
+  to replenishment suggestions, with no browser warning or error logs.
 - Mobile Web Settings self-check smoke check on port 54334: opened Settings,
   ran `运行自验收`, saw the card switch to `全部通过` with `15/15`, verified
   the detailed check list rendered readable rows for inventory, reminders,
@@ -372,6 +378,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
   replenishment suggestion reappear.
 - Purchased shopping items can be converted into inventory after confirmation,
   and the catalog count updates in the live mobile Web UI.
+- Catalog row cart actions add the selected item profile to the shopping list
+  without navigating away, and deleting that pending item restores the
+  replenishment suggestion state.
 - Recipes page lists priority consumables and concrete recipe suggestions.
 - AI recipe generation falls back to rule suggestions when the AI service is
   not configured, with user-facing copy and a reset action.
