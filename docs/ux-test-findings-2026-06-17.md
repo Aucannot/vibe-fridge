@@ -130,6 +130,11 @@ check confirmed it hands off cleanly to the rendered Home screen.
   `感冒药` changed to `0` batches, then reopened the deleted direct detail URL
   and saw the friendly `库存记录不存在` empty state with no browser warning or
   error logs.
+- Mobile Web shopping-item delete smoke check on port 54357: opened the
+  shopping tab, added the `面包` replenishment suggestion to the pending list,
+  opened the row menu, confirmed the destructive `删除采购项` dialog, and
+  verified the pending count returned to `0` while replenishment suggestions
+  returned to `2`, with no browser warning or error logs.
 - Mobile Web direct detail URL smoke check on port 54344: loaded
   `?route=items%2Fitem%2Fitem-milk-1` directly, waited for route cleanup, and
   verified the address bar stayed on the query route without a Flutter hash
@@ -207,6 +212,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Deleting a single inventory batch returns to the catalog, updates the item
   count, and leaves a friendly empty state for stale direct detail URLs.
 - Shopping list checkbox moves a pending item into the purchased section.
+- Shopping-list row deletion removes the pending item and lets its
+  replenishment suggestion reappear.
 - Purchased shopping items can be converted into inventory after confirmation,
   and the catalog count updates in the live mobile Web UI.
 - Recipes page lists priority consumables and concrete recipe suggestions.
