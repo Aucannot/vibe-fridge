@@ -144,20 +144,31 @@ class _BootstrapErrorScreen extends StatelessWidget {
                   const SizedBox(height: AppSpacing.sectionGap),
                   Container(
                     width: double.infinity,
-                    constraints: const BoxConstraints(maxHeight: 220),
                     padding: const EdgeInsets.all(AppSpacing.cardPadding),
                     decoration: BoxDecoration(
                       color: AppColors.surface,
                       border: Border.all(color: AppColors.divider),
                       borderRadius: BorderRadius.circular(AppRadii.card),
                     ),
-                    child: SingleChildScrollView(
-                      child: SelectableText(
-                        _details,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
-                      ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          Icons.privacy_tip_outlined,
+                          color: AppColors.primary,
+                        ),
+                        const SizedBox(width: AppSpacing.cardGap),
+                        Expanded(
+                          child: Text(
+                            '错误详情只会在你点击复制时写入剪贴板，'
+                            '页面不会直接展示诊断内容。',
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: AppColors.textSecondary,
+                                    ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: AppSpacing.fieldGap),

@@ -104,6 +104,8 @@ visual smoke check when browser automation is available.
   hint shown in Settings when native scheduling actions are disabled.
 - Local notification channel tests now cover tap callbacks, malformed tap
   payloads, and safe launch-target fallback when the platform call fails.
+- Bootstrap error page tests now verify startup diagnostics remain copyable
+  without exposing technical details on screen by default.
 
 ## Fixes Made During This Pass
 
@@ -118,6 +120,8 @@ visual smoke check when browser automation is available.
 - Reworded the self-check notification item to avoid exposing `payload`.
 - Reworded the add-item order-recognition prerequisite snackbar to ask for the
   order-recognition service configuration instead of VLM endpoint/model details.
+- Hid startup diagnostic details behind the copy action so a failed launch does
+  not show file paths, storage errors, or stack traces directly to users.
 - Moved the order-recognition configuration check before local image copying,
   so an unconfigured order-recognition attempt does not leave an unused order
   screenshot in app storage.
