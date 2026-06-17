@@ -55,6 +55,11 @@ check confirmed it hands off cleanly to the rendered Home screen.
   purchased, confirmed `采购项入库`, saw `已入库 1 项`, and verified the
   catalog count for `感冒药` increased from 1 to 2 with no browser warning or
   error logs.
+- Mobile Web Settings self-check smoke check on port 54334: opened Settings,
+  ran `运行自验收`, saw the card switch to `全部通过` with `15/15`, verified
+  the detailed check list rendered readable rows for inventory, reminders,
+  recipes, shopping, batch edits, and history, with no browser warning or error
+  logs.
 - Targeted UI-copy grep for engineering terms found no new actionable
   user-facing leaks. The remaining AI `JSON` wording is confined to prompts or
   internal exceptions and is wrapped by the user-friendly recipe fallback copy.
@@ -112,7 +117,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
   inventory deduction action.
 - Running a recipe deduction updates priority consumable counts in the live
   mobile Web UI and returns to the recipe list with user feedback.
-- Settings self-check completed and cleaned up its temporary data.
+- Settings self-check completed and cleaned up its temporary data, and the
+  mobile Web UI shows the 15/15 result plus readable per-check timings.
 - Repository backup/restore tests cover pre-restore snapshots, replacement
   restore, post-restore health checks, and backup reminder clearing.
 - Repository backup/restore tests now also reject incomplete or damaged backup
