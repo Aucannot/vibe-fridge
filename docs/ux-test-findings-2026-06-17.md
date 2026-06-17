@@ -733,6 +733,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Reworded the backup reminder card from row/export wording to inventory-data
   backup wording, so users see why they should back up after local changes
   without spreadsheet-like implementation terms.
+- Reworded data-health check messages from internal status/field names to
+  inventory and profile language, so import or restore issues explain what
+  needs attention without exposing raw state values.
 
 ## Remaining Risks
 

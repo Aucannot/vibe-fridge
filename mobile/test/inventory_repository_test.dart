@@ -914,6 +914,9 @@ void main() {
         'invalid_date',
       ]),
     );
+    expect(health.summary, contains('使用中库存不应带有消耗时间 1 处'));
+    expect(health.summary, isNot(contains('active')));
+    expect(health.summary, isNot(contains('consumed_at')));
   });
 
   test(

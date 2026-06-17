@@ -2400,7 +2400,7 @@ class InventoryRepository {
 
       final health = await _checkDataHealth(txn);
       if (!health.passed) {
-        throw StateError('恢复后的数据健康检查失败：${health.summary}');
+        throw StateError('恢复后的资料检查未通过：${health.summary}');
       }
     });
 
@@ -2452,7 +2452,7 @@ class InventoryRepository {
       executor,
       issues,
       code: 'invalid_status',
-      message: '库存状态不在允许集合内',
+      message: '库存状态需要修正',
       query: '''
         SELECT COUNT(*)
         FROM items
@@ -2497,7 +2497,7 @@ class InventoryRepository {
       executor,
       issues,
       code: 'active_with_consumed_at',
-      message: 'active 库存不应带 consumed_at',
+      message: '使用中库存不应带有消耗时间',
       query: '''
         SELECT COUNT(*)
         FROM items
@@ -2508,7 +2508,7 @@ class InventoryRepository {
       executor,
       issues,
       code: 'consumed_without_consumed_at',
-      message: 'consumed 库存应记录 consumed_at',
+      message: '已消耗库存缺少消耗时间',
       query: '''
         SELECT COUNT(*)
         FROM items
@@ -2565,7 +2565,7 @@ class InventoryRepository {
       issues.add(
         DataHealthIssue(
           code: 'foreign_key_violation',
-          message: '数据关联检查失败',
+          message: '资料关联需要修正',
           count: foreignKeyRows.length,
         ),
       );
@@ -3008,7 +3008,7 @@ class DataHealthReport {
 
   String get summary {
     if (passed) {
-      return '数据健康';
+      return '资料检查正常';
     }
     return issues.map((issue) => '${issue.message} ${issue.count} 处').join('；');
   }
