@@ -221,6 +221,14 @@ check confirmed it hands off cleanly to the rendered Home screen.
   reworking the detail refresh, saving a second description marker returned to
   the item-profile detail with the new description visible immediately and no
   new browser warning or error logs.
+- Mobile Web item-profile default-field edit smoke check on port 54394: added
+  `profile-default-test`, opened its item-profile detail, edited default unit
+  to `盒`, suggested shelf life to `14` days, default reminder lead time to
+  `2` days, storage location to `冷藏`, and notes to `默认值内测备注`. The first
+  pass exposed that notes saved but were invisible on the detail page; after
+  showing non-empty notes in the profile facts card, the rebuilt Web app showed
+  default unit, shelf life, reminder lead time, storage location, and notes
+  immediately after save with no browser warning or error logs.
 - Mobile Web item-profile batch-location smoke check on port 54350: opened
   `鲜牛奶`, entered batch mode, selected the inventory batch, used `改位置`,
   chose `冷冻`, saw `已修改 1 条库存的位置`, verified the batch card showed
@@ -362,6 +370,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
   view reflects the disabled state without losing the expiry date.
 - Item-profile edit now saves from the live mobile Web UI and refreshes the
   detail header to the edited description without a manual browser reload.
+- Item-profile edit now shows saved notes in the profile facts card, along
+  with edited default unit, shelf life, reminder lead time, and storage
+  location.
 - Item-profile batch mode can update selected inventory storage locations, and
   both the batch card and inventory detail fact row stay in sync.
 - Item-profile batch category changes update the profile-level category and
@@ -553,6 +564,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Reworked item-profile detail refresh after editing so saved profile changes
   reload from controller changes and remain visible without a manual browser
   refresh.
+- Displayed non-empty item-profile notes in the profile detail facts card, so
+  notes entered on the edit screen are visible after saving.
 - Clarified item-profile batch category copy so the picker and success
   feedback describe the profile-level category being changed instead of
   implying only one inventory batch owns the category.
