@@ -28,12 +28,13 @@ check confirmed it hands off cleanly to the rendered Home screen.
   copy coverage, plus AI recipe and order-recognition error-copy coverage,
   48 tests.
 - `flutter analyze`: passed after the latest beta fixes including Web route
-  cleanup, notification channel coverage, and the edit-page Material fix.
+  cleanup, direct Web detail URL hash cleanup, notification channel coverage,
+  and the edit-page Material fix.
 - `flutter test test/local_notification_service_test.dart`: passed after the
   Android reminder scheduler refactor, 6 tests.
 - `flutter build web --debug --no-wasm-dry-run`: passed after the latest beta
-  fixes including Web route cleanup, startup error copy coverage, and the
-  edit-page Material fix.
+  fixes including Web route cleanup, direct Web detail URL hash cleanup,
+  startup error copy coverage, and the edit-page Material fix.
 - Web build output now includes the native HTML loading screen used to cover
   Flutter Web's cold-start font fallback window.
 - App self-check from Settings: passed, 15/15.
@@ -93,6 +94,11 @@ check confirmed it hands off cleanly to the rendered Home screen.
   its own transparent `Material`, the edit screen opened with no browser
   warning or error logs, and saving `存放位置` as `冷藏` was visible on the
   inventory detail facts after reload.
+- Mobile Web direct detail URL smoke check on port 54344: loaded
+  `?route=items%2Fitem%2Fitem-milk-1` directly, waited for route cleanup, and
+  verified the address bar stayed on the query route without a Flutter hash
+  fragment while rendering the inventory detail page with no browser warning
+  or error logs.
 - Targeted UI-copy grep for engineering terms found no new actionable
   user-facing leaks. The remaining AI `JSON` wording is confined to prompts or
   internal exceptions and is wrapped by the user-friendly recipe fallback copy.
@@ -148,6 +154,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
   detail fact row stays in sync.
 - Inventory edit now opens without Flutter debug assertions in the live mobile
   Web UI, and edited storage location data persists into the detail facts.
+- Direct Web detail URLs now clean up late Flutter hash fragments and keep the
+  copyable address bar on the app's query-route format.
 - Marking an inventory batch consumed removes it from active priority handling
   and shows it in the history tab as `已消耗`.
 - Shopping list checkbox moves a pending item into the purchased section.
@@ -251,6 +259,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Extended the same route cleanup pattern to home priority rows, item-profile
   batch rows, and recipe detail navigation so those natural beta-user paths
   avoid mixed query/hash URLs too.
+- Strengthened Web route hash cleanup with delayed retries so direct detail
+  URLs also remove late Flutter hash fragments after the Navigator settles.
 - Added a lightweight Web loading screen that uses native system Chinese fonts,
   matches the app's warm visual style, honors reduced-motion preferences, and
   hides shortly after Flutter's first frame to reduce the cold-start square-text
@@ -272,6 +282,3 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - The native notification implementations still need runtime proof even though
   the Dart service degrades cleanly when permission is missing, unsupported, or
   the platform channel is absent.
-- Directly loading an inventory detail query route in Web can still leave a
-  Flutter hash fragment in the address bar; natural in-app detail navigation
-  remains covered by the no-hash smoke checks.

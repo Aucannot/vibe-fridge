@@ -36,6 +36,8 @@ void setWebRouteState(String route, {bool replace = false}) {
   final location = web.window.location;
   final hasHashRoute = location.hash.isNotEmpty;
   if (currentRoute == nextRoute && !hasHashRoute) {
+    _scheduleHashRouteCleanup(
+        nextRoute, '${location.pathname}${location.search}');
     return;
   }
 
@@ -45,7 +47,7 @@ void setWebRouteState(String route, {bool replace = false}) {
   } else {
     web.window.history.pushState(null, '', nextUrl);
   }
-  Timer.run(() => _clearHashRouteIfStillCurrent(nextRoute, nextUrl));
+  _scheduleHashRouteCleanup(nextRoute, nextUrl);
 }
 
 String _currentRoute() {
@@ -88,3 +90,16 @@ void _clearHashRouteIfStillCurrent(String route, String url) {
   }
   web.window.history.replaceState(null, '', url);
 }
+
+void _scheduleHashRouteCleanup(String route, String url) {
+  Timer.run(() => _clearHashRouteIfStillCurrent(route, url));
+  for (final delay in _hashCleanupDelays) {
+    Timer(delay, () => _clearHashRouteIfStillCurrent(route, url));
+  }
+}
+
+const _hashCleanupDelays = [
+  Duration(milliseconds: 50),
+  Duration(milliseconds: 250),
+  Duration(seconds: 1),
+];
