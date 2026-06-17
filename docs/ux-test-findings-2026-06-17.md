@@ -40,6 +40,9 @@ square placeholders on a cold port before the font becomes available.
   remained well under thresholds with 5,000 generated records: exact catalog
   search 0.683 ms, category filter 2.177 ms, today-action query 1.839 ms,
   active totals 0.764 ms, wiki count 0.012 ms, category counts 2.253 ms.
+- Mobile Web smoke check on port 54326: pasted order text with `鸡蛋 12枚`
+  and `香蕉 3根` now parses into importable items with the correct quantities
+  and units, with no browser warning or error logs.
 
 ## Passing Checks Observed
 
@@ -73,6 +76,8 @@ square placeholders on a cold port before the font becomes available.
 - Moved the order-recognition configuration check before local image copying,
   so an unconfigured order-recognition attempt does not leave an unused order
   screenshot in app storage.
+- Expanded pasted order text unit parsing so common units like `枚` and `根`
+  do not get stuck in the item name or default to quantity 1.
 - Fixed nullable SQL query arguments in shopping-list de-duplication and legacy
   duplicate detection so sqflite no longer logs a future-breaking null argument
   warning.

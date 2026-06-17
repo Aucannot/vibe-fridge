@@ -90,6 +90,8 @@ Organic Milk x2
 组合套餐A（苹果+香蕉） 1套
 退款 草莓酸奶 1杯
 赠品纸巾 1包
+鸡蛋 12枚
+香蕉 3根
 ''');
 
     expect(result.sourceApp, '手动粘贴');
@@ -111,6 +113,14 @@ Organic Milk x2
     expect(gift.unit, '包');
     expect(gift.categoryName, '日用品');
     expect(gift.confidence, lessThan(0.7));
+
+    final eggs = result.items.singleWhere((item) => item.name == '鸡蛋');
+    expect(eggs.quantity, 12);
+    expect(eggs.unit, '枚');
+
+    final banana = result.items.singleWhere((item) => item.name == '香蕉');
+    expect(banana.quantity, 3);
+    expect(banana.unit, '根');
   });
 
   test('validates VLM configuration successfully', () async {

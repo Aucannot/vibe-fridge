@@ -128,7 +128,7 @@ _QuantityGuess _quantity(String line) {
   }
 
   final unitMatch = RegExp(
-    r'(\d+)\s*(盒|瓶|袋|包|个|只|斤|克|g|kg|ml|l|L|升|罐|杯|套|条|支|片|份|箱)',
+    r'(\d+)\s*(盒|瓶|袋|包|个|只|枚|根|斤|克|g|kg|ml|l|L|升|罐|杯|套|条|支|片|份|箱)',
   ).firstMatch(line);
   if (unitMatch != null) {
     return _QuantityGuess(
