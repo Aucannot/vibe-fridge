@@ -574,6 +574,8 @@ void main() {
       categoryId: categories.first.id,
       quantity: 1,
       unit: '个',
+      purchaseDate: DateTime(2026, 6, 17),
+      expiryDate: DateTime(2026, 6, 30),
     );
     expect(
       await repository.getRegisteredItems(keyword: '备份后新增物品'),
@@ -582,6 +584,8 @@ void main() {
     final csv = await repository.exportInventoryCsv();
     expect(csv, startsWith('物品名称,分类,状态,数量,单位,购买日期,过期日期,存放位置,标签,来源'));
     expect(csv, contains('备份后新增物品'));
+    expect(csv, contains('2026-06-17,2026-06-30'));
+    expect(csv, isNot(contains('T00:00')));
     expect(csv, isNot(contains('source_order_id')));
     expect(csv, isNot(startsWith('id,')));
 

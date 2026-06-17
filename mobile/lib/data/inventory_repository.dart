@@ -2288,8 +2288,8 @@ class InventoryRepository {
           item.status.label,
           '${item.quantity}',
           item.unit ?? '',
-          item.purchaseDate?.toIso8601String() ?? '',
-          item.expiryDate?.toIso8601String() ?? '',
+          _csvDate(item.purchaseDate),
+          _csvDate(item.expiryDate),
           item.storageLocation ?? '',
           item.tags.join(';'),
           item.sourceApp ?? '',
@@ -3058,6 +3058,16 @@ String _csvCell(String value) {
     return '"$escaped"';
   }
   return escaped;
+}
+
+String _csvDate(DateTime? value) {
+  if (value == null) {
+    return '';
+  }
+  final year = value.year.toString().padLeft(4, '0');
+  final month = value.month.toString().padLeft(2, '0');
+  final day = value.day.toString().padLeft(2, '0');
+  return '$year-$month-$day';
 }
 
 List<Map<String, dynamic>> _payloadList(Object? value) {
