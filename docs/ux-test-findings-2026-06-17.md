@@ -43,6 +43,9 @@ square placeholders on a cold port before the font becomes available.
 - Mobile Web smoke check on port 54326: pasted order text with `鸡蛋 12枚`
   and `香蕉 3根` now parses into importable items with the correct quantities
   and units, with no browser warning or error logs.
+- Mobile Web settings check on port 54328: unsupported local notification
+  actions now render disabled while keeping the platform-unavailable status
+  visible, with no browser warning or error logs.
 
 ## Passing Checks Observed
 
@@ -78,6 +81,9 @@ square placeholders on a cold port before the font becomes available.
   screenshot in app storage.
 - Expanded pasted order text unit parsing so common units like `枚` and `根`
   do not get stuck in the item name or default to quantity 1.
+- Disabled local notification action buttons on unsupported platforms so users
+  do not have to click a dead-end action to learn that reminders cannot be
+  scheduled there.
 - Fixed nullable SQL query arguments in shopping-list de-duplication and legacy
   duplicate detection so sqflite no longer logs a future-breaking null argument
   warning.

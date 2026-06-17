@@ -75,6 +75,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final notificationsSupported =
+        widget.controller.notificationPermission.supported;
     return RefreshIndicator(
       onRefresh: widget.controller.refresh,
       child: ListView(
@@ -206,7 +208,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         children: [
                           Expanded(
                             child: OutlinedButton.icon(
-                              onPressed: _syncingNotifications
+                              onPressed: _syncingNotifications ||
+                                      !notificationsSupported
                                   ? null
                                   : _requestNotificationPermission,
                               icon: _syncingNotifications
@@ -220,7 +223,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           const SizedBox(width: AppSpacing.cardGap),
                           Expanded(
                             child: FilledButton.icon(
-                              onPressed: _syncingNotifications
+                              onPressed: _syncingNotifications ||
+                                      !notificationsSupported
                                   ? null
                                   : _syncLocalNotifications,
                               icon: _syncingNotifications
