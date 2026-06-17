@@ -131,6 +131,12 @@ check confirmed it hands off cleanly to the rendered Home screen.
   `导出备份`, and saw `备份已导出` feedback with no browser warning or error
   logs. Codex In-app Browser does not support download events, so this proves
   the live UI trigger and success feedback but not downloaded file persistence.
+- Mobile Web legacy-import preview smoke check on ports 54372 and 54373:
+  opening Settings and tapping `导入旧版库存` originally produced a Flutter Web
+  asset 404 warning while probing the optional ignored
+  `legacy_inventory.local.json`; after checking the asset manifest before
+  loading the override, the preview dialog opened on the empty bundled legacy
+  file with all counts at 0 and no current-port browser warning or error logs.
 - Mobile Web catalog search smoke check on port 54340: opened the Items tab,
   searched for `牛奶`, saw the catalog narrow to `鲜牛奶` while keeping the
   expiring mini-card visible, then opened the result to
@@ -334,6 +340,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
   and the app shows success feedback without console warnings or errors.
 - Settings backup export can be triggered from the live mobile Web UI, and the
   app shows success feedback without console warnings or errors.
+- Settings legacy-import preview opens without probing missing optional local
+  assets, so the empty bundled import file no longer causes Web asset warnings.
 - Repository backup/restore tests cover pre-restore snapshots, replacement
   restore, post-restore health checks, and backup reminder clearing.
 - Repository backup/restore tests now also reject incomplete or damaged backup
@@ -416,6 +424,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Fixed nullable SQL query arguments in shopping-list de-duplication and legacy
   duplicate detection so sqflite no longer logs a future-breaking null argument
   warning.
+- Changed legacy import asset loading to consult the Flutter asset manifest
+  before loading the ignored `.local` override, avoiding a Web 404 warning when
+  only the bundled empty legacy file is present.
 - Cleaned up Web detail route syncing so copied detail URLs are no longer set
   up to keep both the app route query and a Flutter hash route after
   navigation; this pass verified compilation, while browser address-bar

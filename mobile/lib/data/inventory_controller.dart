@@ -18,12 +18,15 @@ class InventoryController extends ChangeNotifier {
   InventoryController(
     this.repository, {
     LocalNotificationService? notificationService,
-  }) : notificationService = notificationService ?? LocalNotificationService() {
+    AssetBundle? assetBundle,
+  })  : notificationService = notificationService ?? LocalNotificationService(),
+        assetBundle = assetBundle ?? rootBundle {
     this.notificationService.setOnNotificationTap(_handleNotificationTap);
   }
 
   final InventoryRepository repository;
   final LocalNotificationService notificationService;
+  final AssetBundle assetBundle;
 
   bool isLoading = true;
   String? errorMessage;
@@ -306,9 +309,7 @@ class InventoryController extends ChangeNotifier {
         sourceItemId: item.id,
         quantity: 1,
         unit: item.unit,
-        note: item.status == ItemStatus.consumed
-            ? '上次已消耗'
-            : '从库存记录加入',
+        note: item.status == ItemStatus.consumed ? '上次已消耗' : '从库存记录加入',
       ),
     );
   }
@@ -524,12 +525,13 @@ class InventoryController extends ChangeNotifier {
   }
 
   Future<String> _loadLegacyImportAsset() async {
-    try {
-      return await rootBundle
-          .loadString('assets/import/legacy_inventory.local.json');
-    } catch (_) {
-      return rootBundle.loadString('assets/import/legacy_inventory.json');
+    const localAsset = 'assets/import/legacy_inventory.local.json';
+    const defaultAsset = 'assets/import/legacy_inventory.json';
+    final manifest = await AssetManifest.loadFromAssetBundle(assetBundle);
+    if (manifest.listAssets().contains(localAsset)) {
+      return assetBundle.loadString(localAsset);
     }
+    return assetBundle.loadString(defaultAsset);
   }
 
   String? _categoryIdForName(String? categoryName) {

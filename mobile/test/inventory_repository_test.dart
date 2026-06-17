@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vibe_fridge/data/acceptance_test_service.dart';
 import 'package:vibe_fridge/data/app_database.dart';
@@ -786,6 +789,35 @@ void main() {
     expect(await repository.getRegisteredItems(keyword: '鲜牛奶'), isEmpty);
   });
 
+  test('loads default legacy asset without probing missing local override',
+      () async {
+    const legacyAsset = 'assets/import/legacy_inventory.json';
+    const localAsset = 'assets/import/legacy_inventory.local.json';
+    final bundle = _FakeLegacyAssetBundle(
+      manifestAssets: const [legacyAsset],
+      assets: const {
+        legacyAsset: '''
+{
+  "format": "vibe-fridge-legacy-export",
+  "version": 1,
+  "categories": [],
+  "wikis": [],
+  "items": [],
+  "tags": [],
+  "item_tags": []
+}
+''',
+      },
+    );
+    final controller = InventoryController(repository, assetBundle: bundle);
+
+    final preview = await controller.previewLegacyAssetImport();
+
+    expect(preview.source.total, 0);
+    expect(bundle.loadedAssets, contains(legacyAsset));
+    expect(bundle.loadedAssets, isNot(contains(localAsset)));
+  });
+
   test('reports invariant violations in health check', () async {
     final now = DateTime.now().toIso8601String();
     await appDatabase.database.insert('items', {
@@ -950,4 +982,39 @@ void main() {
       );
     },
   );
+}
+
+class _FakeLegacyAssetBundle extends CachingAssetBundle {
+  _FakeLegacyAssetBundle({
+    required List<String> manifestAssets,
+    required Map<String, String> assets,
+  })  : _assets = assets,
+        _manifestData = _encodeManifest(manifestAssets);
+
+  final Map<String, String> _assets;
+  final ByteData _manifestData;
+  final loadedAssets = <String>[];
+
+  static ByteData _encodeManifest(List<String> assets) {
+    final manifest = <String, Object>{
+      for (final asset in assets)
+        asset: [
+          <String, Object>{'asset': asset},
+        ],
+    };
+    return const StandardMessageCodec().encodeMessage(manifest)!;
+  }
+
+  @override
+  Future<ByteData> load(String key) async {
+    loadedAssets.add(key);
+    if (key == 'AssetManifest.bin') {
+      return _manifestData;
+    }
+    final content = _assets[key];
+    if (content == null) {
+      throw StateError('Missing fake asset: $key');
+    }
+    return ByteData.sublistView(Uint8List.fromList(utf8.encode(content)));
+  }
 }
