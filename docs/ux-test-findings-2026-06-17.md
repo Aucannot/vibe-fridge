@@ -59,6 +59,8 @@ visual smoke check when browser automation is available.
   priority rows, item-profile batch rows, and recipe cards.
 - Web cold-start loading screen compiles into `build/web/index.html` and uses
   system Chinese fonts until Flutter's first frame has settled.
+- Web app metadata now uses the product name, inventory-focused description,
+  and warm theme colors instead of Flutter template defaults.
 
 ## Passing Checks Observed
 
@@ -146,6 +148,8 @@ visual smoke check when browser automation is available.
   matches the app's warm visual style, honors reduced-motion preferences, and
   hides shortly after Flutter's first frame to reduce the cold-start square-text
   flash.
+- Replaced Web/PWA template metadata so browser tabs and installed app surfaces
+  show `vibe-fridge`, the app's actual inventory purpose, and product colors.
 
 ## Remaining Risks
 
