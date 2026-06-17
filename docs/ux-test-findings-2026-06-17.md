@@ -80,6 +80,12 @@ check confirmed it hands off cleanly to the rendered Home screen.
   `未配置` returned, with no browser warning or error logs. The `测试配置`
   action was intentionally not used, so the pass did not send an external
   request.
+- Mobile Web demo-data reset smoke check on port 54367: added a user-created
+  item named `reset-test-nori`, verified the Settings counts increased to
+  `库存批次 5` and `物品资料 6`, then used `重置示例数据`. The confirmation copy
+  clearly promised only built-in sample data would be rebuilt, the app showed
+  `示例数据已重置，清理 9 行旧示例数据`, and the catalog still showed
+  `reset-test-nori` afterward with no browser warning or error logs.
 - Mobile Web manual-add smoke check on port 54335: opened Add, entered
   `内测手动橙子` with the default quantity and purchase date, saved it, returned
   to the catalog, saw the new item with `1` batch, then opened its item-profile
@@ -288,6 +294,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Settings order-recognition configuration saves from the mobile Web UI,
   persists after reload without revealing the saved key, and can be cleared
   through the confirmation dialog.
+- Settings demo-data reset rebuilds the built-in sample data from the mobile
+  Web UI while preserving user-created inventory.
 - Settings inventory-table export can be triggered from the live mobile Web UI,
   and the app shows success feedback without console warnings or errors.
 - Settings backup export can be triggered from the live mobile Web UI, and the
