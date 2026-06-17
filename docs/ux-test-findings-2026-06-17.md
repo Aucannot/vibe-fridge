@@ -68,6 +68,11 @@ check confirmed it hands off cleanly to the rendered Home screen.
   Home priority row for `鲜牛奶`, reached `?route=items%2Fitem%2Fitem-milk-1`,
   increased quantity from `2 盒` to `3 盒`, verified the fact row updated, then
   decreased it back to `2 盒` with no browser warning or error logs.
+- Mobile Web order-text import smoke check on port 54337: pasted
+  `BETA-TEXT-001` with `苹果 4个` and `酸奶 2盒`, reviewed `2/2 已选` with
+  correct quantities and units, confirmed batch import, saw `导入完成` with
+  `新增 2`, and verified the catalog showed `苹果 4` and `酸奶 2` with no
+  browser warning or error logs.
 - Targeted UI-copy grep for engineering terms found no new actionable
   user-facing leaks. The remaining AI `JSON` wording is confined to prompts or
   internal exceptions and is wrapped by the user-friendly recipe fallback copy.
@@ -157,6 +162,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
   suggestions without exposing HTTP status codes or server text to users.
 - Order-recognition error-copy tests now verify HTTP status codes and service
   response snippets stay out of user-facing configuration messages.
+- Pasted order-text import now has live mobile Web coverage from text parsing
+  through review confirmation and catalog verification.
 
 ## Fixes Made During This Pass
 
