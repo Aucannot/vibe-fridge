@@ -63,6 +63,8 @@ visual smoke check when browser automation is available.
   and warm theme colors instead of Flutter template defaults.
 - macOS camera and photo permission prompts now use Chinese product language
   and describe the user-triggered photo workflows.
+- Android's system notification channel now uses the broader product term
+  `库存提醒` instead of only expiry-focused wording.
 
 ## Passing Checks Observed
 
@@ -154,6 +156,8 @@ visual smoke check when browser automation is available.
   show `vibe-fridge`, the app's actual inventory purpose, and product colors.
 - Reworded macOS camera and photo permission prompts to match the app's Chinese
   UI and the actual user actions that request access.
+- Reworded the Android notification channel display name from expiry-only
+  language to inventory-reminder language.
 
 ## Remaining Risks
 

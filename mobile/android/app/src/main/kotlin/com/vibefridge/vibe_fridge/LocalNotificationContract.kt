@@ -3,7 +3,7 @@ package com.vibefridge.vibe_fridge
 object LocalNotificationContract {
     const val channelName = "vibe_fridge/local_notifications"
     const val notificationChannelId = "expiry_reminders"
-    const val notificationChannelName = "过期提醒"
+    const val notificationChannelName = "库存提醒"
     const val permissionRequestCode = 4817
     const val prefsName = "vibe_fridge_notifications"
     const val scheduledItemIdsKey = "scheduled_item_ids"
