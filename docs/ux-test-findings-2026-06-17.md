@@ -36,6 +36,10 @@ square placeholders on a cold port before the font becomes available.
 - `flutter doctor -v`: confirmed no Android SDK, incomplete Xcode, missing
   CocoaPods, no Chrome binary, and sandboxed network checks failing without
   elevated network access.
+- `python3 tools/perf_inventory_sqlite.py`: passed. Core inventory queries
+  remained well under thresholds with 5,000 generated records: exact catalog
+  search 0.683 ms, category filter 2.177 ms, today-action query 1.839 ms,
+  active totals 0.764 ms, wiki count 0.012 ms, category counts 2.253 ms.
 
 ## Passing Checks Observed
 
@@ -53,6 +57,10 @@ square placeholders on a cold port before the font becomes available.
   inventory deduction action.
 - Running a recipe deduction updates priority consumable counts.
 - Settings self-check completed and cleaned up its temporary data.
+- Repository backup/restore tests cover pre-restore snapshots, replacement
+  restore, post-restore health checks, and backup reminder clearing.
+- Notification payload tests cover pending reminders, ignored reminders, title
+  and body content, schedule time, and serialized timestamp fields.
 
 ## Fixes Made During This Pass
 
@@ -74,3 +82,6 @@ square placeholders on a cold port before the font becomes available.
   font loading; it recovered after waiting a few seconds in this pass.
 - Web detail URLs can include Flutter's hash route alongside the query route,
   which is not blocking but makes copied URLs less tidy.
+- The native notification implementations still need runtime proof even though
+  the Dart service degrades cleanly when permission is missing, unsupported, or
+  the platform channel is absent.
