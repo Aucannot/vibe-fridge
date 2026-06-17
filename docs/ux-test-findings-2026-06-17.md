@@ -155,6 +155,14 @@ check confirmed it hands off cleanly to the rendered Home screen.
   correct quantities and units, confirmed batch import, saw `导入完成` with
   `新增 2`, and verified the catalog showed `苹果 4` and `酸奶 2` with no
   browser warning or error logs.
+- Mobile Web order-text review-edit smoke check on port 54393: pasted an order
+  containing `内测复核苹果 4个`, a gift line, and `内测散装坚果` without a
+  quantity. The review page showed `3/3 已选`, `1 可入库`, and `2 需要确认`;
+  editing the apple quantity from `4` to `6` updated its summary pill, unselecting
+  the gift left it out of the import, filling the nut unit as `袋` and tapping
+  `标记已确认` changed the primary action to `添加 2 个物品`. Confirming import
+  showed `新增 2`, `跳过 1`, `需要手动处理 0`, and the catalog showed only
+  `内测复核苹果 6` and `内测散装坚果 1`, with no browser warning or error logs.
 - Mobile Web consume/history smoke check on port 54338: opened `面包` inventory
   detail, confirmed `标记已消耗`, returned to Home with the pending reminder
   count reduced from 2 to 1, then opened `?route=items&view=history` and saw
@@ -455,6 +463,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
   response snippets stay out of user-facing configuration messages.
 - Pasted order-text import now has live mobile Web coverage from text parsing
   through review confirmation and catalog verification.
+- Order-text review supports editing recognized quantities, filling missing
+  units, excluding selected rows such as gifts, and confirming low-confidence
+  items before batch import.
 
 ## Fixes Made During This Pass
 
