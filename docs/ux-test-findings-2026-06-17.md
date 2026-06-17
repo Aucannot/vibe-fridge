@@ -91,6 +91,13 @@ check confirmed it hands off cleanly to the rendered Home screen.
   verified `待采购 1` contained `感冒药` with quantity `1` and source-note copy,
   then deleted the pending item and verified `待采购 0` while `感冒药` returned
   to replenishment suggestions, with no browser warning or error logs.
+- Mobile Web focused-inventory shopping smoke check on port 54392: opened Home,
+  tapped the `提醒到期 2` tile to reach `?route=items&focus=reminderDue`,
+  added `面包` to the shopping list from the focused inventory card without
+  leaving that list, opened the Shopping view, verified `待采购 1` contained
+  `面包` with quantity `1袋` and source-note copy, then deleted it and verified
+  `待采购 0` while `面包` returned to replenishment suggestions, with no browser
+  warning or error logs.
 - Mobile Web Settings self-check smoke check on port 54334: opened Settings,
   ran `运行自验收`, saw the card switch to `全部通过` with `15/15`, verified
   the detailed check list rendered readable rows for inventory, reminders,
@@ -381,6 +388,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Catalog row cart actions add the selected item profile to the shopping list
   without navigating away, and deleting that pending item restores the
   replenishment suggestion state.
+- Focused inventory cards reached from Home action tiles can add their exact
+  batch to the shopping list while preserving the focused list route.
 - Recipes page lists priority consumables and concrete recipe suggestions.
 - AI recipe generation falls back to rule suggestions when the AI service is
   not configured, with user-facing copy and a reset action.
