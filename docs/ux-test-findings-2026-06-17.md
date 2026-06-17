@@ -230,6 +230,13 @@ check confirmed it hands off cleanly to the rendered Home screen.
   `感冒药` changed to `0` batches, then reopened the deleted direct detail URL
   and saw the friendly `库存记录不存在` empty state with no browser warning or
   error logs.
+- Mobile Web item-profile delete smoke check on port 54389: added
+  `profile-delete-test`, opened its item-profile detail, verified deleting the
+  profile was blocked while `使用中批次` was `1`, deleted the inventory batch,
+  saw the profile update to `使用中批次 0` with the `暂无库存` empty state,
+  deleted the now-empty profile, verified catalog search showed
+  `没有匹配物品`, and reopened the stale profile URL to the friendly
+  `物品资料不存在` empty state with no browser warning or error logs.
 - Mobile Web shopping-item delete smoke check on port 54357: opened the
   shopping tab, added the `面包` replenishment suggestion to the pending list,
   opened the row menu, confirmed the destructive `删除采购项` dialog, and
@@ -343,6 +350,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
   History and back into active catalog and expiring views.
 - Deleting a single inventory batch returns to the catalog, updates the item
   count, and leaves a friendly empty state for stale direct detail URLs.
+- Empty item profiles can be deleted only after their inventory batches are
+  removed, and stale profile URLs resolve to a friendly empty state.
 - Shopping list checkbox moves a pending item into the purchased section.
 - Purchased shopping-list items can be unchecked back into the pending section
   after a mistaken tap.
