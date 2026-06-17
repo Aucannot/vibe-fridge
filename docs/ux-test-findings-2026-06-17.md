@@ -89,6 +89,8 @@ visual smoke check when browser automation is available.
   and body content, schedule time, and serialized timestamp fields.
 - Local notification sync result tests now cover supported, unauthorized,
   unsupported, missing implementation, and unknown failure copy.
+- Local notification channel tests now cover tap callbacks, malformed tap
+  payloads, and safe launch-target fallback when the platform call fails.
 
 ## Fixes Made During This Pass
 
@@ -118,6 +120,8 @@ visual smoke check when browser automation is available.
   count.
 - Reworded local notification sync failures so platform/plugin error codes are
   not shown directly to users.
+- Added Flutter-side notification channel contract tests for notification tap
+  delivery and launch-target failure fallback.
 - Reworked the exported inventory table columns to remove internal identifiers
   and use user-readable Chinese headers.
 - Reworked inventory table dates to use `yyyy-MM-dd` instead of timestamp-like
