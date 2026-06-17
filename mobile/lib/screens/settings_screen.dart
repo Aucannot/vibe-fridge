@@ -888,14 +888,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (decoded is! Map) {
         throw const FormatException('备份文件格式不正确');
       }
-      final result = await widget.controller.restoreBackup(
+      await widget.controller.restoreBackup(
         Map<String, dynamic>.from(decoded),
       );
       if (!mounted) {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('恢复完成：${result.restoredRows} 条资料')),
+        const SnackBar(content: Text('备份已恢复')),
       );
     } catch (error, stackTrace) {
       if (!mounted) {

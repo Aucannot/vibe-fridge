@@ -88,6 +88,9 @@ square placeholders on a cold port before the font becomes available.
   scheduled there.
 - Added backup structure validation before restore so malformed backup files
   fail early without changing current inventory data.
+- Simplified the backup restore success message so it does not expose an
+  implementation-level restored row count as if it were a user-facing item
+  count.
 - Fixed nullable SQL query arguments in shopping-list de-duplication and legacy
   duplicate detection so sqflite no longer logs a future-breaking null argument
   warning.
