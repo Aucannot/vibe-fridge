@@ -1,10 +1,8 @@
 package com.vibefridge.vibe_fridge
 
 import android.Manifest
-import android.app.AlarmManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -12,7 +10,6 @@ import android.os.Build
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
-import kotlin.math.max
 
 class MainActivity : FlutterActivity() {
     private var notificationChannel: MethodChannel? = null
@@ -38,11 +35,14 @@ class MainActivity : FlutterActivity() {
                         result.success(itemId)
                     }
                     "scheduleInventoryReminders" -> {
-                        scheduleInventoryReminders(call.arguments)
+                        LocalReminderScheduler.scheduleFromChannel(
+                            this,
+                            call.arguments,
+                        )
                         result.success(null)
                     }
                     "cancelAll" -> {
-                        cancelScheduledReminders()
+                        LocalReminderScheduler.cancelScheduledReminders(this)
                         result.success(null)
                     }
                     else -> result.notImplemented()
@@ -103,70 +103,6 @@ class MainActivity : FlutterActivity() {
         )
     }
 
-    private fun scheduleInventoryReminders(arguments: Any?) {
-        val rows = (arguments as? Map<*, *>)?.get("notifications") as? List<*>
-            ?: emptyList<Any>()
-        cancelScheduledReminders()
-        val scheduledItemIds = mutableSetOf<String>()
-        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        rows.filterIsInstance<Map<*, *>>().forEach { row ->
-            val itemId = row["itemId"] as? String ?: return@forEach
-            val title = row["title"] as? String ?: "库存提醒"
-            val body = row["body"] as? String ?: "打开 vibe-fridge 查看详情"
-            val scheduledAtMillis =
-                (row["scheduledAtMillis"] as? Number)?.toLong()
-                    ?: return@forEach
-            val triggerAt = max(
-                scheduledAtMillis,
-                System.currentTimeMillis() + 30_000L,
-            )
-            val intent = Intent(this, ReminderNotificationReceiver::class.java)
-                .putExtra(LocalNotificationContract.extraItemId, itemId)
-                .putExtra(LocalNotificationContract.extraTitle, title)
-                .putExtra(LocalNotificationContract.extraBody, body)
-            val pendingIntent = PendingIntent.getBroadcast(
-                this,
-                LocalNotificationContract.requestCodeFor(itemId),
-                intent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-            )
-            alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
-            scheduledItemIds.add(itemId)
-        }
-        notificationPrefs()
-            .edit()
-            .putStringSet(
-                LocalNotificationContract.scheduledItemIdsKey,
-                scheduledItemIds,
-            )
-            .apply()
-    }
-
-    private fun cancelScheduledReminders() {
-        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val itemIds = notificationPrefs().getStringSet(
-            LocalNotificationContract.scheduledItemIdsKey,
-            emptySet(),
-        ) ?: emptySet()
-        itemIds.forEach { itemId ->
-            val intent = Intent(this, ReminderNotificationReceiver::class.java)
-            val pendingIntent = PendingIntent.getBroadcast(
-                this,
-                LocalNotificationContract.requestCodeFor(itemId),
-                intent,
-                PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE,
-            )
-            if (pendingIntent != null) {
-                alarmManager.cancel(pendingIntent)
-                pendingIntent.cancel()
-            }
-        }
-        notificationPrefs()
-            .edit()
-            .remove(LocalNotificationContract.scheduledItemIdsKey)
-            .apply()
-    }
-
     private fun ensureNotificationChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
             return
@@ -184,8 +120,4 @@ class MainActivity : FlutterActivity() {
         notificationManager.createNotificationChannel(channel)
     }
 
-    private fun notificationPrefs() = getSharedPreferences(
-        LocalNotificationContract.prefsName,
-        Context.MODE_PRIVATE,
-    )
 }

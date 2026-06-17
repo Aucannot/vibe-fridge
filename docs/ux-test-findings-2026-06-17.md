@@ -28,6 +28,8 @@ visual smoke check when browser automation is available.
   plus AI recipe and order-recognition error-copy coverage, 48 tests.
 - `flutter analyze`: passed after the latest beta fixes including Web route
   cleanup and notification channel coverage.
+- `flutter test test/local_notification_service_test.dart`: passed after the
+  Android reminder scheduler refactor, 6 tests.
 - `flutter build web --debug --no-wasm-dry-run`: passed after the latest beta
   fixes including Web route cleanup and startup error copy coverage.
 - Web build output now includes the native HTML loading screen used to cover
@@ -47,6 +49,8 @@ visual smoke check when browser automation is available.
   directory is Command Line Tools and `xcodebuild` is unavailable to `xcrun`.
 - `flutter build apk --debug`: blocked by local environment after downloading
   Flutter Android artifacts; Flutter reported no Android SDK.
+- `xmllint --noout mobile/android/app/src/main/AndroidManifest.xml`: passed
+  after adding the Android boot/package-replaced reminder receiver.
 - `flutter doctor -v`: confirmed no Android SDK, incomplete Xcode, missing
   CocoaPods, no Chrome binary, and sandboxed network checks failing without
   elevated network access.
@@ -112,6 +116,9 @@ visual smoke check when browser automation is available.
   hint shown in Settings when native scheduling actions are disabled.
 - Local notification channel tests now cover tap callbacks, malformed tap
   payloads, and safe launch-target fallback when the platform call fails.
+- Android notification scheduling now persists pending reminder payloads and
+  registers boot/package-replaced restoration points; runtime proof still needs
+  an Android SDK/device environment.
 - Bootstrap error page tests now verify startup diagnostics remain copyable
   without exposing technical details on screen by default.
 - AI recipe fallback tests now verify service failures still return rule-based
@@ -155,6 +162,8 @@ visual smoke check when browser automation is available.
   count.
 - Reworded local notification sync failures so platform/plugin error codes are
   not shown directly to users.
+- Added Android reminder restoration after device reboot or app update by
+  persisting scheduled reminder payloads and replaying them from a receiver.
 - Added Flutter-side notification permission channel contract tests for native
   status parsing and platform-exception fallback.
 - Added Flutter-side notification channel contract tests for notification tap

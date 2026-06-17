@@ -8,6 +8,7 @@ object LocalNotificationContract {
     const val permissionRequestCode = 4817
     const val prefsName = "vibe_fridge_notifications"
     const val scheduledItemIdsKey = "scheduled_item_ids"
+    const val scheduledNotificationsKey = "scheduled_notifications"
     const val extraItemId = "item_id"
     const val extraTitle = "title"
     const val extraBody = "body"
