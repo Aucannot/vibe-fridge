@@ -71,6 +71,8 @@ square placeholders on a cold port before the font becomes available.
 - Repository export tests now verify the user-facing inventory table uses
   readable column names, omits internal identifiers, and formats dates as
   plain calendar dates.
+- Repository export tests now verify the inventory table starts with a UTF-8
+  marker so spreadsheet apps can detect Chinese text more reliably.
 - Notification payload tests cover pending reminders, ignored reminders, title
   and body content, schedule time, and serialized timestamp fields.
 - Local notification sync result tests now cover supported, unauthorized,
@@ -106,6 +108,8 @@ square placeholders on a cold port before the font becomes available.
   and use user-readable Chinese headers.
 - Reworked inventory table dates to use `yyyy-MM-dd` instead of timestamp-like
   values.
+- Added a UTF-8 marker to the exported inventory table to reduce Chinese text
+  mojibake in desktop spreadsheet apps.
 - Fixed nullable SQL query arguments in shopping-list de-duplication and legacy
   duplicate detection so sqflite no longer logs a future-breaking null argument
   warning.

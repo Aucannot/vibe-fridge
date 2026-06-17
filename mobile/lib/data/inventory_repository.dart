@@ -2266,6 +2266,7 @@ class InventoryRepository {
     ''');
     final items = rows.map(InventoryItem.fromMap).toList();
     final buffer = StringBuffer();
+    buffer.write('\ufeff');
     buffer.writeln(
       _csvRow([
         '物品名称',
