@@ -189,6 +189,12 @@ check confirmed it hands off cleanly to the rendered Home screen.
   standalone reference lines, the rebuilt Web app showed `10/10 已选`,
   `10 可入库`, no `需要确认`, and the first review card was `备份提醒米`, with no
   browser warning or error logs. The test used isolated local ports.
+- Mobile Web backup reminder export-clear smoke check on port 54399: pasted 10
+  valid order-text inventory rows, confirmed batch import with `新增 10` and
+  `需要手动处理 0`, opened Settings, verified the `建议导出备份` card appeared
+  with `累计 10 行本地变更尚未导出`, tapped the card's `导出` action, saw
+  `备份已导出`, and verified the reminder card disappeared with no browser
+  warning or error logs. The test used an isolated local port.
 - Mobile Web consume/history smoke check on port 54338: opened `面包` inventory
   detail, confirmed `标记已消耗`, returned to Home with the pending reminder
   count reduced from 2 to 1, then opened `?route=items&view=history` and saw
@@ -475,6 +481,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Settings backup reminder appears in the live mobile Web UI after a bulk
   local import reaches the dirty-change threshold, with user-facing copy that
   explains a backup is recommended before more changes accumulate.
+- Settings backup reminder can be cleared from the live mobile Web UI by using
+  the reminder card's export action, and the card disappears after the app
+  reports `备份已导出`.
 - Settings legacy-import preview opens without probing missing optional local
   assets, so the empty bundled import file no longer causes Web asset warnings.
 - Repository backup/restore tests cover pre-restore snapshots, replacement
