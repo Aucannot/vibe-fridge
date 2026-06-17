@@ -390,6 +390,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - A follow-up Settings copy pass found the built-in check still used
   acceptance-style wording. The visible card, action, toast, and check-data
   labels now use `应用自检` language.
+- Inspecting the app self-check failure path found failed check details would
+  display raw Dart prefixes such as `Bad state:` before the useful message.
+  Self-check failures now strip those technical prefixes before rendering.
 - `flutter build macos --debug`: blocked by local environment. Flutter reached
   Xcode dependency resolution, then failed because the active developer
   directory is Command Line Tools and `xcodebuild` is unavailable to `xcrun`.
@@ -711,6 +714,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
   log terminology to backup, check, detail, and record wording.
 - Reworded Settings built-in check copy from acceptance wording to
   app self-check wording.
+- Cleaned app self-check failure details so users see the actionable reason
+  without raw exception prefixes.
 
 ## Remaining Risks
 

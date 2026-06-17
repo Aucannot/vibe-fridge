@@ -315,6 +315,21 @@ void main() {
     );
   });
 
+  test('formats app self-check failures without technical prefixes', () {
+    expect(
+      selfCheckFailureMessage(StateError('没有可用分类')),
+      '没有可用分类',
+    );
+    expect(
+      selfCheckFailureMessage(ArgumentError('数量必须大于 0')),
+      '数量必须大于 0',
+    );
+    expect(
+      selfCheckFailureMessage(Exception('临时检查失败')),
+      '临时检查失败',
+    );
+  });
+
   test('uses custom reminder days and returns today action items', () async {
     final categories = await repository.getCategories();
     final today = DateTime.now();

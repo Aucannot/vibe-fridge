@@ -40,7 +40,7 @@ class AcceptanceTestService {
           AcceptanceCheckResult.failed(
             name: name,
             duration: stopwatch.elapsed,
-            message: error.toString(),
+            message: selfCheckFailureMessage(error),
           ),
         );
       }
@@ -87,7 +87,7 @@ class AcceptanceTestService {
         throw StateError('提醒日期或提醒开关未正确初始化');
       }
       if (item.imagePath != '/tmp/vibe-fridge-acceptance/package.jpg') {
-        throw StateError('图片附件路径未正确保存');
+        throw StateError('图片附件未正确保存');
       }
       if (item.storageLocation != '冷藏') {
         throw StateError('存放位置未正确保存');
@@ -106,7 +106,7 @@ class AcceptanceTestService {
     });
 
     await check('本地通知内容可基于提醒生成', () async {
-      final item = await _activeItem(_required(wikiId, 'wikiId'));
+      final item = await _activeItem(_required(wikiId, '物品资料'));
       final pending = await repository.getPendingReminderNotifications();
       PendingReminderNotification? notification;
       for (final candidate in pending) {
@@ -126,7 +126,7 @@ class AcceptanceTestService {
     });
 
     await check('提醒日志防重复并支持忽略本次', () async {
-      final item = await _activeItem(_required(wikiId, 'wikiId'));
+      final item = await _activeItem(_required(wikiId, '物品资料'));
       final firstSent = await repository.recordReminderSentIfNeeded(
         itemId: item.id,
         reminderType: 'reminder_due',
@@ -227,7 +227,7 @@ class AcceptanceTestService {
     });
 
     await check('更新库存数量', () async {
-      final item = await _activeItem(_required(wikiId, 'wikiId'));
+      final item = await _activeItem(_required(wikiId, '物品资料'));
       await repository.updateItemQuantity(item.id, 1);
       final updated = await repository.getItem(item.id);
       if (updated == null || updated.quantity != 3) {
@@ -237,7 +237,7 @@ class AcceptanceTestService {
     });
 
     await check('批量修改位置和分类', () async {
-      final item = await _activeItem(_required(wikiId, 'wikiId'));
+      final item = await _activeItem(_required(wikiId, '物品资料'));
       final categories = await repository.getCategories();
       final targetCategory = categories.firstWhere(
         (category) => category.name == '日用品',
@@ -256,7 +256,7 @@ class AcceptanceTestService {
     });
 
     await check('标记消耗并写入历史', () async {
-      final itemId = _required(originalItemId, 'itemId');
+      final itemId = _required(originalItemId, '库存记录');
       await repository.markAsConsumed(itemId);
       final active = await repository.getItem(itemId);
       if (active == null ||
@@ -273,16 +273,16 @@ class AcceptanceTestService {
     });
 
     await check('恢复已消耗记录', () async {
-      final itemId = _required(restoredItemId, 'restoredItemId');
+      final itemId = _required(restoredItemId, '已消耗记录');
       await repository.restoreItem(itemId);
       final restored = await repository.getItem(itemId);
       if (restored == null || restored.status != ItemStatus.active) {
-        throw StateError('恢复后记录未回到 active 状态');
+        throw StateError('恢复后记录未回到使用中状态');
       }
     });
 
     await check('删除恢复后的库存记录', () async {
-      final itemId = _required(restoredItemId, 'restoredItemId');
+      final itemId = _required(restoredItemId, '已恢复记录');
       await repository.deleteItem(itemId);
       final deleted = await repository.getItem(itemId);
       if (deleted != null) {
@@ -333,7 +333,7 @@ class AcceptanceTestService {
         )
         .toList();
     if (activeItems.isEmpty) {
-      throw StateError('没有找到 active 测试库存记录');
+      throw StateError('没有找到使用中的自检库存记录');
     }
     return activeItems.first;
   }
@@ -376,6 +376,26 @@ class AcceptanceTestService {
     }
     return value;
   }
+}
+
+String selfCheckFailureMessage(Object error) {
+  var message = error.toString().trim();
+  const prefixes = [
+    'Bad state: ',
+    'Invalid argument(s): ',
+    'Exception: ',
+    'FormatException: ',
+  ];
+  for (final prefix in prefixes) {
+    if (message.startsWith(prefix)) {
+      message = message.substring(prefix.length).trim();
+      break;
+    }
+  }
+  if (message.isEmpty) {
+    return '检查没有完成，请稍后重试';
+  }
+  return message;
 }
 
 class AcceptanceReport {
