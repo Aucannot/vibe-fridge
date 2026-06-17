@@ -570,6 +570,41 @@ void main() {
     expect(importedItems.single.importBatchId, 'ORDER-001');
     expect(importedItems.single.imagePath, '/tmp/order-001.png');
     expect(importedItems.single.recognitionConfidence, 0.91);
+
+    const noDateResult = OrderRecognitionResult(
+      sourceApp: '手动粘贴',
+      merchant: '内测超市',
+      orderId: 'ORDER-NODATE-001',
+      items: [
+        OrderRecognitionItem(
+          name: '无日期重复苹果',
+          quantity: 2,
+          unit: '个',
+          categoryName: '食品',
+          confidence: 0.72,
+        ),
+      ],
+    );
+    final firstNoDateSummary = await controller.createItemsFromOrder(
+      result: noDateResult,
+      items: noDateResult.items,
+    );
+    expect(firstNoDateSummary.addedCount, 1);
+
+    final noDateDuplicates = await controller.findOrderImportDuplicates(
+      result: noDateResult,
+      items: noDateResult.items,
+    );
+    expect(noDateDuplicates, hasLength(1));
+    expect(noDateDuplicates.single.index, 0);
+    expect(noDateDuplicates.single.purchaseDate, isNull);
+
+    final secondNoDateSummary = await controller.createItemsFromOrder(
+      result: noDateResult,
+      items: noDateResult.items,
+    );
+    expect(secondNoDateSummary.addedCount, 0);
+    expect(secondNoDateSummary.duplicateCount, 1);
   });
 
   test('exports and restores backup with a pre-restore snapshot', () async {

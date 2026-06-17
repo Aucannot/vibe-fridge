@@ -27,14 +27,17 @@ check confirmed it hands off cleanly to the rendered Home screen.
   restoration, Web route cleanup, notification channel coverage, startup error
   copy coverage, plus AI recipe and order-recognition error-copy coverage,
   48 tests.
+- `flutter test test/inventory_repository_test.dart`: passed after the
+  no-date order duplicate fix, 18 tests.
 - `flutter analyze`: passed after the latest beta fixes including Web route
   cleanup, direct Web detail URL hash cleanup, notification channel coverage,
-  and the edit-page Material fix.
+  the edit-page Material fix, and no-date order duplicate handling.
 - `flutter test test/local_notification_service_test.dart`: passed after the
   Android reminder scheduler refactor, 6 tests.
 - `flutter build web --debug --no-wasm-dry-run`: passed after the latest beta
   fixes including Web route cleanup, direct Web detail URL hash cleanup,
-  startup error copy coverage, and the edit-page Material fix.
+  startup error copy coverage, the edit-page Material fix, and no-date order
+  duplicate handling.
 - Web build output now includes the native HTML loading screen used to cover
   Flutter Web's cold-start font fallback window.
 - App self-check from Settings: passed, 15/15.
@@ -179,6 +182,14 @@ check confirmed it hands off cleanly to the rendered Home screen.
   correct quantities and units, confirmed batch import, saw `导入完成` with
   `新增 2`, and verified the catalog showed `苹果 4` and `酸奶 2` with no
   browser warning or error logs.
+- Mobile Web no-date duplicate order-text smoke check on port 54402: pasted
+  `DUP-SMOKE-NODATE-001` without a purchase date and imported two rows. The
+  first pass exposed that repeating the same order still showed `2 可入库` and
+  would add duplicates because duplicate checks skipped rows without purchase
+  dates. After allowing order-id/name duplicate checks without a purchase date,
+  the rebuilt Web app showed `0 可入库`, `2 疑似重复`, `添加 0 个物品`, and the
+  result dialog `没有新增物品` with `跳过 2`, with no browser warning or error
+  logs.
 - Mobile Web order-text review-edit smoke check on port 54393: pasted an order
   containing `内测复核苹果 4个`, a gift line, and `内测散装坚果` without a
   quantity. The review page showed `3/3 已选`, `1 可入库`, and `2 需要确认`;

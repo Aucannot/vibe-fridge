@@ -148,7 +148,7 @@ class InventoryController extends ChangeNotifier {
     for (var index = 0; index < items.length; index += 1) {
       final item = items[index];
       final purchaseDate = item.purchaseDate ?? result.purchaseDate;
-      if (item.name.trim().isEmpty || purchaseDate == null) {
+      if (item.name.trim().isEmpty) {
         continue;
       }
       final count = await repository.countOrderImportDuplicates(
@@ -184,9 +184,7 @@ class InventoryController extends ChangeNotifier {
     final sourceOrderId = result.orderId;
     for (final item in items) {
       final purchaseDate = item.purchaseDate ?? result.purchaseDate;
-      if (sourceOrderId != null &&
-          sourceOrderId.trim().isNotEmpty &&
-          purchaseDate != null) {
+      if (sourceOrderId != null && sourceOrderId.trim().isNotEmpty) {
         final duplicates = await repository.countOrderImportDuplicates(
           sourceOrderId: sourceOrderId,
           name: item.name,
@@ -564,7 +562,7 @@ class OrderImportDuplicate {
 
   final int index;
   final String name;
-  final DateTime purchaseDate;
+  final DateTime? purchaseDate;
   final int existingCount;
 }
 

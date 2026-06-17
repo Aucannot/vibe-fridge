@@ -411,25 +411,29 @@ class InventoryRepository {
   Future<int> countOrderImportDuplicates({
     required String sourceOrderId,
     required String name,
-    required DateTime purchaseDate,
+    DateTime? purchaseDate,
   }) async {
     final normalizedOrderId = _blankToNull(sourceOrderId);
     final normalizedName = _blankToNull(name);
     if (normalizedOrderId == null || normalizedName == null) {
       return 0;
     }
-    return Sqflite.firstIntValue(
-          await _db.rawQuery('''
+    final where = StringBuffer('''
             SELECT COUNT(*)
             FROM items
             WHERE source_order_id = ?
               AND lower(name) = lower(?)
-              AND purchase_date = ?
-          ''', [
-            normalizedOrderId,
-            normalizedName,
-            _dateText(purchaseDate),
-          ]),
+    ''');
+    final args = <Object?>[
+      normalizedOrderId,
+      normalizedName,
+    ];
+    if (purchaseDate != null) {
+      where.write(' AND purchase_date = ?');
+      args.add(_dateText(purchaseDate));
+    }
+    return Sqflite.firstIntValue(
+          await _db.rawQuery(where.toString(), args),
         ) ??
         0;
   }
