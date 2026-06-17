@@ -623,7 +623,7 @@ class _WikiFacts extends StatelessWidget {
     return SectionCard(
       child: Column(
         children: [
-          _FactRow(label: '分类', value: wiki.categoryName ?? '其他'),
+          _FactRow(label: '分类', value: wiki.categoryName ?? '未分类'),
           _FactRow(label: '默认单位', value: wiki.defaultUnit ?? '未设置'),
           _FactRow(
             label: '建议保质期',

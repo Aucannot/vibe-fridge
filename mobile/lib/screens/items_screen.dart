@@ -1422,7 +1422,7 @@ class _RegisteredItemTile extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   [
-                    item.categoryName ?? '其他',
+                    item.categoryName ?? '未分类',
                     if (item.storageLocation != null) item.storageLocation!,
                     if (item.defaultUnit != null) '单位 ${item.defaultUnit}',
                   ].join(' · '),

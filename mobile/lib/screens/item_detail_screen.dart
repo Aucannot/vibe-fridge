@@ -818,7 +818,7 @@ class _Facts extends StatelessWidget {
       child: Column(
         children: [
           _FactRow(label: '数量', value: '${item.quantity}${item.unit ?? ''}'),
-          _FactRow(label: '分类', value: item.categoryName ?? '其他'),
+          _FactRow(label: '分类', value: item.categoryName ?? '未分类'),
           _FactRow(label: '购买日期', value: formatDate(item.purchaseDate)),
           _FactRow(label: '过期日期', value: formatDate(item.expiryDate)),
           _FactRow(label: '提醒日期', value: formatDate(item.reminderDate)),

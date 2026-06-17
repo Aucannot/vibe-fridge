@@ -95,6 +95,13 @@ check confirmed it hands off cleanly to the rendered Home screen.
   inventory detail facts card, while the item-profile header stayed
   `暂无描述`, with no browser warning or error logs. The temporary test
   inventory and profiles were cleaned up through the UI.
+- Mobile Web uncategorized shopping conversion smoke check on port 54396:
+  added `category-copy-test` from the shopping tab without selecting a
+  category, converted it into inventory, and verified the shopping list,
+  catalog card, item-profile facts card, and inventory-detail facts card all
+  consistently used `未分类` instead of switching the converted inventory to
+  `其他`, with no browser warning or error logs. The temporary test inventory
+  and profile were cleaned up through the UI.
 - Mobile Web catalog-to-shopping smoke check on port 54391: opened the item
   catalog, tapped the cart action on the `感冒药` row, saw
   `已加入采购清单：感冒药` without leaving the catalog, opened the Shopping view,
@@ -416,6 +423,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
   the catalog count updates in the live mobile Web UI, and shopping notes are
   retained as inventory batch descriptions without polluting the item-profile
   description.
+- Uncategorized shopping items remain labeled `未分类` after conversion into
+  catalog, item-profile, and inventory-detail surfaces.
 - Catalog row cart actions add the selected item profile to the shopping list
   without navigating away, and deleting that pending item restores the
   replenishment suggestion state.
@@ -530,6 +539,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Preserved shopping-list notes when checked items are converted into
   inventory by saving the note on the inventory batch description without
   syncing it into the item-profile description.
+- Unified null-category fallback copy to `未分类` across catalog cards,
+  item-profile facts, and inventory-detail facts, while leaving the real
+  `其他` category unchanged.
 - Reworded local notification sync failures so platform/plugin error codes are
   not shown directly to users.
 - Added Android reminder restoration after device reboot or app update by
@@ -602,6 +614,3 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - The native notification implementations still need runtime proof even though
   the Dart service degrades cleanly when permission is missing, unsupported, or
   the platform channel is absent.
-- Shopping items left with the blank category label show as `未分类` in the
-  shopping list but become `其他` after conversion into inventory, which is a
-  minor cross-surface copy inconsistency still worth smoothing later.
