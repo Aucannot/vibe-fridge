@@ -140,6 +140,11 @@ check confirmed it hands off cleanly to the rendered Home screen.
   row menu `编辑` sheet, changed quantity from `1` to `3`, replaced the note with
   `内测编辑备注`, saved, and verified the pending row immediately showed `3袋`
   plus the edited note with no browser warning or error logs.
+- Mobile Web manual shopping-item smoke check on port 54359: opened the
+  shopping tab, used the top `添加` action, entered `内测采购番茄`, changed
+  quantity to `5`, set unit to `个`, added note `周末采购`, saved, and verified
+  the pending list showed `内测采购番茄` with `5个` plus the note summary with no
+  browser warning or error logs.
 - Mobile Web direct detail URL smoke check on port 54344: loaded
   `?route=items%2Fitem%2Fitem-milk-1` directly, waited for route cleanup, and
   verified the address bar stayed on the query route without a Flutter hash
@@ -217,6 +222,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Deleting a single inventory batch returns to the catalog, updates the item
   count, and leaves a friendly empty state for stale direct detail URLs.
 - Shopping list checkbox moves a pending item into the purchased section.
+- Manual shopping-list add creates a pending item with quantity, unit, and note
+  visible immediately in the mobile Web list.
 - Shopping-list row editing saves quantity and note changes back to the pending
   list without stale row state.
 - Shopping-list row deletion removes the pending item and lets its
