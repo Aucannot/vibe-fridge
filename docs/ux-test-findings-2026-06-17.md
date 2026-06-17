@@ -57,6 +57,11 @@ check confirmed it hands off cleanly to the rendered Home screen.
   `快手蛋奶早餐` detail page with inventory use, missing ingredients, and steps;
   tapping back returned to `?route=recipes`, and both URLs stayed hash-free
   with no browser warning or error logs.
+- Mobile Web unknown recipe URL smoke check on port 54387: loaded an
+  unrecoverable generated-style route,
+  `?route=recipes%2Fai-recipe-old-generated-0`, and verified the app replaced
+  it with `?route=recipes` while rendering the recipe list, with no hash
+  fragment and no browser warning or error logs.
 - Mobile Web AI-recipe fallback smoke check on port 54364: opened Recipes with
   no AI service configured, tapped `生成食谱`, saw the AI card switch to
   `规则兜底` with `AI 食谱未配置，已使用规则建议`, verified rule suggestions stayed
@@ -351,6 +356,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
   recipe detail without mixed query/hash routing.
 - Direct Web recipe URLs restore rule-generated recipe detail pages and return
   to the recipe list cleanly from the detail back action.
+- Unrecoverable Web recipe detail URLs, such as stale AI-generated ids after a
+  refresh, now fall back to the recipe list instead of leaving a stale detail
+  route in the address bar.
 - Recipe detail shows consumed inventory, missing ingredients, steps, and the
   inventory deduction action.
 - Running a recipe deduction updates priority consumable counts in the live
@@ -472,6 +480,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
   routes before clearing Flutter hash fragments.
 - Added recipe-detail restoration for Web route startup and history changes,
   so stable rule recipe ids can be opened from copied URLs or browser reloads.
+- Added a recipe-route fallback that replaces unrecoverable detail ids with
+  `/recipes`, keeping stale generated links from leaving misleading URLs.
 - Added a lightweight Web loading screen that uses native system Chinese fonts,
   matches the app's warm visual style, honors reduced-motion preferences, and
   hides shortly after Flutter's first frame to reduce the cold-start square-text

@@ -214,16 +214,17 @@ class RecipesScreenState extends State<RecipesScreen> {
     return null;
   }
 
-  void openRecipeById(String id) {
+  bool openRecipeById(String id) {
     final suggestions = <RecipeSuggestion>[
       if (_aiSuggestions != null) ..._aiSuggestions!,
       ..._service.generate(widget.controller.activeItems),
     ];
     final suggestion = _suggestionById(suggestions, id);
     if (suggestion == null) {
-      return;
+      return false;
     }
     _openRecipe(suggestion);
+    return true;
   }
 
   Future<void> _openRecipe(RecipeSuggestion suggestion) async {

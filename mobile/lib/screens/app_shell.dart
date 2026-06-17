@@ -213,7 +213,10 @@ class _AppShellState extends State<AppShell> {
     if (id.isEmpty) {
       return;
     }
-    _recipesScreenKey.currentState?.openRecipeById(id);
+    final opened = _recipesScreenKey.currentState?.openRecipeById(id) ?? false;
+    if (!opened) {
+      setWebRouteState('/recipes', replace: true);
+    }
   }
 
   String _routeForIndex(int index) {
