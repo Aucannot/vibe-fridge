@@ -82,6 +82,10 @@ check confirmed it hands off cleanly to the rendered Home screen.
   warning or error logs. Codex In-app Browser does not support download events,
   so this proves the live UI trigger and success feedback but not downloaded
   file persistence.
+- Mobile Web catalog search smoke check on port 54340: opened the Items tab,
+  searched for `牛奶`, saw the catalog narrow to `鲜牛奶` while keeping the
+  expiring mini-card visible, then opened the result to
+  `?route=items%2Fwiki%2Fwiki-milk` with no browser warning or error logs.
 - Targeted UI-copy grep for engineering terms found no new actionable
   user-facing leaks. The remaining AI `JSON` wording is confined to prompts or
   internal exceptions and is wrapped by the user-friendly recipe fallback copy.
@@ -129,6 +133,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Home total action badge opens the cleanup-focused inventory list.
 - Home expiring-priority rows open inventory batch detail.
 - Catalog expiring mini cards open inventory batch detail.
+- Catalog search filters the live mobile Web list and search results still open
+  the matching item-profile detail route.
 - Manual add flow saved a test item, returned to the catalog, and the new
   item-profile detail opened from the live mobile Web UI.
 - Inventory detail quantity controls update visibly in both directions and the
