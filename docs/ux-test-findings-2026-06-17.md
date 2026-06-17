@@ -45,6 +45,11 @@ check confirmed it hands off cleanly to the rendered Home screen.
   row for `面包` opened the inventory detail page and kept the address bar at
   `?route=items%2Fitem%2Fitem-bread-1` with no hash fragment and no browser
   warning or error logs.
+- Mobile Web recipe consumption smoke check on port 54332: opened the Recipes
+  tab, opened `快手蛋奶早餐`, used `做这道菜并扣减库存`, returned to
+  `?route=recipes`, saw `库存已扣减`, and verified priority counts dropped
+  from `鸡蛋 12个` / `鲜牛奶 2盒` to `鸡蛋 11个` / `鲜牛奶 1盒` with no
+  browser warning or error logs.
 - Targeted UI-copy grep for engineering terms found no new actionable
   user-facing leaks. The remaining AI `JSON` wording is confined to prompts or
   internal exceptions and is wrapped by the user-friendly recipe fallback copy.
@@ -99,7 +104,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Recipes page lists priority consumables and concrete recipe suggestions.
 - Recipe detail shows consumed inventory, missing ingredients, steps, and the
   inventory deduction action.
-- Running a recipe deduction updates priority consumable counts.
+- Running a recipe deduction updates priority consumable counts in the live
+  mobile Web UI and returns to the recipe list with user feedback.
 - Settings self-check completed and cleaned up its temporary data.
 - Repository backup/restore tests cover pre-restore snapshots, replacement
   restore, post-restore health checks, and backup reminder clearing.
