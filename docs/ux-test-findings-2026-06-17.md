@@ -72,6 +72,14 @@ check confirmed it hands off cleanly to the rendered Home screen.
   changed time to `25` minutes and servings to `3`, saved, saw `食谱偏好已保存`,
   then reloaded Settings and verified all preference fields persisted with no
   browser warning or error logs.
+- Mobile Web order-recognition settings smoke check on port 54366: opened
+  Settings, scrolled to `订单识别 AI`, entered a fake local API key, saved,
+  saw `订单识别配置已保存` and `已配置`, then reloaded Settings and verified the
+  saved-key state persisted without showing the key in clear text. The pass
+  then cleared the configuration through the confirmation dialog and verified
+  `未配置` returned, with no browser warning or error logs. The `测试配置`
+  action was intentionally not used, so the pass did not send an external
+  request.
 - Mobile Web manual-add smoke check on port 54335: opened Add, entered
   `内测手动橙子` with the default quantity and purchase date, saved it, returned
   to the catalog, saw the new item with `1` batch, then opened its item-profile
@@ -277,6 +285,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
   mobile Web UI shows the 15/15 result plus readable per-check timings.
 - Settings recipe preferences save from the mobile Web UI and reload with the
   edited values still visible.
+- Settings order-recognition configuration saves from the mobile Web UI,
+  persists after reload without revealing the saved key, and can be cleared
+  through the confirmation dialog.
 - Settings inventory-table export can be triggered from the live mobile Web UI,
   and the app shows success feedback without console warnings or errors.
 - Settings backup export can be triggered from the live mobile Web UI, and the
