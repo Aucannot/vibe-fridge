@@ -25,8 +25,11 @@ check confirmed it hands off cleanly to the rendered Home screen.
 
 - `flutter test`: passed after the latest beta fixes including Android reminder
   restoration, Web route cleanup, notification channel coverage, startup error
-  copy coverage, plus AI recipe and order-recognition error-copy coverage,
-  48 tests.
+  copy coverage, AI recipe and order-recognition error-copy coverage, plus the
+  generic error snackbar detail-copy coverage, 54 tests.
+- `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
+  the generic error snackbar copy action and covering that technical details
+  stay hidden from the visible message.
 - `flutter test test/inventory_repository_test.dart`: passed after the
   no-date order duplicate fix, 18 tests.
 - `flutter analyze`: passed after the latest beta fixes including Web route
@@ -716,6 +719,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
   app self-check wording.
 - Cleaned app self-check failure details so users see the actionable reason
   without raw exception prefixes.
+- Clarified the generic error snackbar action from `复制` to `复制详情`, keeping
+  technical diagnostics out of the visible message while making the hidden copy
+  action understandable.
 
 ## Remaining Risks
 
