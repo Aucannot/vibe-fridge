@@ -98,6 +98,11 @@ check confirmed it hands off cleanly to the rendered Home screen.
   storage location, and the inventory batch dates, and the inventory detail
   showed expiry `2026-06-25`, reminder date `2026-06-22`, lead time `3 天`,
   and storage `冷藏`, with no browser warning or error logs.
+- Mobile Web tagged manual-add smoke check on port 54369: opened Add, selected
+  the tags `临期优先`, `常用`, and `易浪费`, entered `tag-test-cereal` with unit
+  `袋`, and saved. The item-profile inventory row showed the first two tags
+  (`临期优先 · 常用`) in its compact summary, and the inventory detail `标签`
+  card showed all three saved tags with no browser warning or error logs.
 - Mobile Web inventory-detail quantity smoke check on port 54336: opened the
   Home priority row for `鲜牛奶`, reached `?route=items%2Fitem%2Fitem-milk-1`,
   increased quantity from `2 盒` to `3 盒`, verified the fact row updated, then
@@ -258,6 +263,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Manual add also handles category, storage location, unit, and expiry-date
   fields end to end, with catalog, item-profile detail, and inventory detail
   staying consistent.
+- Manual add saves processing-priority tags from the mobile Web UI, and tagged
+  inventory displays those tags in item-profile and inventory detail views.
 - Inventory detail quantity controls update visibly in both directions and the
   detail fact row stays in sync.
 - Inventory edit now opens without Flutter debug assertions in the live mobile
