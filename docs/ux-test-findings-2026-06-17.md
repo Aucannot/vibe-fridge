@@ -100,6 +100,11 @@ check confirmed it hands off cleanly to the rendered Home screen.
   reworking the detail refresh, saving a second description marker returned to
   the item-profile detail with the new description visible immediately and no
   new browser warning or error logs.
+- Mobile Web item-profile batch-location smoke check on port 54350: opened
+  `鲜牛奶`, entered batch mode, selected the inventory batch, used `改位置`,
+  chose `冷冻`, saw `已修改 1 条库存的位置`, verified the batch card showed
+  `位置 冷冻`, then opened the inventory detail and confirmed the fact row also
+  showed `存放位置 冷冻` with no browser warning or error logs.
 - Mobile Web direct detail URL smoke check on port 54344: loaded
   `?route=items%2Fitem%2Fitem-milk-1` directly, waited for route cleanup, and
   verified the address bar stayed on the query route without a Flutter hash
@@ -162,6 +167,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
   Web UI, and edited storage location data persists into the detail facts.
 - Item-profile edit now saves from the live mobile Web UI and refreshes the
   detail header to the edited description without a manual browser reload.
+- Item-profile batch mode can update selected inventory storage locations, and
+  both the batch card and inventory detail fact row stay in sync.
 - Direct Web detail URLs now clean up late Flutter hash fragments and keep the
   copyable address bar on the app's query-route format.
 - Marking an inventory batch consumed removes it from active priority handling
