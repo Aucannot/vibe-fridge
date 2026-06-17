@@ -135,6 +135,33 @@ void main() {
     expect(result.message, contains('规则建议'));
     service.close();
   });
+
+  test('fallback message hides technical AI failures from users', () async {
+    final service = AiRecipeService(
+      client: MockClient((_) async => http.Response('server exploded', 500)),
+    );
+
+    final result = await service.generate(
+      items: [
+        _item('鸡蛋', quantity: 6),
+        _item('牛奶'),
+      ],
+      preferences: const RecipePreferences(),
+      settings: const VlmSettings(
+        endpoint: 'https://example.com/v1/chat/completions',
+        model: 'recipe-model',
+        apiKey: 'key',
+      ),
+    );
+
+    expect(result.usedFallback, isTrue);
+    expect(result.suggestions, isNotEmpty);
+    expect(result.message, 'AI 食谱暂时不可用，已使用规则建议');
+    expect(result.message, isNot(contains('HTTP')));
+    expect(result.message, isNot(contains('500')));
+    expect(result.message, isNot(contains('server exploded')));
+    service.close();
+  });
 }
 
 InventoryItem _item(

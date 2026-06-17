@@ -79,7 +79,7 @@ class AiRecipeService {
     } catch (error) {
       return AiRecipeGenerationResult.fallback(
         suggestions: fallback,
-        message: 'AI 食谱生成失败，已使用规则建议：$error',
+        message: 'AI 食谱暂时不可用，已使用规则建议',
       );
     }
   }

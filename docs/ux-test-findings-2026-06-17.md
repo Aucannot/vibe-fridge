@@ -114,6 +114,8 @@ visual smoke check when browser automation is available.
   payloads, and safe launch-target fallback when the platform call fails.
 - Bootstrap error page tests now verify startup diagnostics remain copyable
   without exposing technical details on screen by default.
+- AI recipe fallback tests now verify service failures still return rule-based
+  suggestions without exposing HTTP status codes or server text to users.
 
 ## Fixes Made During This Pass
 
@@ -130,6 +132,8 @@ visual smoke check when browser automation is available.
   order-recognition service configuration instead of VLM endpoint/model details.
 - Hid startup diagnostic details behind the copy action so a failed launch does
   not show file paths, storage errors, or stack traces directly to users.
+- Reworded AI recipe fallback failures so users see that rule suggestions are
+  available instead of raw HTTP or service response details.
 - Moved the order-recognition configuration check before local image copying,
   so an unconfigured order-recognition attempt does not leave an unused order
   screenshot in app storage.
