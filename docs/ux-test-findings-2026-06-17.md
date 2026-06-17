@@ -146,6 +146,12 @@ check confirmed it hands off cleanly to the rendered Home screen.
   its own transparent `Material`, the edit screen opened with no browser
   warning or error logs, and saving `存放位置` as `冷藏` was visible on the
   inventory detail facts after reload.
+- Mobile Web inventory-edit tags/reminder smoke check on port 54370: opened
+  `鲜牛奶` inventory detail, edited the batch, selected `临期优先` and `常用`,
+  changed reminder lead time from `3` days to `1` day, and saved. The detail
+  screen updated reminder date from `2026-06-18` to `2026-06-20`, showed
+  `提前天数 1 天` in the facts card, and rendered the saved tags in the `标签`
+  card with no browser warning or error logs.
 - Mobile Web item-profile edit smoke check on port 54349: editing `鲜牛奶`
   originally saved data but left the detail page stale and produced a Flutter
   debug assertion from an async-looking `setState` refresh callback; after
@@ -269,6 +275,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
   detail fact row stays in sync.
 - Inventory edit now opens without Flutter debug assertions in the live mobile
   Web UI, and edited storage location data persists into the detail facts.
+- Inventory edit can update reminder lead time and processing-priority tags,
+  and the inventory detail view reflects both changes immediately after save.
 - Item-profile edit now saves from the live mobile Web UI and refreshes the
   detail header to the edited description without a manual browser reload.
 - Item-profile batch mode can update selected inventory storage locations, and
