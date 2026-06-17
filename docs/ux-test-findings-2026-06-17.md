@@ -163,6 +163,13 @@ check confirmed it hands off cleanly to the rendered Home screen.
   `袋`, and saved. The item-profile inventory row showed the first two tags
   (`临期优先 · 常用`) in its compact summary, and the inventory detail `标签`
   card showed all three saved tags with no browser warning or error logs.
+- Mobile Web manual-add validation smoke check on port 54400: tried saving a
+  blank manual item and verified the form stayed on the Add page with
+  `请输入物品名称`; then entered `validation-test-item`, changed quantity to
+  `0`, and verified the form showed `请输入大于 0 的整数` without saving. After
+  correcting quantity to `2`, saving succeeded, the catalog showed the new
+  item with quantity `2`, and the temporary inventory/profile were cleaned up
+  through the UI with no browser warning or error logs.
 - Mobile Web inventory-detail quantity smoke check on port 54336: opened the
   Home priority row for `鲜牛奶`, reached `?route=items%2Fitem%2Fitem-milk-1`,
   increased quantity from `2 盒` to `3 盒`, verified the fact row updated, then
@@ -392,6 +399,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
   staying consistent.
 - Manual add saves processing-priority tags from the mobile Web UI, and tagged
   inventory displays those tags in item-profile and inventory detail views.
+- Manual add validation blocks blank names and non-positive quantities with
+  user-actionable inline messages, then allows saving once the user corrects
+  the fields.
 - Inventory detail quantity controls update visibly in both directions and the
   detail fact row stays in sync.
 - Inventory edit now opens without Flutter debug assertions in the live mobile
