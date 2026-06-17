@@ -86,6 +86,8 @@ square placeholders on a cold port before the font becomes available.
 - Reworded order-recognition configuration fields and error hints from
   endpoint/model/key terminology to service address, model name, and API
   secret language, including response-format failure details.
+- Reworded the add-item order-recognition setup prompt to use API secret
+  language consistently with Settings.
 - Reworded the self-check notification item to avoid exposing `payload`.
 - Reworded the add-item order-recognition prerequisite snackbar to ask for the
   order-recognition service configuration instead of VLM endpoint/model details.

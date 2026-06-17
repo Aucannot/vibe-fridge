@@ -520,7 +520,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
     }
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('请先在设置里配置订单识别服务和 API Key'),
+        content: Text('请先在设置里配置订单识别服务和 API 密钥'),
       ),
     );
     return null;
