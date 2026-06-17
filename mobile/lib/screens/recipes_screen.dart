@@ -223,10 +223,11 @@ class _RecipesScreenState extends State<RecipesScreen> {
         _recentIds.removeLast();
       }
     });
-    setWebRouteState('/recipes/${suggestion.id}');
-    await Navigator.of(context).push<void>(
+    final route = '/recipes/${suggestion.id}';
+    setWebRouteState(route);
+    final detail = Navigator.of(context).push<void>(
       MaterialPageRoute(
-        settings: RouteSettings(name: '/recipes/${suggestion.id}'),
+        settings: RouteSettings(name: route),
         builder: (_) => RecipeDetailScreen(
           controller: widget.controller,
           suggestion: suggestion,
@@ -235,6 +236,8 @@ class _RecipesScreenState extends State<RecipesScreen> {
         ),
       ),
     );
+    setWebRouteState(route, replace: true);
+    await detail;
     setWebRouteState('/recipes', replace: true);
     if (mounted) {
       setState(() {});

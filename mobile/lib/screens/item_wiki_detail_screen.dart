@@ -268,16 +268,19 @@ class _ItemWikiDetailScreenState extends State<ItemWikiDetailScreen> {
   }
 
   Future<void> _openItemDetail(InventoryItem item) async {
-    setWebRouteState('/items/item/${item.id}');
-    await Navigator.of(context).push(
+    final route = '/items/item/${item.id}';
+    setWebRouteState(route);
+    final detail = Navigator.of(context).push(
       MaterialPageRoute(
-        settings: RouteSettings(name: '/items/item/${item.id}'),
+        settings: RouteSettings(name: route),
         builder: (_) => ItemDetailScreen(
           controller: widget.controller,
           itemId: item.id,
         ),
       ),
     );
+    setWebRouteState(route, replace: true);
+    await detail;
     setWebRouteState('/items/wiki/${widget.wikiId}', replace: true);
     if (mounted) {
       setState(() => _future = _load());

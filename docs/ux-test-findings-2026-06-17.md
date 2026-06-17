@@ -55,6 +55,8 @@ visual smoke check when browser automation is available.
 - Web detail route cleanup fix compiles in the Web build so inventory and
   item-profile detail links are set up to keep the app's query-route format
   instead of retaining Flutter hash fragments.
+- Web route cleanup now covers the remaining detail entry points from home
+  priority rows, item-profile batch rows, and recipe cards.
 - Web cold-start loading screen compiles into `build/web/index.html` and uses
   system Chinese fonts until Flutter's first frame has settled.
 
@@ -129,6 +131,9 @@ visual smoke check when browser automation is available.
   up to keep both the app route query and a Flutter hash route after
   navigation; this pass verified compilation, while browser address-bar
   automation was unavailable locally.
+- Extended the same route cleanup pattern to home priority rows, item-profile
+  batch rows, and recipe detail navigation so those natural beta-user paths
+  avoid mixed query/hash URLs too.
 - Added a lightweight Web loading screen that uses native system Chinese fonts,
   matches the app's warm visual style, honors reduced-motion preferences, and
   hides shortly after Flutter's first frame to reduce the cold-start square-text
