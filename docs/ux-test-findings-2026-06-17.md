@@ -29,12 +29,19 @@ visual smoke check when browser automation is available.
 - `flutter analyze`: passed after the latest beta fixes including Web route
   cleanup and notification channel coverage.
 - `flutter build web --debug --no-wasm-dry-run`: passed after the latest beta
-  fixes including Web route cleanup.
+  fixes including Web route cleanup and startup error copy coverage.
 - Web build output now includes the native HTML loading screen used to cover
   Flutter Web's cold-start font fallback window.
 - App self-check from Settings: passed, 15/15.
 - Fresh Web smoke check on a new local port: no new console warnings or errors
   for the latest build.
+- Mobile Web cold-start visual smoke check on port 54331: the native loading
+  screen handed off to the rendered Home screen at 390 x 844 with no blank
+  viewport and no browser warning or error logs.
+- Mobile Web detail URL smoke check on port 54331: tapping the Home priority
+  row for `面包` opened the inventory detail page and kept the address bar at
+  `?route=items%2Fitem%2Fitem-bread-1` with no hash fragment and no browser
+  warning or error logs.
 - `flutter build macos --debug`: blocked by local environment. Flutter reached
   Xcode dependency resolution, then failed because the active developer
   directory is Command Line Tools and `xcodebuild` is unavailable to `xcrun`.
@@ -175,11 +182,6 @@ visual smoke check when browser automation is available.
 
 - Android and macOS local notification behavior still needs device or desktop
   runtime validation on a machine with Android SDK and full Xcode/CocoaPods.
-- The Web cold-start loading screen still needs one browser visual smoke check
-  on a cold port because this local session had no browser automation runtime
-  available.
-- The Web detail URL cleanup still needs one browser address-bar smoke check
-  because this local session had no browser automation runtime available.
 - The native notification implementations still need runtime proof even though
   the Dart service degrades cleanly when permission is missing, unsupported, or
   the platform channel is absent.
