@@ -189,6 +189,9 @@ class LocalNotificationSyncResult {
     if (reason == 'unsupported') {
       return '当前平台不可用';
     }
-    return '同步失败：$reason';
+    if (reason == 'missing_plugin') {
+      return '当前平台不可用';
+    }
+    return '同步失败，请稍后重试';
   }
 }

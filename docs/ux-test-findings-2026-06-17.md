@@ -69,6 +69,8 @@ square placeholders on a cold port before the font becomes available.
   files before any current data is replaced or a restore snapshot is created.
 - Notification payload tests cover pending reminders, ignored reminders, title
   and body content, schedule time, and serialized timestamp fields.
+- Local notification sync result tests now cover supported, unauthorized,
+  unsupported, missing implementation, and unknown failure copy.
 
 ## Fixes Made During This Pass
 
@@ -91,6 +93,8 @@ square placeholders on a cold port before the font becomes available.
 - Simplified the backup restore success message so it does not expose an
   implementation-level restored row count as if it were a user-facing item
   count.
+- Reworded local notification sync failures so platform/plugin error codes are
+  not shown directly to users.
 - Fixed nullable SQL query arguments in shopping-list de-duplication and legacy
   duplicate detection so sqflite no longer logs a future-breaking null argument
   warning.
