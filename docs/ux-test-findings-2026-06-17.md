@@ -67,6 +67,8 @@ square placeholders on a cold port before the font becomes available.
   restore, post-restore health checks, and backup reminder clearing.
 - Repository backup/restore tests now also reject incomplete or damaged backup
   files before any current data is replaced or a restore snapshot is created.
+- Repository export tests now verify the user-facing inventory table uses
+  readable column names and omits internal identifiers.
 - Notification payload tests cover pending reminders, ignored reminders, title
   and body content, schedule time, and serialized timestamp fields.
 - Local notification sync result tests now cover supported, unauthorized,
@@ -95,6 +97,8 @@ square placeholders on a cold port before the font becomes available.
   count.
 - Reworded local notification sync failures so platform/plugin error codes are
   not shown directly to users.
+- Reworked the exported inventory table columns to remove internal identifiers
+  and use user-readable Chinese headers.
 - Fixed nullable SQL query arguments in shopping-list de-duplication and legacy
   duplicate detection so sqflite no longer logs a future-breaking null argument
   warning.

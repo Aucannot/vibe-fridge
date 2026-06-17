@@ -2268,24 +2268,21 @@ class InventoryRepository {
     final buffer = StringBuffer();
     buffer.writeln(
       _csvRow([
-        'id',
-        'name',
-        'category',
-        'status',
-        'quantity',
-        'unit',
-        'purchase_date',
-        'expiry_date',
-        'storage_location',
-        'tags',
-        'source_app',
-        'source_order_id',
+        '物品名称',
+        '分类',
+        '状态',
+        '数量',
+        '单位',
+        '购买日期',
+        '过期日期',
+        '存放位置',
+        '标签',
+        '来源',
       ]),
     );
     for (final item in items) {
       buffer.writeln(
         _csvRow([
-          item.id,
           item.name,
           item.categoryName ?? '',
           item.status.label,
@@ -2296,7 +2293,6 @@ class InventoryRepository {
           item.storageLocation ?? '',
           item.tags.join(';'),
           item.sourceApp ?? '',
-          item.sourceOrderId ?? '',
         ]),
       );
     }

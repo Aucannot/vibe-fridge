@@ -580,8 +580,10 @@ void main() {
       isNotEmpty,
     );
     final csv = await repository.exportInventoryCsv();
-    expect(csv, contains('name,category,status,quantity'));
+    expect(csv, startsWith('物品名称,分类,状态,数量,单位,购买日期,过期日期,存放位置,标签,来源'));
     expect(csv, contains('备份后新增物品'));
+    expect(csv, isNot(contains('source_order_id')));
+    expect(csv, isNot(startsWith('id,')));
 
     final result = await repository.restoreBackup(
       backup,
