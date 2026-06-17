@@ -124,6 +124,12 @@ check confirmed it hands off cleanly to the rendered Home screen.
   `已消耗`, opened the consumed detail, used `恢复为使用中`, then verified
   History became empty and the catalog/expiring section showed `面包 1袋`
   again with no browser warning or error logs.
+- Mobile Web single-inventory delete smoke check on port 54356: opened
+  `感冒药` inventory detail, used the top-right delete action, confirmed the
+  destructive dialog `删除库存记录`, returned to the catalog, verified
+  `感冒药` changed to `0` batches, then reopened the deleted direct detail URL
+  and saw the friendly `库存记录不存在` empty state with no browser warning or
+  error logs.
 - Mobile Web direct detail URL smoke check on port 54344: loaded
   `?route=items%2Fitem%2Fitem-milk-1` directly, waited for route cleanup, and
   verified the address bar stayed on the query route without a Flutter hash
@@ -198,6 +204,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
   and shows it in the history tab as `已消耗`.
 - Restoring a consumed inventory batch from its detail page moves it out of
   History and back into active catalog and expiring views.
+- Deleting a single inventory batch returns to the catalog, updates the item
+  count, and leaves a friendly empty state for stale direct detail URLs.
 - Shopping list checkbox moves a pending item into the purchased section.
 - Purchased shopping items can be converted into inventory after confirmation,
   and the catalog count updates in the live mobile Web UI.
