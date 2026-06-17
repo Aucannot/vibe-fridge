@@ -92,6 +92,9 @@ _ParsedTextItem? _parseItemLine(String line) {
 
 bool _shouldSkipLine(String line) {
   final lower = line.toLowerCase();
+  if (_looksLikeStandaloneReference(line)) {
+    return true;
+  }
   final nonInventoryPattern = RegExp(
     r'退款|退货|已退|取消|运费|配送费|包装费|'
     r'服务费|优惠|红包|实付|合计|总计',
@@ -109,6 +112,16 @@ bool _shouldSkipLine(String line) {
   return lower.startsWith('order id') ||
       lower.startsWith('order:') ||
       lower.startsWith('merchant:');
+}
+
+bool _looksLikeStandaloneReference(String line) {
+  final text = line.trim();
+  if (text.length < 5 ||
+      text.contains(RegExp(r'\s')) ||
+      text.contains(RegExp(r'[\u4e00-\u9fa5]'))) {
+    return false;
+  }
+  return RegExp(r'^[A-Z]{2,}[A-Z0-9_-]*[-_#]\d[A-Z0-9_-]*$').hasMatch(text);
 }
 
 bool _looksLikeMetadata(String text) {
@@ -164,9 +177,9 @@ String? _categoryForName(String name) {
 
 String? _merchant(List<String> lines) {
   for (final line in lines) {
-    final match = RegExp(r'(?:商家|门店|merchant)\s*[:：]\s*(.+)',
-            caseSensitive: false)
-        .firstMatch(line);
+    final match =
+        RegExp(r'(?:商家|门店|merchant)\s*[:：]\s*(.+)', caseSensitive: false)
+            .firstMatch(line);
     if (match != null) {
       return match.group(1)?.trim();
     }

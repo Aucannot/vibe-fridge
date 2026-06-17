@@ -180,6 +180,15 @@ check confirmed it hands off cleanly to the rendered Home screen.
   `标记已确认` changed the primary action to `添加 2 个物品`. Confirming import
   showed `新增 2`, `跳过 1`, `需要手动处理 0`, and the catalog showed only
   `内测复核苹果 6` and `内测散装坚果 1`, with no browser warning or error logs.
+- Mobile Web bulk order-text backup reminder smoke check on ports 54397 and
+  54398: pasted an order-like text containing a standalone reference
+  `BETA-BACKUP-001` plus 10 inventory lines. The first pass imported the 10
+  valid rows and verified Settings showed `建议导出备份` with
+  `累计 10 行本地变更尚未导出`; it also exposed that the standalone reference
+  appeared as a low-confidence item needing confirmation. After filtering
+  standalone reference lines, the rebuilt Web app showed `10/10 已选`,
+  `10 可入库`, no `需要确认`, and the first review card was `备份提醒米`, with no
+  browser warning or error logs. The test used isolated local ports.
 - Mobile Web consume/history smoke check on port 54338: opened `面包` inventory
   detail, confirmed `标记已消耗`, returned to Home with the pending reminder
   count reduced from 2 to 1, then opened `?route=items&view=history` and saw
@@ -463,6 +472,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
   and the app shows success feedback without console warnings or errors.
 - Settings backup export can be triggered from the live mobile Web UI, and the
   app shows success feedback without console warnings or errors.
+- Settings backup reminder appears in the live mobile Web UI after a bulk
+  local import reaches the dirty-change threshold, with user-facing copy that
+  explains a backup is recommended before more changes accumulate.
 - Settings legacy-import preview opens without probing missing optional local
   assets, so the empty bundled import file no longer causes Web asset warnings.
 - Repository backup/restore tests cover pre-restore snapshots, replacement
@@ -498,6 +510,10 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Order-text review supports editing recognized quantities, filling missing
   units, excluding selected rows such as gifts, and confirming low-confidence
   items before batch import.
+- Pasted order-text parsing now ignores standalone order/reference id lines so
+  users do not have to manually exclude an obvious non-inventory row.
+- Order-recognition parser tests now cover standalone reference lines in
+  pasted order text while keeping normal product rows intact.
 - Repository shopping-list conversion tests now verify converted shopping
   notes are retained on inventory batches and do not become item-profile
   descriptions.
@@ -526,6 +542,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
   screenshot in app storage.
 - Expanded pasted order text unit parsing so common units like `枚` and `根`
   do not get stuck in the item name or default to quantity 1.
+- Filtered standalone order/reference id lines out of pasted order-text import
+  so strings such as `BETA-BACKUP-001` do not appear as low-confidence
+  inventory candidates.
 - Disabled local notification action buttons on unsupported platforms so users
   do not have to click a dead-end action to learn that reminders cannot be
   scheduled there.
