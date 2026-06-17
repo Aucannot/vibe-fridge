@@ -181,18 +181,21 @@ class _ItemEditScreenState extends State<ItemEditScreen> {
                           onClear: () => setState(() => _expiryDate = null),
                         ),
                         const SizedBox(height: 8),
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          value: _isReminderEnabled,
-                          title: const Text('启用过期提醒'),
-                          subtitle: Text(
-                            _expiryDate == null
-                                ? '设置过期日期后可计算提醒日'
-                                : '按设置的提前天数生成提醒日',
+                        Material(
+                          color: Colors.transparent,
+                          child: SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            value: _isReminderEnabled,
+                            title: const Text('启用过期提醒'),
+                            subtitle: Text(
+                              _expiryDate == null
+                                  ? '设置过期日期后可计算提醒日'
+                                  : '按设置的提前天数生成提醒日',
+                            ),
+                            onChanged: (value) {
+                              setState(() => _isReminderEnabled = value);
+                            },
                           ),
-                          onChanged: (value) {
-                            setState(() => _isReminderEnabled = value);
-                          },
                         ),
                         if (_isReminderEnabled) ...[
                           const SizedBox(height: 8),

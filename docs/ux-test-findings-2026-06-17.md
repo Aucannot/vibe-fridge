@@ -28,11 +28,12 @@ check confirmed it hands off cleanly to the rendered Home screen.
   copy coverage, plus AI recipe and order-recognition error-copy coverage,
   48 tests.
 - `flutter analyze`: passed after the latest beta fixes including Web route
-  cleanup and notification channel coverage.
+  cleanup, notification channel coverage, and the edit-page Material fix.
 - `flutter test test/local_notification_service_test.dart`: passed after the
   Android reminder scheduler refactor, 6 tests.
 - `flutter build web --debug --no-wasm-dry-run`: passed after the latest beta
-  fixes including Web route cleanup and startup error copy coverage.
+  fixes including Web route cleanup, startup error copy coverage, and the
+  edit-page Material fix.
 - Web build output now includes the native HTML loading screen used to cover
   Flutter Web's cold-start font fallback window.
 - App self-check from Settings: passed, 15/15.
@@ -86,6 +87,12 @@ check confirmed it hands off cleanly to the rendered Home screen.
   searched for `牛奶`, saw the catalog narrow to `鲜牛奶` while keeping the
   expiring mini-card visible, then opened the result to
   `?route=items%2Fwiki%2Fwiki-milk` with no browser warning or error logs.
+- Mobile Web inventory-edit smoke check on ports 54341 and 54342: opening the
+  `鲜牛奶` edit screen originally produced a Flutter debug assertion about
+  `SwitchListTile` inside a decorated card; after wrapping the switch tile in
+  its own transparent `Material`, the edit screen opened with no browser
+  warning or error logs, and saving `存放位置` as `冷藏` was visible on the
+  inventory detail facts after reload.
 - Targeted UI-copy grep for engineering terms found no new actionable
   user-facing leaks. The remaining AI `JSON` wording is confined to prompts or
   internal exceptions and is wrapped by the user-friendly recipe fallback copy.
@@ -139,6 +146,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
   item-profile detail opened from the live mobile Web UI.
 - Inventory detail quantity controls update visibly in both directions and the
   detail fact row stays in sync.
+- Inventory edit now opens without Flutter debug assertions in the live mobile
+  Web UI, and edited storage location data persists into the detail facts.
 - Marking an inventory batch consumed removes it from active priority handling
   and shows it in the history tab as `已消耗`.
 - Shopping list checkbox moves a pending item into the purchased section.
@@ -252,6 +261,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
   UI and the actual user actions that request access.
 - Reworded the Android notification channel display name from expiry-only
   language to inventory-reminder language.
+- Wrapped the inventory edit reminder switch in its own transparent `Material`
+  so Flutter no longer reports hidden ListTile ink/background behavior when a
+  beta user opens the edit screen.
 
 ## Remaining Risks
 
@@ -260,3 +272,6 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - The native notification implementations still need runtime proof even though
   the Dart service degrades cleanly when permission is missing, unsupported, or
   the platform channel is absent.
+- Directly loading an inventory detail query route in Web can still leave a
+  Flutter hash fragment in the address bar; natural in-app detail navigation
+  remains covered by the no-hash smoke checks.
