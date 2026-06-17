@@ -60,6 +60,10 @@ check confirmed it hands off cleanly to the rendered Home screen.
   the detailed check list rendered readable rows for inventory, reminders,
   recipes, shopping, batch edits, and history, with no browser warning or error
   logs.
+- Mobile Web manual-add smoke check on port 54335: opened Add, entered
+  `内测手动橙子` with the default quantity and purchase date, saved it, returned
+  to the catalog, saw the new item with `1` batch, then opened its item-profile
+  detail at `?route=items%2Fwiki%2F...` with no browser warning or error logs.
 - Targeted UI-copy grep for engineering terms found no new actionable
   user-facing leaks. The remaining AI `JSON` wording is confined to prompts or
   internal exceptions and is wrapped by the user-friendly recipe fallback copy.
@@ -107,7 +111,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Home total action badge opens the cleanup-focused inventory list.
 - Home expiring-priority rows open inventory batch detail.
 - Catalog expiring mini cards open inventory batch detail.
-- Manual add flow saved a test item and returned to the catalog with feedback.
+- Manual add flow saved a test item, returned to the catalog, and the new
+  item-profile detail opened from the live mobile Web UI.
 - Inventory detail quantity controls update visibly.
 - Shopping list checkbox moves a pending item into the purchased section.
 - Purchased shopping items can be converted into inventory after confirmation,
