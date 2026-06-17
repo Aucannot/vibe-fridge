@@ -79,6 +79,12 @@ check confirmed it hands off cleanly to the rendered Home screen.
   detail, confirmed `标记已消耗`, returned to Home with the pending reminder
   count reduced from 2 to 1, then opened `?route=items&view=history` and saw
   `面包` marked `已消耗`, with no browser warning or error logs.
+- Mobile Web history-search smoke check on port 54362: consumed `面包`, opened
+  `?route=items&view=history`, searched `面包` and verified the consumed record
+  remained visible, then searched `不存在测试词`. The first pass exposed that
+  history search with no matches reused the true-empty copy `暂无历史记录`; after
+  updating the filtered-empty state, the page showed `没有匹配记录` and clearing
+  the search restored the `面包` row with no browser warning or error logs.
 - Mobile Web inventory-table export smoke check on port 54339: opened Settings,
   used `导出库存表格`, and saw `库存表格已导出` feedback with no browser
   warning or error logs. Codex In-app Browser does not support download events,
@@ -229,6 +235,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
   copyable address bar on the app's query-route format.
 - Marking an inventory batch consumed removes it from active priority handling
   and shows it in the history tab as `已消耗`.
+- History search keeps matching consumed records visible and shows a
+  search-specific empty state when the keyword matches nothing.
 - Restoring a consumed inventory batch from its detail page moves it out of
   History and back into active catalog and expiring views.
 - Deleting a single inventory batch returns to the catalog, updates the item
@@ -368,6 +376,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
   consumption.
 - Reworked remaining inventory-detail reload callbacks so edit and image
   updates refresh without returning a `Future` from `setState`.
+- Reworded the history-page filtered-empty state so searching within existing
+  history no longer implies there are no historical records at all.
 
 ## Remaining Risks
 

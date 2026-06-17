@@ -137,6 +137,7 @@ class ItemsScreenState extends State<ItemsScreen> {
         final items = _filteredItems();
         final focusedItems = _focusedInventoryItems();
         final historyItems = _filteredHistoryItems();
+        final hasHistoryFilter = _searchController.text.trim().isNotEmpty;
         return RefreshIndicator(
           onRefresh: widget.controller.refresh,
           child: ListView(
@@ -310,10 +311,11 @@ class ItemsScreenState extends State<ItemsScreen> {
                         ),
                       )
                     else if (historyItems.isEmpty)
-                      const EmptyState(
+                      EmptyState(
                         icon: Icons.history_outlined,
-                        title: '暂无历史记录',
-                        message: '已消耗和已过期物品会出现在这里。',
+                        title: hasHistoryFilter ? '没有匹配记录' : '暂无历史记录',
+                        message:
+                            hasHistoryFilter ? '换一个关键词再试。' : '已消耗和已过期物品会出现在这里。',
                       )
                     else
                       ...historyItems.map(
