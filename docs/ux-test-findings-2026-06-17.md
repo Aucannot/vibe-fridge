@@ -28,6 +28,14 @@ square placeholders on a cold port before the font becomes available.
 - App self-check from Settings: passed, 15/15.
 - Fresh Web smoke check on a new local port: no new console warnings or errors
   for the latest build.
+- `flutter build macos --debug`: blocked by local environment. Flutter reached
+  Xcode dependency resolution, then failed because the active developer
+  directory is Command Line Tools and `xcodebuild` is unavailable to `xcrun`.
+- `flutter build apk --debug`: blocked by local environment after downloading
+  Flutter Android artifacts; Flutter reported no Android SDK.
+- `flutter doctor -v`: confirmed no Android SDK, incomplete Xcode, missing
+  CocoaPods, no Chrome binary, and sandboxed network checks failing without
+  elevated network access.
 
 ## Passing Checks Observed
 
@@ -61,7 +69,7 @@ square placeholders on a cold port before the font becomes available.
 ## Remaining Risks
 
 - Android and macOS local notification behavior still needs device or desktop
-  runtime validation.
+  runtime validation on a machine with Android SDK and full Xcode/CocoaPods.
 - Flutter Web can show square placeholders for Chinese text briefly during cold
   font loading; it recovered after waiting a few seconds in this pass.
 - Web detail URLs can include Flutter's hash route alongside the query route,

@@ -1,7 +1,6 @@
 # TODO Acceptance Audit - 2026-06-16
 
-Scope: verify the current worktree against `TODO.md` on branch
-`docs/feature-completion-todo`.
+Scope: verify the current worktree against `TODO.md` on `main`.
 
 ## Automated Gates
 
@@ -35,11 +34,16 @@ checked in `TODO.md` or covered by the evidence above.
 Remaining unchecked items are intentionally limited to native platform
 verification that cannot be proven on this machine:
 
-- Android SDK is missing, so Android local notification permission, scheduling,
-  and tap-through behavior still need Android SDK/device verification.
-- Full Xcode is missing, `xcrun --find xcodebuild` fails, and
-  `/Applications/Xcode.app` does not exist, so macOS notification build/device
-  behavior still needs full Xcode verification.
+- Android SDK is missing. On 2026-06-17, `flutter build apk --debug` downloaded
+  Flutter Android artifacts successfully after network approval, then stopped
+  with `No Android SDK found`, so Android local notification permission,
+  scheduling, and tap-through behavior still need Android SDK/device
+  verification.
+- Full Xcode is missing. On 2026-06-17, `flutter build macos --debug` reached
+  Xcode dependency resolution, then stopped because `xcrun` could not find
+  `xcodebuild` while the active developer directory was
+  `/Library/Developer/CommandLineTools`, so macOS notification build/device
+  behavior still needs full Xcode and CocoaPods verification.
 
 `flutter doctor -v` confirms the same platform gaps: no Android SDK, incomplete
 Xcode installation, no Google Chrome binary, and sandboxed network checks unable
