@@ -260,14 +260,17 @@ check confirmed it hands off cleanly to the rendered Home screen.
   searched for `牛奶`, saw the catalog narrow to `鲜牛奶` while keeping the
   expiring mini-card visible, then opened the result to
   `?route=items%2Fwiki%2Fwiki-milk` with no browser warning or error logs.
-- Mobile Web browser-history smoke check on ports 54404-54408: loaded
+- Mobile Web browser-history smoke check on ports 54404-54408, then repeated
+  on a rebuilt desktop Web preview at port 54370: loaded
   `?route=items&q=牛奶`, opened the `鲜牛奶` item-profile detail, and used the
   browser Back/Forward controls. Back correctly returned to the searched
-  catalog state with `q=牛奶`, but Forward stayed on the searched catalog
+  catalog state with `q=牛奶`, but Forward stayed on the catalog and most
+  recently rewrote the address to `?route=items`
   instead of reopening `?route=items%2Fwiki%2Fwiki-milk`. Several route-restore
-  experiments did not produce a verified fix, so the trial code was discarded
-  and the issue is kept as a remaining Web navigation risk. No browser warning
-  or error logs appeared.
+  experiments, including a Navigator stack observer and anonymous route-driven
+  detail pushes, did not produce a verified fix, so the trial code was
+  discarded and the issue is kept as a remaining Web navigation risk. No
+  browser warning or error logs appeared.
 - Mobile Web catalog category-filter smoke check on port 54361: opened the
   Items tab, selected the `日用品` category chip, verified the URL changed to
   `?route=items&category=cat-daily` and the catalog list narrowed to `牙膏`,
@@ -702,4 +705,4 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Web browser Forward after returning from a detail page can lose the detail
   entry. Reproduced from `?route=items&q=牛奶` -> `鲜牛奶` detail -> browser
   Back -> browser Forward; the Forward action remained on the searched catalog
-  instead of reopening the detail route.
+  and rewrote the URL to `?route=items` instead of reopening the detail route.
