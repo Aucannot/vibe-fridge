@@ -384,6 +384,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
   internal source values such as `legacy` and import batch identifiers for
   older imported rows. The detail page now maps that source to `旧版库存` and
   hides internal import batch ids from the user-facing trace.
+- The same copy pass found Settings restore/import feedback using
+  implementation-flavored terms like `恢复前快照`, `健康检查`, and `日志`.
+  Those labels now use user-facing backup/check/detail wording instead.
 - `flutter build macos --debug`: blocked by local environment. Flutter reached
   Xcode dependency resolution, then failed because the active developer
   directory is Command Line Tools and `xcodebuild` is unavailable to `xcrun`.
@@ -701,6 +704,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Reworded inventory-detail import traces so old imports show `旧版库存` rather
   than raw internal source values, and internal import batch ids are no longer
   displayed as user-facing details.
+- Reworded Settings restore/import feedback from snapshot, health-check, and
+  log terminology to backup, check, detail, and record wording.
 
 ## Remaining Risks
 

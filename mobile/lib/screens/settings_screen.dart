@@ -876,7 +876,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context) => AlertDialog(
         title: const Text('恢复备份'),
         content: const Text(
-          '会先创建恢复前快照，然后用备份替换当前库存数据。',
+          '会先自动保留一份恢复前备份，然后用所选备份替换当前库存数据。',
         ),
         actions: [
           TextButton(
@@ -1010,7 +1010,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ? '没有可导入的数据'
                 : '导入完成：${result.items} 条库存，'
                     '${result.wikis} 个物品资料，${result.tags} 个标签，'
-                    '健康检查${result.healthPassed ? '通过' : '未通过'}',
+                    '资料检查${result.healthPassed ? '通过' : '未通过'}',
           ),
         ),
       );
@@ -1438,7 +1438,7 @@ class _LegacyImportPreviewDialogState
                 _LegacyLogLine(entry: log),
               if (preview.logs.length > 5)
                 Text(
-                  '还有 ${preview.logs.length - 5} 条日志会在导入后展示',
+                  '还有 ${preview.logs.length - 5} 条记录会在导入后展示',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: AppColors.textHint,
                       ),
@@ -1499,7 +1499,7 @@ class _LegacyImportResultSummary extends StatelessWidget {
                 ),
               ),
               StatusPill(
-                label: result.healthPassed ? '健康' : '需检查',
+                label: result.healthPassed ? '正常' : '需检查',
                 color:
                     result.healthPassed ? AppColors.success : AppColors.error,
                 backgroundColor: result.healthPassed
@@ -1540,7 +1540,7 @@ class _LegacyImportResultSummary extends StatelessWidget {
             child: TextButton.icon(
               onPressed: onShowLog,
               icon: const Icon(Icons.list_alt_outlined),
-              label: const Text('查看日志'),
+              label: const Text('查看详情'),
             ),
           ),
         ],
@@ -1557,7 +1557,7 @@ class _LegacyImportLogDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('旧版库存导入日志'),
+      title: const Text('旧版库存导入详情'),
       content: SizedBox(
         width: double.maxFinite,
         child: SingleChildScrollView(
@@ -1580,7 +1580,7 @@ class _LegacyImportLogDialog extends StatelessWidget {
               const SizedBox(height: 10),
               if (result.logs.isEmpty)
                 Text(
-                  '没有详细日志。',
+                  '没有详细记录。',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: AppColors.textSecondary,
                       ),
