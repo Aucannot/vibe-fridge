@@ -105,6 +105,13 @@ check confirmed it hands off cleanly to the rendered Home screen.
   chose `冷冻`, saw `已修改 1 条库存的位置`, verified the batch card showed
   `位置 冷冻`, then opened the inventory detail and confirmed the fact row also
   showed `存放位置 冷冻` with no browser warning or error logs.
+- Mobile Web item-profile batch-category smoke check on port 54351: opened
+  `鲜牛奶`, entered batch mode, selected the inventory batch, used `改分类`,
+  chose `日用品`, saw the item-profile category and inventory detail category
+  both update to `日用品`, with no browser warning or error logs. The first
+  pass exposed misleading success copy that described the change as one
+  inventory batch's category even though category is stored on the item
+  profile, so the sheet title and success feedback were clarified.
 - Mobile Web direct detail URL smoke check on port 54344: loaded
   `?route=items%2Fitem%2Fitem-milk-1` directly, waited for route cleanup, and
   verified the address bar stayed on the query route without a Flutter hash
@@ -169,6 +176,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
   detail header to the edited description without a manual browser reload.
 - Item-profile batch mode can update selected inventory storage locations, and
   both the batch card and inventory detail fact row stay in sync.
+- Item-profile batch category changes update the profile-level category and
+  the inventory detail fact row consistently.
 - Direct Web detail URLs now clean up late Flutter hash fragments and keep the
   copyable address bar on the app's query-route format.
 - Marking an inventory batch consumed removes it from active priority handling
@@ -292,6 +301,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Reworked item-profile detail refresh after editing so saved profile changes
   reload from controller changes and remain visible without a manual browser
   refresh.
+- Clarified item-profile batch category copy so the picker and success
+  feedback describe the profile-level category being changed instead of
+  implying only one inventory batch owns the category.
 
 ## Remaining Risks
 

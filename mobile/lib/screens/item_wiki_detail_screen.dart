@@ -405,7 +405,7 @@ class _ItemWikiDetailScreenState extends State<ItemWikiDetailScreen> {
   Future<void> _changeSelectedCategory(List<InventoryItem> items) async {
     final ids = _selectedItems(items).map((item) => item.id).toList();
     if (ids.isEmpty) {
-      _showMessage('请选择要修改分类的库存批次');
+      _showMessage('请选择要调整分类的库存批次');
       return;
     }
     final categories = widget.controller.categories;
@@ -421,7 +421,7 @@ class _ItemWikiDetailScreenState extends State<ItemWikiDetailScreen> {
           shrinkWrap: true,
           children: [
             const ListTile(
-              title: Text('选择分类'),
+              title: Text('选择物品资料分类'),
             ),
             for (final category in categories)
               ListTile(
@@ -443,7 +443,7 @@ class _ItemWikiDetailScreenState extends State<ItemWikiDetailScreen> {
     }
     await _runBatchAction(
       itemIds: ids,
-      message: '已修改 ${ids.length} 条库存的分类',
+      message: '已修改物品资料分类',
       action: (ids) => widget.controller.updateItemsCategory(
         ids,
         selected.isEmpty ? null : selected,
