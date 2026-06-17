@@ -223,6 +223,7 @@ dart run sqflite_common_ffi_web:setup
 ## 版本管理规范
 
 - 开始任务先确认当前分支。
+- 禁止向 `main` 分支直接 commit；所有改动必须在工作分支提交，并通过 PR 合并到 `main`。
 - 提交前查看 `git status --short` 和相关 `git diff`。
 - 只 stage 本次任务相关文件。
 - commit message 使用简洁、可追踪的英文祈使句，例如 `Update agent guidance for Flutter app`。
