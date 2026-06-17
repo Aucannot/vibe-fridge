@@ -62,6 +62,11 @@ check confirmed it hands off cleanly to the rendered Home screen.
   the detailed check list rendered readable rows for inventory, reminders,
   recipes, shopping, batch edits, and history, with no browser warning or error
   logs.
+- Mobile Web recipe-preference settings smoke check on port 54363: opened
+  Settings, scrolled to `食谱偏好`, entered `清淡内测`, `不吃辣`, `电饭煲`,
+  changed time to `25` minutes and servings to `3`, saved, saw `食谱偏好已保存`,
+  then reloaded Settings and verified all preference fields persisted with no
+  browser warning or error logs.
 - Mobile Web manual-add smoke check on port 54335: opened Add, entered
   `内测手动橙子` with the default quantity and purchase date, saved it, returned
   to the catalog, saw the new item with `1` batch, then opened its item-profile
@@ -259,6 +264,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
   mobile Web UI and returns to the recipe list with user feedback.
 - Settings self-check completed and cleaned up its temporary data, and the
   mobile Web UI shows the 15/15 result plus readable per-check timings.
+- Settings recipe preferences save from the mobile Web UI and reload with the
+  edited values still visible.
 - Settings inventory-table export can be triggered from the live mobile Web UI,
   and the app shows success feedback without console warnings or errors.
 - Repository backup/restore tests cover pre-restore snapshots, replacement
