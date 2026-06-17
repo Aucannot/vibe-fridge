@@ -80,6 +80,13 @@ check confirmed it hands off cleanly to the rendered Home screen.
   `未配置` returned, with no browser warning or error logs. The `测试配置`
   action was intentionally not used, so the pass did not send an external
   request.
+- Mobile Web order-recognition test-configuration smoke check on port 54382:
+  ran Settings against a localhost-only fake OpenAI-compatible endpoint on
+  port 54381, saved `订单识别 AI` configuration, verified the API key field
+  cleared to the saved-key state without exposing the secret, tapped
+  `测试配置`, saw `配置可用`, confirmed the fake service received one local POST,
+  and then cleared the configuration back to `未配置` with no browser warning
+  or error logs.
 - Mobile Web demo-data reset smoke check on port 54367: added a user-created
   item named `reset-test-nori`, verified the Settings counts increased to
   `库存批次 5` and `物品资料 6`, then used `重置示例数据`. The confirmation copy
@@ -334,6 +341,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Settings order-recognition configuration saves from the mobile Web UI,
   persists after reload without revealing the saved key, and can be cleared
   through the confirmation dialog.
+- Settings order-recognition `测试配置` can validate a reachable local
+  OpenAI-compatible endpoint and report `配置可用` without exposing the saved API
+  key in the UI.
 - Settings demo-data reset rebuilds the built-in sample data from the mobile
   Web UI while preserving user-created inventory.
 - Settings inventory-table export can be triggered from the live mobile Web UI,
