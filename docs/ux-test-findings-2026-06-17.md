@@ -67,6 +67,12 @@ check confirmed it hands off cleanly to the rendered Home screen.
   `规则兜底` with `AI 食谱未配置，已使用规则建议`, verified rule suggestions stayed
   visible, then used the reset button to return to the initial `生成食谱` state
   with no browser warning or error logs.
+- Mobile Web recipe favorite/recent smoke check on port 54388: favorited
+  `快手蛋奶早餐` from the Recipes list without navigating away, verified
+  `收藏` appeared with `1 个常用方案`, opened the favorited recipe detail with
+  the heart state preserved, unfavorited it from detail, returned to the list,
+  and verified `收藏` disappeared while `最近生成` listed the viewed recipes,
+  with no browser warning or error logs.
 - Mobile Web AI-recipe success smoke check on ports 54383 and 54385: configured
   a localhost-only fake OpenAI-compatible endpoint, generated one AI recipe
   named `内测牛奶快手杯`, opened its detail, and verified inventory use,
@@ -361,6 +367,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
   route in the address bar.
 - Recipe detail shows consumed inventory, missing ingredients, steps, and the
   inventory deduction action.
+- Recipe favorites update from both the list and detail surfaces, and recently
+  viewed recipes appear in `最近生成` without stale favorite state.
 - Running a recipe deduction updates priority consumable counts in the live
   mobile Web UI and returns to the recipe list with user feedback.
 - Settings self-check completed and cleaned up its temporary data, and the
