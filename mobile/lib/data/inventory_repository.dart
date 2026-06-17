@@ -1624,7 +1624,7 @@ class InventoryRepository {
         LegacyImportLogEntry.updated(
           table: 'demo',
           name: '示例数据',
-          reason: '导入前清理 $clearedDemoRows 行示例资料/库存',
+          reason: '导入前清理 $clearedDemoRows 条示例资料/库存',
         ),
       );
     }

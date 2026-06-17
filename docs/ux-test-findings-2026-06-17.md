@@ -175,7 +175,7 @@ check confirmed it hands off cleanly to the rendered Home screen.
   item named `reset-test-nori`, verified the Settings counts increased to
   `库存批次 5` and `物品资料 6`, then used `重置示例数据`. The confirmation copy
   clearly promised only built-in sample data would be rebuilt, the app showed
-  `示例数据已重置，清理 9 行旧示例数据`, and the catalog still showed
+  `示例数据已重置，清理 9 条旧示例数据`, and the catalog still showed
   `reset-test-nori` afterward with no browser warning or error logs.
 - Mobile Web manual-add smoke check on port 54335: opened Add, entered
   `内测手动橙子` with the default quantity and purchase date, saved it, returned
@@ -736,6 +736,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Reworded data-health check messages from internal status/field names to
   inventory and profile language, so import or restore issues explain what
   needs attention without exposing raw state values.
+- Reworded legacy-import and demo-reset summaries from data-row wording to
+  user-facing record wording, including preview counts, import results, and
+  example-data cleanup feedback.
 
 ## Remaining Risks
 

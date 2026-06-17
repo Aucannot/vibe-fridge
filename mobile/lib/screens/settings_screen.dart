@@ -1059,7 +1059,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '示例数据已重置，清理 $clearedRows 行旧示例数据',
+            '示例数据已重置，清理 $clearedRows 条旧示例数据',
           ),
         ),
       );
@@ -1399,7 +1399,7 @@ class _LegacyImportPreviewDialogState
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _ImportCountRow(label: '源数据', counts: preview.source),
+            _ImportCountRow(label: '待导入', counts: preview.source),
             _ImportCountRow(label: '将新增', counts: preview.inserts),
             _ImportCountRow(label: '将更新', counts: preview.updates),
             _ImportCountRow(label: '将跳过', counts: preview.skipped),
@@ -1407,7 +1407,7 @@ class _LegacyImportPreviewDialogState
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: StatusPill(
-                  label: '${preview.failedRows} 行无法导入',
+                  label: '${preview.failedRows} 条无法导入',
                   color: AppColors.error,
                   backgroundColor: AppColors.errorContainer,
                 ),
@@ -1422,7 +1422,7 @@ class _LegacyImportPreviewDialogState
               },
               title: const Text('导入前清空示例资料/库存'),
               subtitle: const Text(
-                '只清理内置演示数据，保留分类和用户数据。',
+                '只清理内置示例资料/库存，保留分类和用户数据。',
               ),
             ),
             if (preview.logs.isNotEmpty) ...[
@@ -1510,8 +1510,8 @@ class _LegacyImportResultSummary extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            '新增 ${result.total} 行，更新 ${result.updates.total} 行，'
-            '跳过 ${result.skipped.total} 行，失败 ${result.failedRows} 行',
+            '新增 ${result.total} 条记录，更新 ${result.updates.total} 条记录，'
+            '跳过 ${result.skipped.total} 条记录，失败 ${result.failedRows} 条记录',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: AppColors.textSecondary,
                 ),
@@ -1519,7 +1519,7 @@ class _LegacyImportResultSummary extends StatelessWidget {
           if (result.clearedDemoRows > 0) ...[
             const SizedBox(height: 4),
             Text(
-              '已清理 ${result.clearedDemoRows} 行示例数据',
+              '已清理 ${result.clearedDemoRows} 条示例数据',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppColors.textSecondary,
                   ),
