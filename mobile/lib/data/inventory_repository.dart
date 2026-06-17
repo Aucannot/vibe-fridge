@@ -684,7 +684,7 @@ class InventoryRepository {
         AND is_checked = 0
         AND converted_at IS NULL
       ''',
-      whereArgs: [normalizedName, categoryId, normalizedUnit],
+      whereArgs: [normalizedName, categoryId ?? '', normalizedUnit ?? ''],
       limit: 1,
     );
     if (existing.isNotEmpty) {
@@ -2177,8 +2177,8 @@ class InventoryRepository {
       ''',
       whereArgs: [
         name,
-        _dateTextFromPayload(row['purchase_date']),
-        _dateTextFromPayload(row['expiry_date']),
+        _dateTextFromPayload(row['purchase_date']) ?? '',
+        _dateTextFromPayload(row['expiry_date']) ?? '',
       ],
       limit: 1,
     );

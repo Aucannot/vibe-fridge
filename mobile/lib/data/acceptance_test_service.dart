@@ -105,7 +105,7 @@ class AcceptanceTestService {
       }
     });
 
-    await check('本地通知调度 payload 可基于提醒生成', () async {
+    await check('本地通知内容可基于提醒生成', () async {
       final item = await _activeItem(_required(wikiId, 'wikiId'));
       final pending = await repository.getPendingReminderNotifications();
       PendingReminderNotification? notification;
@@ -116,12 +116,12 @@ class AcceptanceTestService {
         }
       }
       if (notification == null) {
-        throw StateError('没有为提醒到期库存生成本地通知 payload');
+        throw StateError('没有为提醒到期库存生成本地通知内容');
       }
       if (notification.title.isEmpty ||
           notification.body.isEmpty ||
           notification.scheduledAt.isBefore(startedAt)) {
-        throw StateError('本地通知 payload 内容无效');
+        throw StateError('本地通知内容无效');
       }
     });
 

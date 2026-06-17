@@ -420,7 +420,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '订单识别 VLM',
+                        '订单识别 AI',
                         style:
                             Theme.of(context).textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.w900,
@@ -470,7 +470,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 : '只保存在系统安全存储',
                             helperText: _hasStoredVlmApiKey
                                 ? '已保存的 key 不会明文显示'
-                                : '不会写入 SharedPreferences',
+                                : '仅保存在本机安全区域',
                             prefixIcon: const Icon(Icons.key_outlined),
                           ),
                         ),
@@ -647,7 +647,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
       _vlmApiKeyController.clear();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('VLM 配置已保存')),
+        const SnackBar(content: Text('订单识别配置已保存')),
       );
       setState(() {
         _hasStoredVlmApiKey = saved.hasStoredApiKey;
@@ -660,7 +660,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
       showAppErrorSnackBar(
         context,
-        message: '保存 VLM 配置失败',
+        message: '保存订单识别配置失败',
         error: error,
         stackTrace: stackTrace,
       );
@@ -749,7 +749,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _vlmTestPassed = null;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('已恢复默认 VLM 配置')),
+        const SnackBar(content: Text('已恢复默认订单识别配置')),
       );
     } finally {
       if (mounted) {
@@ -762,7 +762,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('清空 VLM 配置'),
+        title: const Text('清空订单识别配置'),
         content: const Text(
           'Endpoint、model 和已保存的 API key 都会被清空。',
         ),
@@ -796,7 +796,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _vlmTestPassed = null;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('VLM 配置已清空')),
+        const SnackBar(content: Text('订单识别配置已清空')),
       );
     } finally {
       if (mounted) {
@@ -1176,7 +1176,7 @@ class _VlmSettingsActions extends StatelessWidget {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.save_outlined),
-            label: Text(saving ? '保存中' : '保存 VLM 配置'),
+            label: Text(saving ? '保存中' : '保存订单识别配置'),
           ),
         ),
         const SizedBox(height: 10),

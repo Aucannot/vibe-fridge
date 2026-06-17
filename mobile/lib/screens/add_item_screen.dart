@@ -506,7 +506,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
       }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('请先在设置里配置 VLM endpoint、model 和 API key'),
+          content: Text('请先在设置里配置订单识别服务和 API Key'),
         ),
       );
       return;
