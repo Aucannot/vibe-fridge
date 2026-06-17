@@ -116,6 +116,8 @@ visual smoke check when browser automation is available.
   without exposing technical details on screen by default.
 - AI recipe fallback tests now verify service failures still return rule-based
   suggestions without exposing HTTP status codes or server text to users.
+- Order-recognition error-copy tests now verify HTTP status codes and service
+  response snippets stay out of user-facing configuration messages.
 
 ## Fixes Made During This Pass
 
@@ -125,6 +127,8 @@ visual smoke check when browser automation is available.
 - Reworded order-recognition configuration fields and error hints from
   endpoint/model/key terminology to service address, model name, and API
   secret language, including response-format failure details.
+- Centralized order-recognition failure messages so configuration tests show
+  user-actionable guidance instead of raw HTTP status or response text.
 - Reworded the add-item order-recognition setup prompt to use API secret
   language consistently with Settings.
 - Reworded the self-check notification item to avoid exposing `payload`.

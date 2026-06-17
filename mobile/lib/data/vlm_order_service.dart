@@ -158,6 +158,23 @@ class OrderRecognitionException implements Exception {
   final String message;
   final OrderRecognitionErrorType type;
 
+  String get userMessage {
+    switch (type) {
+      case OrderRecognitionErrorType.configuration:
+        return '配置错误：$message';
+      case OrderRecognitionErrorType.network:
+        return '网络错误：请检查服务地址或网络连接';
+      case OrderRecognitionErrorType.authentication:
+        return '鉴权失败：请检查 API 密钥';
+      case OrderRecognitionErrorType.server:
+        return '服务端错误：请检查服务地址和模型名称';
+      case OrderRecognitionErrorType.responseFormat:
+        return '返回不可解析：请确认当前模型支持订单识别';
+      case OrderRecognitionErrorType.unsupportedImage:
+        return '图片格式不支持：请换 PNG/JPG/WebP 再试';
+    }
+  }
+
   @override
   String toString() => message;
 }

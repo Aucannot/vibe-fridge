@@ -191,6 +191,28 @@ Organic Milk x2
     );
   });
 
+  test('maps technical order recognition failures to user friendly copy', () {
+    const auth = OrderRecognitionException(
+      '鉴权失败：HTTP 401 token invalid',
+      type: OrderRecognitionErrorType.authentication,
+    );
+    const server = OrderRecognitionException(
+      '服务端错误：HTTP 500 upstream exploded',
+      type: OrderRecognitionErrorType.server,
+    );
+    const image = OrderRecognitionException(
+      '图片格式不支持：HTTP 415 unsupported media type',
+      type: OrderRecognitionErrorType.unsupportedImage,
+    );
+
+    expect(auth.userMessage, '鉴权失败：请检查 API 密钥');
+    expect(server.userMessage, '服务端错误：请检查服务地址和模型名称');
+    expect(image.userMessage, '图片格式不支持：请换 PNG/JPG/WebP 再试');
+    expect(auth.userMessage, isNot(contains('HTTP')));
+    expect(server.userMessage, isNot(contains('500')));
+    expect(image.userMessage, isNot(contains('unsupported media type')));
+  });
+
   test('classifies network failure', () async {
     final service = VlmOrderService(
       client: MockClient((_) async => throw http.ClientException('offline')),
