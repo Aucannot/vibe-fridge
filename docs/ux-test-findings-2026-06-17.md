@@ -52,6 +52,11 @@ check confirmed it hands off cleanly to the rendered Home screen.
   `?route=recipes`, saw `库存已扣减`, and verified priority counts dropped
   from `鸡蛋 12个` / `鲜牛奶 2盒` to `鸡蛋 11个` / `鲜牛奶 1盒` with no
   browser warning or error logs.
+- Mobile Web direct recipe URL smoke check on port 54386: loaded
+  `?route=recipes%2Fquick-breakfast` directly and verified it opened the
+  `快手蛋奶早餐` detail page with inventory use, missing ingredients, and steps;
+  tapping back returned to `?route=recipes`, and both URLs stayed hash-free
+  with no browser warning or error logs.
 - Mobile Web AI-recipe fallback smoke check on port 54364: opened Recipes with
   no AI service configured, tapped `生成食谱`, saw the AI card switch to
   `规则兜底` with `AI 食谱未配置，已使用规则建议`, verified rule suggestions stayed
@@ -269,6 +274,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
   priority rows, item-profile batch rows, and recipe cards.
 - Web route cleanup now also handles generated non-ASCII recipe identifiers,
   such as AI recipe titles in Chinese, without leaving Flutter hash fragments.
+- Web route restoration now opens direct rule-recipe links such as
+  `?route=recipes%2Fquick-breakfast` instead of only selecting the Recipes tab.
 - Web cold-start loading screen compiles into `build/web/index.html` and uses
   system Chinese fonts until Flutter's first frame has settled.
 - Web app metadata now uses the product name, inventory-focused description,
@@ -342,6 +349,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - AI recipe generation succeeds against a reachable local OpenAI-compatible
   endpoint, replaces the rule list with the AI result, and opens the generated
   recipe detail without mixed query/hash routing.
+- Direct Web recipe URLs restore rule-generated recipe detail pages and return
+  to the recipe list cleanly from the detail back action.
 - Recipe detail shows consumed inventory, missing ingredients, steps, and the
   inventory deduction action.
 - Running a recipe deduction updates priority consumable counts in the live
@@ -461,6 +470,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Canonicalized Web route comparisons so non-ASCII generated routes, including
   Chinese AI recipe ids, are compared consistently with URL-encoded query
   routes before clearing Flutter hash fragments.
+- Added recipe-detail restoration for Web route startup and history changes,
+  so stable rule recipe ids can be opened from copied URLs or browser reloads.
 - Added a lightweight Web loading screen that uses native system Chinese fonts,
   matches the app's warm visual style, honors reduced-motion preferences, and
   hides shortly after Flutter's first frame to reduce the cold-start square-text

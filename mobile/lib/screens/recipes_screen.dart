@@ -18,10 +18,10 @@ class RecipesScreen extends StatefulWidget {
   final InventoryController controller;
 
   @override
-  State<RecipesScreen> createState() => _RecipesScreenState();
+  State<RecipesScreen> createState() => RecipesScreenState();
 }
 
-class _RecipesScreenState extends State<RecipesScreen> {
+class RecipesScreenState extends State<RecipesScreen> {
   final _service = RecipeSuggestionService();
   final _aiService = AiRecipeService();
   final _preferencesStore = RecipePreferencesStore();
@@ -212,6 +212,18 @@ class _RecipesScreenState extends State<RecipesScreen> {
       }
     }
     return null;
+  }
+
+  void openRecipeById(String id) {
+    final suggestions = <RecipeSuggestion>[
+      if (_aiSuggestions != null) ..._aiSuggestions!,
+      ..._service.generate(widget.controller.activeItems),
+    ];
+    final suggestion = _suggestionById(suggestions, id);
+    if (suggestion == null) {
+      return;
+    }
+    _openRecipe(suggestion);
   }
 
   Future<void> _openRecipe(RecipeSuggestion suggestion) async {

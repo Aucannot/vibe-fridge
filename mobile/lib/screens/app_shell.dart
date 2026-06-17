@@ -27,6 +27,7 @@ class _AppShellState extends State<AppShell> {
   int _index = 0;
   final List<Widget?> _screens = List<Widget?>.filled(_tabCount, null);
   final _itemsScreenKey = GlobalKey<ItemsScreenState>();
+  final _recipesScreenKey = GlobalKey<RecipesScreenState>();
   StreamSubscription<String>? _webRouteSubscription;
 
   @override
@@ -117,6 +118,8 @@ class _AppShellState extends State<AppShell> {
       if (index == 1) {
         _itemsScreenKey.currentState?.applyRequest(_itemsRequestFromUri(uri));
         _openItemsDetailForRoute(uri);
+      } else if (index == 3) {
+        _openRecipeDetailForRoute(uri);
       }
     });
   }
@@ -200,6 +203,17 @@ class _AppShellState extends State<AppShell> {
       await detail;
       setWebRouteState('/items', replace: true);
     }
+  }
+
+  void _openRecipeDetailForRoute(Uri uri) {
+    if (uri.pathSegments.length < 2 || uri.pathSegments.first != 'recipes') {
+      return;
+    }
+    final id = uri.pathSegments[1];
+    if (id.isEmpty) {
+      return;
+    }
+    _recipesScreenKey.currentState?.openRecipeById(id);
   }
 
   String _routeForIndex(int index) {
@@ -307,7 +321,10 @@ class _AppShellState extends State<AppShell> {
           controller: widget.controller,
           onItemSaved: () => _select(1),
         ),
-      3 => RecipesScreen(controller: widget.controller),
+      3 => RecipesScreen(
+          key: _recipesScreenKey,
+          controller: widget.controller,
+        ),
       4 => SettingsScreen(controller: widget.controller),
       _ => const SizedBox.shrink(),
     };
