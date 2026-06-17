@@ -1336,7 +1336,7 @@ class _BackupReminderCard extends StatelessWidget {
                 if (state.dirtyCount > 0) ...[
                   const SizedBox(height: 3),
                   Text(
-                    '累计 ${state.dirtyCount} 行本地变更尚未导出',
+                    '累计 ${state.dirtyCount} 次库存资料变更尚未备份',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppColors.textHint,
                         ),

@@ -710,12 +710,13 @@ void main() {
     final pending = await repository.getBackupReminderState();
     expect(pending.isPending, isTrue);
     expect(pending.dirtyCount, 10);
-    expect(pending.message, contains('建议导出一份备份'));
+    expect(pending.message, '因为新增库存，建议备份一次');
 
     await repository.markBackupExported();
     final cleared = await repository.getBackupReminderState();
     expect(cleared.isPending, isFalse);
     expect(cleared.dirtyCount, 0);
+    expect(cleared.message, '当前没有待处理的备份提醒');
     expect(cleared.lastExportedAt, isNotNull);
   });
 

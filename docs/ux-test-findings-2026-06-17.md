@@ -31,7 +31,7 @@ check confirmed it hands off cleanly to the rendered Home screen.
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
 - `flutter test test/inventory_repository_test.dart`: passed after the
-  no-date order duplicate fix, 18 tests.
+  no-date order duplicate fix and backup-reminder copy cleanup, 19 tests.
 - `flutter analyze`: passed after the latest beta fixes including Web route
   cleanup, direct Web detail URL hash cleanup, notification channel coverage,
   the edit-page Material fix, and no-date order duplicate handling.
@@ -229,16 +229,17 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Mobile Web bulk order-text backup reminder smoke check on ports 54397 and
   54398: pasted an order-like text containing a standalone reference
   `BETA-BACKUP-001` plus 10 inventory lines. The first pass imported the 10
-  valid rows and verified Settings showed `建议导出备份` with
-  `累计 10 行本地变更尚未导出`; it also exposed that the standalone reference
-  appeared as a low-confidence item needing confirmation. After filtering
-  standalone reference lines, the rebuilt Web app showed `10/10 已选`,
-  `10 可入库`, no `需要确认`, and the first review card was `备份提醒米`, with no
-  browser warning or error logs. The test used isolated local ports.
+  valid rows and verified Settings showed the backup reminder card with a
+  cumulative unbacked-change note; it also exposed that the standalone
+  reference appeared as a low-confidence item needing confirmation. After
+  filtering standalone reference lines, the rebuilt Web app showed
+  `10/10 已选`, `10 可入库`, no `需要确认`, and the first review card was
+  `备份提醒米`, with no browser warning or error logs. The test used isolated
+  local ports.
 - Mobile Web backup reminder export-clear smoke check on port 54399: pasted 10
   valid order-text inventory rows, confirmed batch import with `新增 10` and
   `需要手动处理 0`, opened Settings, verified the `建议导出备份` card appeared
-  with `累计 10 行本地变更尚未导出`, tapped the card's `导出` action, saw
+  with a cumulative unbacked-change note, tapped the card's `导出` action, saw
   `备份已导出`, and verified the reminder card disappeared with no browser
   warning or error logs. The test used an isolated local port.
 - Mobile Web consume/history smoke check on port 54338: opened `面包` inventory
@@ -729,6 +730,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Clarified the generic error snackbar action from `复制` to `复制详情`, keeping
   technical diagnostics out of the visible message while making the hidden copy
   action understandable.
+- Reworded the backup reminder card from row/export wording to inventory-data
+  backup wording, so users see why they should back up after local changes
+  without spreadsheet-like implementation terms.
 
 ## Remaining Risks
 

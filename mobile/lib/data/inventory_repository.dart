@@ -2927,8 +2927,10 @@ class BackupReminderState {
     if (!isPending) {
       return '当前没有待处理的备份提醒';
     }
-    final prefix = reason == null || reason!.isEmpty ? '数据已变更' : reason!;
-    return '$prefix 后建议导出一份备份';
+    if (reason == null || reason!.isEmpty) {
+      return '库存资料有更新，建议备份一次';
+    }
+    return '因为$reason，建议备份一次';
   }
 }
 
