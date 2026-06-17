@@ -24,9 +24,9 @@ visual smoke check when browser automation is available.
 ## Verification
 
 - `flutter test`: passed after the latest beta fixes including Web route
-  cleanup, 40 tests.
+  cleanup and notification channel coverage, 45 tests.
 - `flutter analyze`: passed after the latest beta fixes including Web route
-  cleanup.
+  cleanup and notification channel coverage.
 - `flutter build web --debug --no-wasm-dry-run`: passed after the latest beta
   fixes including Web route cleanup.
 - Web build output now includes the native HTML loading screen used to cover

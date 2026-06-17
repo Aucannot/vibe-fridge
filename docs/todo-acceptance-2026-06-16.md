@@ -12,6 +12,10 @@ Scope: verify the current worktree against `TODO.md` on `main`.
 | SQLite query benchmark | PASS | `python3 tools/perf_inventory_sqlite.py` passed all thresholds |
 | Whitespace diff check | PASS | `git diff --check` returned clean |
 
+Follow-up beta verification on 2026-06-17 expanded the Flutter suite to 45
+tests, including local notification channel coverage, with `flutter test` still
+passing.
+
 The first sandboxed `flutter test` run was blocked by local socket creation
 permissions. Re-running the same command with permission to bind a local test
 socket passed.
