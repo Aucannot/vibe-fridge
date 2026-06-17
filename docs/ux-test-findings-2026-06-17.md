@@ -22,10 +22,12 @@ square placeholders on a cold port before the font becomes available.
 
 ## Verification
 
-- `flutter test`: passed after the latest beta fixes, 40 tests.
-- `flutter analyze`: passed after the latest beta fixes.
+- `flutter test`: passed after the latest beta fixes including Web route
+  cleanup, 40 tests.
+- `flutter analyze`: passed after the latest beta fixes including Web route
+  cleanup.
 - `flutter build web --debug --no-wasm-dry-run`: passed after the latest beta
-  fixes.
+  fixes including Web route cleanup.
 - App self-check from Settings: passed, 15/15.
 - Fresh Web smoke check on a new local port: no new console warnings or errors
   for the latest build.
@@ -47,6 +49,9 @@ square placeholders on a cold port before the font becomes available.
 - Mobile Web settings check on port 54328: unsupported local notification
   actions now render disabled while keeping the platform-unavailable status
   visible, with no browser warning or error logs.
+- Web detail route cleanup fix compiles in the Web build so inventory and
+  item-profile detail links are set up to keep the app's query-route format
+  instead of retaining Flutter hash fragments.
 
 ## Passing Checks Observed
 
@@ -115,6 +120,10 @@ square placeholders on a cold port before the font becomes available.
 - Fixed nullable SQL query arguments in shopping-list de-duplication and legacy
   duplicate detection so sqflite no longer logs a future-breaking null argument
   warning.
+- Cleaned up Web detail route syncing so copied detail URLs are no longer set
+  up to keep both the app route query and a Flutter hash route after
+  navigation; this pass verified compilation, while browser address-bar
+  automation was unavailable locally.
 
 ## Remaining Risks
 
@@ -122,8 +131,8 @@ square placeholders on a cold port before the font becomes available.
   runtime validation on a machine with Android SDK and full Xcode/CocoaPods.
 - Flutter Web can show square placeholders for Chinese text briefly during cold
   font loading; it recovered after waiting a few seconds in this pass.
-- Web detail URLs can include Flutter's hash route alongside the query route,
-  which is not blocking but makes copied URLs less tidy.
+- The Web detail URL cleanup still needs one browser address-bar smoke check
+  because this local session had no browser automation runtime available.
 - The native notification implementations still need runtime proof even though
   the Dart service degrades cleanly when permission is missing, unsupported, or
   the platform channel is absent.

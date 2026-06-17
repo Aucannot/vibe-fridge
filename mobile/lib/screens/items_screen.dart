@@ -288,18 +288,19 @@ class ItemsScreenState extends State<ItemsScreen> {
                             item: item,
                             onAddShopping: () => _addRegisteredToShopping(item),
                             onTap: () async {
-                              setWebRouteState('/items/wiki/${item.wikiId}');
-                              await Navigator.of(context).push(
+                              final route = '/items/wiki/${item.wikiId}';
+                              setWebRouteState(route);
+                              final detail = Navigator.of(context).push(
                                 MaterialPageRoute(
-                                  settings: RouteSettings(
-                                    name: '/items/wiki/${item.wikiId}',
-                                  ),
+                                  settings: RouteSettings(name: route),
                                   builder: (_) => ItemWikiDetailScreen(
                                     controller: widget.controller,
                                     wikiId: item.wikiId,
                                   ),
                                 ),
                               );
+                              setWebRouteState(route, replace: true);
+                              await detail;
                               _syncItemsRoute(replace: true);
                               if (mounted) {
                                 await widget.controller.refresh();
@@ -364,16 +365,19 @@ class ItemsScreenState extends State<ItemsScreen> {
   }
 
   Future<void> _openInventoryItem(InventoryItem item) async {
-    setWebRouteState('/items/item/${item.id}');
-    await Navigator.of(context).push(
+    final route = '/items/item/${item.id}';
+    setWebRouteState(route);
+    final detail = Navigator.of(context).push(
       MaterialPageRoute(
-        settings: RouteSettings(name: '/items/item/${item.id}'),
+        settings: RouteSettings(name: route),
         builder: (_) => ItemDetailScreen(
           controller: widget.controller,
           itemId: item.id,
         ),
       ),
     );
+    setWebRouteState(route, replace: true);
+    await detail;
     _syncItemsRoute(replace: true);
     if (mounted) {
       await widget.controller.refresh();

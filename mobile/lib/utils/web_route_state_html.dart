@@ -33,17 +33,19 @@ Stream<String> getWebRouteStateChanges() {
 void setWebRouteState(String route, {bool replace = false}) {
   final nextRoute = _normalizeRoute(route);
   final currentRoute = _currentRoute();
-  if (currentRoute == nextRoute) {
+  final location = web.window.location;
+  final hasHashRoute = location.hash.isNotEmpty;
+  if (currentRoute == nextRoute && !hasHashRoute) {
     return;
   }
 
-  final location = web.window.location;
   final nextUrl = '${location.pathname}${_queryForRoute(nextRoute)}';
-  if (replace) {
+  if (replace || currentRoute == nextRoute) {
     web.window.history.replaceState(null, '', nextUrl);
   } else {
     web.window.history.pushState(null, '', nextUrl);
   }
+  Timer.run(() => _clearHashRouteIfStillCurrent(nextRoute, nextUrl));
 }
 
 String _currentRoute() {
@@ -78,4 +80,11 @@ String _normalizeRoute(String route) {
     return '/home';
   }
   return trimmed.startsWith('/') ? trimmed : '/$trimmed';
+}
+
+void _clearHashRouteIfStillCurrent(String route, String url) {
+  if (web.window.location.hash.isEmpty || _currentRoute() != route) {
+    return;
+  }
+  web.window.history.replaceState(null, '', url);
 }

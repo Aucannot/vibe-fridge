@@ -170,28 +170,34 @@ class _AppShellState extends State<AppShell> {
       return;
     }
     if (kind == 'item') {
-      await Navigator.of(context).push(
+      final route = '/items/item/$id';
+      final detail = Navigator.of(context).push(
         MaterialPageRoute(
-          settings: RouteSettings(name: '/items/item/$id'),
+          settings: RouteSettings(name: route),
           builder: (_) => ItemDetailScreen(
             controller: widget.controller,
             itemId: id,
           ),
         ),
       );
+      setWebRouteState(route, replace: true);
+      await detail;
       setWebRouteState('/items', replace: true);
       return;
     }
     if (kind == 'wiki') {
-      await Navigator.of(context).push(
+      final route = '/items/wiki/$id';
+      final detail = Navigator.of(context).push(
         MaterialPageRoute(
-          settings: RouteSettings(name: '/items/wiki/$id'),
+          settings: RouteSettings(name: route),
           builder: (_) => ItemWikiDetailScreen(
             controller: widget.controller,
             wikiId: id,
           ),
         ),
       );
+      setWebRouteState(route, replace: true);
+      await detail;
       setWebRouteState('/items', replace: true);
     }
   }
@@ -256,7 +262,8 @@ class _AppShellState extends State<AppShell> {
   }
 
   void _openNotificationTarget(String itemId) {
-    setWebRouteState('/items/item/$itemId');
+    final route = '/items/item/$itemId';
+    setWebRouteState(route);
     setState(() => _index = 1);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
@@ -265,7 +272,7 @@ class _AppShellState extends State<AppShell> {
       Navigator.of(context)
           .push(
         MaterialPageRoute(
-          settings: RouteSettings(name: '/items/item/$itemId'),
+          settings: RouteSettings(name: route),
           builder: (_) => ItemDetailScreen(
             controller: widget.controller,
             itemId: itemId,
@@ -275,6 +282,7 @@ class _AppShellState extends State<AppShell> {
           .then((_) {
         setWebRouteState('/items', replace: true);
       });
+      setWebRouteState(route, replace: true);
     });
   }
 
