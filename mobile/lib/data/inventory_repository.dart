@@ -2367,6 +2367,7 @@ class InventoryRepository {
     if (data is! Map) {
       throw ArgumentError('备份数据格式不正确');
     }
+    final backupRows = _normalizeBackupData(data);
 
     final before = await createBackupSnapshot(label: '恢复前自动备份');
     var restoredRows = 0;
@@ -2378,14 +2379,11 @@ class InventoryRepository {
       }
 
       for (final table in _backupTables) {
-        final rows = data[table];
-        if (rows is! List) {
-          continue;
-        }
-        for (final row in rows.whereType<Map>()) {
+        final rows = backupRows[table]!;
+        for (final row in rows) {
           await txn.insert(
             table,
-            Map<String, Object?>.from(row),
+            row,
             conflictAlgorithm: ConflictAlgorithm.replace,
           );
           restoredRows += 1;
@@ -2402,6 +2400,30 @@ class InventoryRepository {
       restoredRows: restoredRows,
       preRestoreSnapshotId: before.id,
     );
+  }
+
+  Map<String, List<Map<String, Object?>>> _normalizeBackupData(Map data) {
+    final normalized = <String, List<Map<String, Object?>>>{};
+    for (final table in _backupTables) {
+      if (!data.containsKey(table)) {
+        throw const FormatException('备份文件内容不完整或已损坏');
+      }
+      final rows = data[table];
+      if (rows is! List) {
+        throw const FormatException('备份文件内容不完整或已损坏');
+      }
+      normalized[table] = rows.map((row) {
+        if (row is! Map) {
+          throw const FormatException('备份文件内容不完整或已损坏');
+        }
+        try {
+          return Map<String, Object?>.from(row);
+        } catch (_) {
+          throw const FormatException('备份文件内容不完整或已损坏');
+        }
+      }).toList();
+    }
+    return normalized;
   }
 
   Future<DataHealthReport> checkDataHealth() async {

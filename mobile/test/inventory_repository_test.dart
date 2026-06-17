@@ -598,6 +598,38 @@ void main() {
     expect((await repository.checkDataHealth()).passed, isTrue);
   });
 
+  test('rejects incomplete backup before changing current data', () async {
+    final categories = await repository.getCategories();
+    await repository.createItem(
+      name: '坏备份保护测试物品',
+      categoryId: categories.first.id,
+      quantity: 1,
+      unit: '个',
+    );
+    final snapshotsBefore = await repository.getBackupSnapshots();
+
+    expect(
+      () => repository.restoreBackup(
+        {
+          'data': {
+            'items': <Map<String, Object?>>[],
+          },
+        },
+        replaceExisting: true,
+      ),
+      throwsA(isA<FormatException>()),
+    );
+
+    expect(
+      await repository.getRegisteredItems(keyword: '坏备份保护测试物品'),
+      isNotEmpty,
+    );
+    expect(
+      await repository.getBackupSnapshots(),
+      hasLength(snapshotsBefore.length),
+    );
+  });
+
   test('prompts backup after large local changes and clears after export',
       () async {
     final categories = await repository.getCategories();
