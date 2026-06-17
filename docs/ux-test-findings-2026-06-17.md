@@ -37,7 +37,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - `flutter build web --debug --no-wasm-dry-run`: passed after the latest beta
   fixes including Web route cleanup, direct Web detail URL hash cleanup,
   startup error copy coverage, the edit-page Material fix, and no-date order
-  duplicate handling.
+  duplicate handling; passed again after extending the native Web loading
+  screen delay to cover desktop CanvasKit font settling.
 - Web build output now includes the native HTML loading screen used to cover
   Flutter Web's cold-start font fallback window.
 - App self-check from Settings: passed, 15/15.
@@ -46,6 +47,15 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Mobile Web cold-start visual smoke check on port 54331: the native loading
   screen handed off to the rendered Home screen at 390 x 844 with no blank
   viewport and no browser warning or error logs.
+- Desktop Web main-surface smoke check on port 54409 at 1280 x 720: opened
+  Home, Items, Add, Recipes, and Settings. Home, Items, Add, and Settings used
+  the centered content width and wider card layouts without overlap or console
+  warnings/errors. The first desktop Recipes direct-load pass exposed that
+  Flutter content with square Chinese glyphs could become visible before fonts
+  settled; after extending the native loading screen's first-frame delay, port
+  54411 kept the native loading screen visible during that window and then
+  handed off to correctly rendered Chinese text with no browser warning or
+  error logs.
 - Mobile Web detail URL smoke check on port 54331: tapping the Home priority
   row for `面包` opened the inventory detail page and kept the address bar at
   `?route=items%2Fitem%2Fitem-bread-1` with no hash fragment and no browser
@@ -412,6 +422,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
 
 - Home dashboard renders summary, expiring priority inventory, and category
   distribution clearly after fonts load.
+- Desktop Web renders the main Home, Items, Add, Recipes, and Settings surfaces
+  in centered wide layouts without overlap, and the native loading screen now
+  hides the desktop Chinese-font settling window before handing off to Flutter.
 - Home total action badge opens the cleanup-focused inventory list.
 - Home reminder-due summary opens the focused reminder inventory list, and
   today-action cards can be snoozed or ignored with immediate count/list
@@ -650,8 +663,10 @@ check confirmed it hands off cleanly to the rendered Home screen.
   `/recipes`, keeping stale generated links from leaving misleading URLs.
 - Added a lightweight Web loading screen that uses native system Chinese fonts,
   matches the app's warm visual style, honors reduced-motion preferences, and
-  hides shortly after Flutter's first frame to reduce the cold-start square-text
-  flash.
+  hides after Flutter's first frame to reduce the cold-start square-text flash.
+- Extended the Web loading screen's first-frame delay after desktop direct-route
+  testing showed CanvasKit could briefly expose square Chinese glyphs before
+  fonts settled.
 - Replaced Web/PWA template metadata so browser tabs and installed app surfaces
   show `vibe-fridge`, the app's actual inventory purpose, and product colors.
 - Reworded macOS camera and photo permission prompts to match the app's Chinese
