@@ -73,6 +73,10 @@ check confirmed it hands off cleanly to the rendered Home screen.
   correct quantities and units, confirmed batch import, saw `导入完成` with
   `新增 2`, and verified the catalog showed `苹果 4` and `酸奶 2` with no
   browser warning or error logs.
+- Mobile Web consume/history smoke check on port 54338: opened `面包` inventory
+  detail, confirmed `标记已消耗`, returned to Home with the pending reminder
+  count reduced from 2 to 1, then opened `?route=items&view=history` and saw
+  `面包` marked `已消耗`, with no browser warning or error logs.
 - Targeted UI-copy grep for engineering terms found no new actionable
   user-facing leaks. The remaining AI `JSON` wording is confined to prompts or
   internal exceptions and is wrapped by the user-friendly recipe fallback copy.
@@ -124,6 +128,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
   item-profile detail opened from the live mobile Web UI.
 - Inventory detail quantity controls update visibly in both directions and the
   detail fact row stays in sync.
+- Marking an inventory batch consumed removes it from active priority handling
+  and shows it in the history tab as `已消耗`.
 - Shopping list checkbox moves a pending item into the purchased section.
 - Purchased shopping items can be converted into inventory after confirmation,
   and the catalog count updates in the live mobile Web UI.
