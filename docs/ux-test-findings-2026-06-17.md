@@ -100,6 +100,10 @@ check confirmed it hands off cleanly to the rendered Home screen.
   warning or error logs. Codex In-app Browser does not support download events,
   so this proves the live UI trigger and success feedback but not downloaded
   file persistence.
+- Mobile Web backup export smoke check on port 54365: opened Settings, used
+  `导出备份`, and saw `备份已导出` feedback with no browser warning or error
+  logs. Codex In-app Browser does not support download events, so this proves
+  the live UI trigger and success feedback but not downloaded file persistence.
 - Mobile Web catalog search smoke check on port 54340: opened the Items tab,
   searched for `牛奶`, saw the catalog narrow to `鲜牛奶` while keeping the
   expiring mini-card visible, then opened the result to
@@ -275,6 +279,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
   edited values still visible.
 - Settings inventory-table export can be triggered from the live mobile Web UI,
   and the app shows success feedback without console warnings or errors.
+- Settings backup export can be triggered from the live mobile Web UI, and the
+  app shows success feedback without console warnings or errors.
 - Repository backup/restore tests cover pre-restore snapshots, replacement
   restore, post-restore health checks, and backup reminder clearing.
 - Repository backup/restore tests now also reject incomplete or damaged backup
