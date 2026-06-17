@@ -7,7 +7,7 @@ Viewport: mobile-sized browser viewport, 390 x 844.
 
 Focus: whether a user can complete the main app jobs: understand the dashboard,
 add inventory, inspect inventory detail, use the shopping loop, consume via
-recipes, and run the built-in acceptance check.
+recipes, and run the built-in app self-check.
 
 ## Summary
 
@@ -137,7 +137,7 @@ check confirmed it hands off cleanly to the rendered Home screen.
   `待采购 0` while `面包` returned to replenishment suggestions, with no browser
   warning or error logs.
 - Mobile Web Settings self-check smoke check on port 54334: opened Settings,
-  ran `运行自验收`, saw the card switch to `全部通过` with `15/15`, verified
+  ran the app self-check, saw the card switch to `全部通过` with `15/15`, verified
   the detailed check list rendered readable rows for inventory, reminders,
   recipes, shopping, batch edits, and history, with no browser warning or error
   logs.
@@ -387,6 +387,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - The same copy pass found Settings restore/import feedback using
   implementation-flavored terms like `恢复前快照`, `健康检查`, and `日志`.
   Those labels now use user-facing backup/check/detail wording instead.
+- A follow-up Settings copy pass found the built-in check still used
+  acceptance-style wording. The visible card, action, toast, and check-data
+  labels now use `应用自检` language.
 - `flutter build macos --debug`: blocked by local environment. Flutter reached
   Xcode dependency resolution, then failed because the active developer
   directory is Command Line Tools and `xcodebuild` is unavailable to `xcrun`.
@@ -706,6 +709,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
   displayed as user-facing details.
 - Reworded Settings restore/import feedback from snapshot, health-check, and
   log terminology to backup, check, detail, and record wording.
+- Reworded Settings built-in check copy from acceptance wording to
+  app self-check wording.
 
 ## Remaining Risks
 

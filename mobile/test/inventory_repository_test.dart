@@ -310,7 +310,7 @@ void main() {
     expect(report.passed, isTrue);
     expect(report.checks, hasLength(15));
     expect(
-      (await repository.getRegisteredItems(keyword: '自验收测试物品-')),
+      (await repository.getRegisteredItems(keyword: '应用自检测试物品-')),
       isEmpty,
     );
   });

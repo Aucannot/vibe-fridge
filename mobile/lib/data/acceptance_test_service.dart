@@ -16,8 +16,8 @@ class AcceptanceTestService {
   Future<AcceptanceReport> runCoreInventoryChecks() async {
     final startedAt = DateTime.now();
     final checks = <AcceptanceCheckResult>[];
-    final testName = '自验收测试物品-${startedAt.microsecondsSinceEpoch}';
-    const testNamePrefix = '自验收测试物品-';
+    final testName = '应用自检测试物品-${startedAt.microsecondsSinceEpoch}';
+    const testNamePrefix = '应用自检测试物品-';
     String? wikiId;
     String? originalItemId;
     String? restoredItemId;
@@ -65,7 +65,7 @@ class AcceptanceTestService {
       await repository.createItem(
         name: testName,
         categoryId: categories.isEmpty ? null : categories.first.id,
-        description: 'app 自验收临时数据',
+        description: '应用自检临时数据',
         quantity: 2,
         unit: '份',
         purchaseDate: startedAt,
@@ -130,12 +130,12 @@ class AcceptanceTestService {
       final firstSent = await repository.recordReminderSentIfNeeded(
         itemId: item.id,
         reminderType: 'reminder_due',
-        message: '自验收提醒',
+        message: '应用自检提醒',
       );
       final duplicateSent = await repository.recordReminderSentIfNeeded(
         itemId: item.id,
         reminderType: 'reminder_due',
-        message: '自验收重复提醒',
+        message: '应用自检重复提醒',
       );
       if (!firstSent || duplicateSent) {
         throw StateError('同日同类型提醒没有正确去重');
@@ -199,8 +199,8 @@ class AcceptanceTestService {
           categoryId: categories.isEmpty ? null : categories.first.id,
           quantity: 1,
           unit: '份',
-          note: '自验收补货',
-          source: 'acceptance',
+          note: '应用自检补货',
+          source: '应用自检',
         ),
       );
 
@@ -290,7 +290,7 @@ class AcceptanceTestService {
       }
     });
 
-    await check('清理验收测试数据', () async {
+    await check('清理自检临时数据', () async {
       await _cleanupTemporaryData(testNamePrefix);
       final remaining = await repository.getRegisteredItems(
         keyword: testNamePrefix,
@@ -300,7 +300,7 @@ class AcceptanceTestService {
       }
     });
 
-    await check('数据健康检查通过', () async {
+    await check('资料一致性检查通过', () async {
       final health = await repository.checkDataHealth();
       if (!health.passed) {
         throw StateError(health.summary);
@@ -329,7 +329,7 @@ class AcceptanceTestService {
         .where(
           (item) =>
               item.status == ItemStatus.active &&
-              item.name.startsWith('自验收测试物品-'),
+              item.name.startsWith('应用自检测试物品-'),
         )
         .toList();
     if (activeItems.isEmpty) {

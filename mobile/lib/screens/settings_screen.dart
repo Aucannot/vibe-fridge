@@ -360,7 +360,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         children: [
                           Expanded(
                             child: Text(
-                              '自验收测试',
+                              '应用自检',
                               style: Theme.of(context)
                                   .textTheme
                                   .titleMedium
@@ -423,7 +423,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 )
                               : const Icon(Icons.play_arrow_outlined),
                           label: Text(
-                            _runningAcceptance ? '运行中' : '运行自验收',
+                            _runningAcceptance ? '运行中' : '运行自检',
                           ),
                         ),
                       ),
@@ -1092,8 +1092,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         SnackBar(
           content: Text(
             report.passed
-                ? '自验收通过：${report.passedCount}/${report.checks.length}'
-                : '自验收失败：${report.passedCount}/${report.checks.length}',
+                ? '应用自检通过：${report.passedCount}/${report.checks.length}'
+                : '应用自检失败：${report.passedCount}/${report.checks.length}',
           ),
         ),
       );
@@ -1103,7 +1103,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
       showAppErrorSnackBar(
         context,
-        message: '自验收无法运行',
+        message: '应用自检无法运行',
         error: error,
         stackTrace: stackTrace,
       );
