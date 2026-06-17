@@ -25,7 +25,7 @@ visual smoke check when browser automation is available.
 
 - `flutter test`: passed after the latest beta fixes including Web route
   cleanup, notification channel coverage, and startup error copy coverage,
-  plus AI recipe fallback error-copy coverage, 47 tests.
+  plus AI recipe and order-recognition error-copy coverage, 48 tests.
 - `flutter analyze`: passed after the latest beta fixes including Web route
   cleanup and notification channel coverage.
 - `flutter build web --debug --no-wasm-dry-run`: passed after the latest beta
