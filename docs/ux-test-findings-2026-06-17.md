@@ -41,7 +41,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
   fixes including Web route cleanup, direct Web detail URL hash cleanup,
   startup error copy coverage, the edit-page Material fix, and no-date order
   duplicate handling; passed again after extending the native Web loading
-  screen delay to cover desktop CanvasKit font settling.
+  screen delay to cover desktop CanvasKit font settling, and again before the
+  latest Settings smoke check.
 - Web build output now includes the native HTML loading screen used to cover
   Flutter Web's cold-start font fallback window.
 - App self-check from Settings: passed, 15/15.
@@ -144,6 +145,12 @@ check confirmed it hands off cleanly to the rendered Home screen.
   the detailed check list rendered readable rows for inventory, reminders,
   recipes, shopping, batch edits, and history, with no browser warning or error
   logs.
+- Desktop Web Settings self-check smoke check on fresh port 54372 after a
+  rebuild: opened Settings, verified the current `应用自检` / `运行自检` copy,
+  ran the app self-check, saw `全部通过` with `15/15` in about 397ms, and saw no
+  browser warning or error logs for the fresh origin. A same-port reload on
+  port 54371 still showed older self-check copy after rebuilding, indicating
+  service-worker or browser cache can keep stale Web assets during validation.
 - Mobile Web recipe-preference settings smoke check on port 54363: opened
   Settings, scrolled to `食谱偏好`, entered `清淡内测`, `不吃辣`, `电饭煲`,
   changed time to `25` minutes and servings to `3`, saved, saw `食谱偏好已保存`,
@@ -734,3 +741,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
   entry. Reproduced from `?route=items&q=牛奶` -> `鲜牛奶` detail -> browser
   Back -> browser Forward; the Forward action remained on the searched catalog
   and rewrote the URL to `?route=items` instead of reopening the detail route.
+- Web app updates can be masked by same-origin cache or service-worker state.
+  During Settings retesting, port 54371 still showed older self-check wording
+  after a rebuild, while fresh port 54372 loaded the current build. Release
+  validation should use a fresh origin or cache clear until the Web update
+  experience is designed explicitly.
