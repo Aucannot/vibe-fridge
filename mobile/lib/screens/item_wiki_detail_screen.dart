@@ -35,7 +35,24 @@ class _ItemWikiDetailScreenState extends State<ItemWikiDetailScreen> {
   @override
   void initState() {
     super.initState();
+    widget.controller.addListener(_handleControllerChanged);
     _future = _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant ItemWikiDetailScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_handleControllerChanged);
+      widget.controller.addListener(_handleControllerChanged);
+      _future = _load();
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_handleControllerChanged);
+    super.dispose();
   }
 
   Future<_WikiDetailData> _load() async {
@@ -43,6 +60,10 @@ class _ItemWikiDetailScreenState extends State<ItemWikiDetailScreen> {
     final items =
         await widget.controller.repository.getInventoryByWikiId(widget.wikiId);
     return _WikiDetailData(wiki: wiki, items: items);
+  }
+
+  void _handleControllerChanged() {
+    _reloadDetail();
   }
 
   @override
@@ -283,7 +304,9 @@ class _ItemWikiDetailScreenState extends State<ItemWikiDetailScreen> {
     await detail;
     setWebRouteState('/items/wiki/${widget.wikiId}', replace: true);
     if (mounted) {
-      setState(() => _future = _load());
+      setState(() {
+        _future = _load();
+      });
     }
   }
 
@@ -482,8 +505,26 @@ class _ItemWikiDetailScreenState extends State<ItemWikiDetailScreen> {
       ),
     );
     if (changed == true && mounted) {
-      setState(() => _future = _load());
+      await widget.controller.refresh();
+      if (!mounted) {
+        return;
+      }
+      _reloadDetail();
+      Future<void>.delayed(
+        const Duration(milliseconds: 300),
+        _reloadDetail,
+      );
+      Future<void>.delayed(const Duration(seconds: 1), _reloadDetail);
     }
+  }
+
+  void _reloadDetail() {
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _future = _load();
+    });
   }
 
   Future<void> _deleteWiki(ItemWiki wiki) async {

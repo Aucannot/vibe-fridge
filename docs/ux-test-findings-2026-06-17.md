@@ -94,6 +94,12 @@ check confirmed it hands off cleanly to the rendered Home screen.
   its own transparent `Material`, the edit screen opened with no browser
   warning or error logs, and saving `存放位置` as `冷藏` was visible on the
   inventory detail facts after reload.
+- Mobile Web item-profile edit smoke check on port 54349: editing `鲜牛奶`
+  originally saved data but left the detail page stale and produced a Flutter
+  debug assertion from an async-looking `setState` refresh callback; after
+  reworking the detail refresh, saving a second description marker returned to
+  the item-profile detail with the new description visible immediately and no
+  new browser warning or error logs.
 - Mobile Web direct detail URL smoke check on port 54344: loaded
   `?route=items%2Fitem%2Fitem-milk-1` directly, waited for route cleanup, and
   verified the address bar stayed on the query route without a Flutter hash
@@ -154,6 +160,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
   detail fact row stays in sync.
 - Inventory edit now opens without Flutter debug assertions in the live mobile
   Web UI, and edited storage location data persists into the detail facts.
+- Item-profile edit now saves from the live mobile Web UI and refreshes the
+  detail header to the edited description without a manual browser reload.
 - Direct Web detail URLs now clean up late Flutter hash fragments and keep the
   copyable address bar on the app's query-route format.
 - Marking an inventory batch consumed removes it from active priority handling
@@ -274,6 +282,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Wrapped the inventory edit reminder switch in its own transparent `Material`
   so Flutter no longer reports hidden ListTile ink/background behavior when a
   beta user opens the edit screen.
+- Reworked item-profile detail refresh after editing so saved profile changes
+  reload from controller changes and remain visible without a manual browser
+  refresh.
 
 ## Remaining Risks
 
