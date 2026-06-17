@@ -50,6 +50,14 @@ check confirmed it hands off cleanly to the rendered Home screen.
   row for `面包` opened the inventory detail page and kept the address bar at
   `?route=items%2Fitem%2Fitem-bread-1` with no hash fragment and no browser
   warning or error logs.
+- Mobile Web today-action reminder smoke check on port 54403: opened Home,
+  tapped the `提醒到期 2` summary to verify it linked to the focused
+  reminder-due inventory list at `?route=items&focus=reminderDue`, then returned
+  to Home and used `稍后` on `面包` plus `忽略` on `鲜牛奶`. The Home list updated
+  from `2项` to `1项` to `0项`, showed `今天没有待处理`, the top summary updated
+  to `0件` and `提醒到期 0`, and the snackbars said
+  `今天稍后再提醒：面包` and `今天不再提醒：鲜牛奶`, with no browser warning or
+  error logs.
 - Mobile Web recipe consumption smoke check on port 54332: opened the Recipes
   tab, opened `快手蛋奶早餐`, used `做这道菜并扣减库存`, returned to
   `?route=recipes`, saw `库存已扣减`, and verified priority counts dropped
@@ -397,6 +405,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Home dashboard renders summary, expiring priority inventory, and category
   distribution clearly after fonts load.
 - Home total action badge opens the cleanup-focused inventory list.
+- Home reminder-due summary opens the focused reminder inventory list, and
+  today-action cards can be snoozed or ignored with immediate count/list
+  refresh and user feedback.
 - Home expiring-priority rows open inventory batch detail.
 - Catalog expiring mini cards open inventory batch detail.
 - Catalog search filters the live mobile Web list and search results still open
