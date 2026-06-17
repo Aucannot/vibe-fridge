@@ -135,6 +135,11 @@ check confirmed it hands off cleanly to the rendered Home screen.
   opened the row menu, confirmed the destructive `删除采购项` dialog, and
   verified the pending count returned to `0` while replenishment suggestions
   returned to `2`, with no browser warning or error logs.
+- Mobile Web shopping-item edit smoke check on port 54358: opened the shopping
+  tab, added the `面包` replenishment suggestion to the pending list, opened the
+  row menu `编辑` sheet, changed quantity from `1` to `3`, replaced the note with
+  `内测编辑备注`, saved, and verified the pending row immediately showed `3袋`
+  plus the edited note with no browser warning or error logs.
 - Mobile Web direct detail URL smoke check on port 54344: loaded
   `?route=items%2Fitem%2Fitem-milk-1` directly, waited for route cleanup, and
   verified the address bar stayed on the query route without a Flutter hash
@@ -212,6 +217,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Deleting a single inventory batch returns to the catalog, updates the item
   count, and leaves a friendly empty state for stale direct detail URLs.
 - Shopping list checkbox moves a pending item into the purchased section.
+- Shopping-list row editing saves quantity and note changes back to the pending
+  list without stale row state.
 - Shopping-list row deletion removes the pending item and lets its
   replenishment suggestion reappear.
 - Purchased shopping items can be converted into inventory after confirmation,
