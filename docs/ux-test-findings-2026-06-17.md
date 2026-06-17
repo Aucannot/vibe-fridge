@@ -77,6 +77,11 @@ check confirmed it hands off cleanly to the rendered Home screen.
   detail, confirmed `标记已消耗`, returned to Home with the pending reminder
   count reduced from 2 to 1, then opened `?route=items&view=history` and saw
   `面包` marked `已消耗`, with no browser warning or error logs.
+- Mobile Web inventory-table export smoke check on port 54339: opened Settings,
+  used `导出库存表格`, and saw `库存表格已导出` feedback with no browser
+  warning or error logs. Codex In-app Browser does not support download events,
+  so this proves the live UI trigger and success feedback but not downloaded
+  file persistence.
 - Targeted UI-copy grep for engineering terms found no new actionable
   user-facing leaks. The remaining AI `JSON` wording is confined to prompts or
   internal exceptions and is wrapped by the user-friendly recipe fallback copy.
@@ -140,6 +145,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
   mobile Web UI and returns to the recipe list with user feedback.
 - Settings self-check completed and cleaned up its temporary data, and the
   mobile Web UI shows the 15/15 result plus readable per-check timings.
+- Settings inventory-table export can be triggered from the live mobile Web UI,
+  and the app shows success feedback without console warnings or errors.
 - Repository backup/restore tests cover pre-restore snapshots, replacement
   restore, post-restore health checks, and backup reminder clearing.
 - Repository backup/restore tests now also reject incomplete or damaged backup
