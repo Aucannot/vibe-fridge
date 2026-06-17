@@ -191,7 +191,9 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
       ),
     );
     if (changed == true && mounted) {
-      setState(() => _future = _load());
+      setState(() {
+        _future = _load();
+      });
     }
   }
 
@@ -302,7 +304,9 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
       reminderDaysBefore: item.reminderDaysBefore,
     );
     if (mounted) {
-      setState(() => _future = _load());
+      setState(() {
+        _future = _load();
+      });
     }
   }
 

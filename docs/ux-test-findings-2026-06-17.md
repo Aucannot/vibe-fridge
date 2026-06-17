@@ -119,6 +119,11 @@ check confirmed it hands off cleanly to the rendered Home screen.
   error logs. The first pass exposed that the facts card said `库存批次 1`
   while the batch list showed both active and consumed rows, so the facts label
   was clarified to `使用中批次`.
+- Mobile Web consume-restore smoke check on port 54355: opened `面包`
+  inventory detail, confirmed `标记已消耗`, verified it appeared in History as
+  `已消耗`, opened the consumed detail, used `恢复为使用中`, then verified
+  History became empty and the catalog/expiring section showed `面包 1袋`
+  again with no browser warning or error logs.
 - Mobile Web direct detail URL smoke check on port 54344: loaded
   `?route=items%2Fitem%2Fitem-milk-1` directly, waited for route cleanup, and
   verified the address bar stayed on the query route without a Flutter hash
@@ -191,6 +196,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
   copyable address bar on the app's query-route format.
 - Marking an inventory batch consumed removes it from active priority handling
   and shows it in the history tab as `已消耗`.
+- Restoring a consumed inventory batch from its detail page moves it out of
+  History and back into active catalog and expiring views.
 - Shopping list checkbox moves a pending item into the purchased section.
 - Purchased shopping items can be converted into inventory after confirmation,
   and the catalog count updates in the live mobile Web UI.
@@ -316,6 +323,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Clarified the item-profile facts card count from `库存批次` to `使用中批次`
   because the batch list also includes consumed rows after partial
   consumption.
+- Reworked remaining inventory-detail reload callbacks so edit and image
+  updates refresh without returning a `Future` from `setState`.
 
 ## Remaining Risks
 
