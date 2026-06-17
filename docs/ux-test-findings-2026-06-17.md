@@ -377,9 +377,13 @@ check confirmed it hands off cleanly to the rendered Home screen.
   verified the address bar stayed on the query route without a Flutter hash
   fragment while rendering the inventory detail page with no browser warning
   or error logs.
-- Targeted UI-copy grep for engineering terms found no new actionable
+- Initial targeted UI-copy grep for engineering terms found no new actionable
   user-facing leaks. The remaining AI `JSON` wording is confined to prompts or
   internal exceptions and is wrapped by the user-friendly recipe fallback copy.
+- Follow-up UI-copy scan found inventory-detail import traces could display
+  internal source values such as `legacy` and import batch identifiers for
+  older imported rows. The detail page now maps that source to `旧版库存` and
+  hides internal import batch ids from the user-facing trace.
 - `flutter build macos --debug`: blocked by local environment. Flutter reached
   Xcode dependency resolution, then failed because the active developer
   directory is Command Line Tools and `xcodebuild` is unavailable to `xcrun`.
@@ -694,6 +698,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
   updates refresh without returning a `Future` from `setState`.
 - Reworded the history-page filtered-empty state so searching within existing
   history no longer implies there are no historical records at all.
+- Reworded inventory-detail import traces so old imports show `旧版库存` rather
+  than raw internal source values, and internal import batch ids are no longer
+  displayed as user-facing details.
 
 ## Remaining Risks
 
