@@ -16,9 +16,10 @@ item, see it in the catalog, open expiring inventory detail, adjust quantity,
 add an item to the shopping list, mark it purchased, convert it back to
 inventory, open recipe suggestions, and deduct inventory after cooking.
 
-The strongest remaining product gaps are platform-specific validation and a
-short Flutter Web font-loading flash where Chinese text can briefly render as
-square placeholders on a cold port before the font becomes available.
+The strongest remaining product gap is platform-specific notification
+validation. Flutter Web cold-start text now has a native HTML loading screen to
+cover the short CanvasKit font fallback window, though it still needs a browser
+visual smoke check when browser automation is available.
 
 ## Verification
 
@@ -28,6 +29,8 @@ square placeholders on a cold port before the font becomes available.
   cleanup.
 - `flutter build web --debug --no-wasm-dry-run`: passed after the latest beta
   fixes including Web route cleanup.
+- Web build output now includes the native HTML loading screen used to cover
+  Flutter Web's cold-start font fallback window.
 - App self-check from Settings: passed, 15/15.
 - Fresh Web smoke check on a new local port: no new console warnings or errors
   for the latest build.
@@ -52,6 +55,8 @@ square placeholders on a cold port before the font becomes available.
 - Web detail route cleanup fix compiles in the Web build so inventory and
   item-profile detail links are set up to keep the app's query-route format
   instead of retaining Flutter hash fragments.
+- Web cold-start loading screen compiles into `build/web/index.html` and uses
+  system Chinese fonts until Flutter's first frame has settled.
 
 ## Passing Checks Observed
 
@@ -124,13 +129,18 @@ square placeholders on a cold port before the font becomes available.
   up to keep both the app route query and a Flutter hash route after
   navigation; this pass verified compilation, while browser address-bar
   automation was unavailable locally.
+- Added a lightweight Web loading screen that uses native system Chinese fonts,
+  matches the app's warm visual style, honors reduced-motion preferences, and
+  hides shortly after Flutter's first frame to reduce the cold-start square-text
+  flash.
 
 ## Remaining Risks
 
 - Android and macOS local notification behavior still needs device or desktop
   runtime validation on a machine with Android SDK and full Xcode/CocoaPods.
-- Flutter Web can show square placeholders for Chinese text briefly during cold
-  font loading; it recovered after waiting a few seconds in this pass.
+- The Web cold-start loading screen still needs one browser visual smoke check
+  on a cold port because this local session had no browser automation runtime
+  available.
 - The Web detail URL cleanup still needs one browser address-bar smoke check
   because this local session had no browser automation runtime available.
 - The native notification implementations still need runtime proof even though

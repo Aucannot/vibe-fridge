@@ -31,8 +31,125 @@
 
   <title>vibe_fridge</title>
   <link rel="manifest" href="manifest.json">
+  <style>
+    html,
+    body {
+      background: #FAF7F1;
+      height: 100%;
+      margin: 0;
+    }
+
+    #app-loading {
+      align-items: center;
+      background: #FAF7F1;
+      color: #2B2A24;
+      display: flex;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC",
+        "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+      inset: 0;
+      justify-content: center;
+      letter-spacing: 0;
+      position: fixed;
+      transition: opacity 180ms ease-out, visibility 180ms ease-out;
+      z-index: 9999;
+    }
+
+    #app-loading.is-hidden {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    .loading-card {
+      align-items: center;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      text-align: center;
+    }
+
+    .loading-mark {
+      align-items: center;
+      background: #E5F1D9;
+      border: 1px solid #D7E8C6;
+      border-radius: 20px;
+      box-shadow: 0 12px 22px rgba(94, 75, 46, 0.08);
+      color: #5E6F54;
+      display: flex;
+      font-size: 26px;
+      font-weight: 800;
+      height: 64px;
+      justify-content: center;
+      width: 64px;
+    }
+
+    .loading-title {
+      font-size: 22px;
+      font-weight: 800;
+      line-height: 1.25;
+    }
+
+    .loading-subtitle {
+      color: #68645C;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .loading-bar {
+      background: #E8DED1;
+      border-radius: 999px;
+      height: 4px;
+      margin-top: 2px;
+      overflow: hidden;
+      width: 118px;
+    }
+
+    .loading-bar::before {
+      animation: loading-slide 1.2s ease-in-out infinite;
+      background: #7A8F6A;
+      border-radius: inherit;
+      content: "";
+      display: block;
+      height: 100%;
+      width: 42px;
+    }
+
+    @keyframes loading-slide {
+      0% {
+        transform: translateX(-42px);
+      }
+
+      50% {
+        transform: translateX(54px);
+      }
+
+      100% {
+        transform: translateX(118px);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #app-loading {
+        transition: none;
+      }
+
+      .loading-bar::before {
+        animation: none;
+        transform: translateX(38px);
+      }
+    }
+  </style>
 </head>
 <body>
+  <div id="app-loading" role="status" aria-live="polite">
+    <div class="loading-card">
+      <div class="loading-mark" aria-hidden="true">鲜</div>
+      <div>
+        <div class="loading-title">vibe-fridge</div>
+        <div class="loading-subtitle">正在整理你的库存</div>
+      </div>
+      <div class="loading-bar" aria-hidden="true"></div>
+    </div>
+  </div>
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader
@@ -42,5 +159,14 @@
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
   <script src="flutter_bootstrap.js" async></script>
+  <script>
+    const loadingScreen = document.getElementById('app-loading');
+    const hideLoadingScreen = () => loadingScreen?.classList.add('is-hidden');
+
+    window.addEventListener('flutter-first-frame', () => {
+      window.setTimeout(hideLoadingScreen, 240);
+    });
+    window.setTimeout(hideLoadingScreen, 8000);
+  </script>
 </body>
 </html>
