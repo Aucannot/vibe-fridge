@@ -57,6 +57,13 @@ check confirmed it hands off cleanly to the rendered Home screen.
   `规则兜底` with `AI 食谱未配置，已使用规则建议`, verified rule suggestions stayed
   visible, then used the reset button to return to the initial `生成食谱` state
   with no browser warning or error logs.
+- Mobile Web AI-recipe success smoke check on ports 54383 and 54385: configured
+  a localhost-only fake OpenAI-compatible endpoint, generated one AI recipe
+  named `内测牛奶快手杯`, opened its detail, and verified inventory use,
+  missing ingredients, steps, and no browser warning or error logs. The first
+  pass exposed that a Chinese AI recipe id left the address bar as a mixed
+  query/hash route; after canonicalizing Web route cleanup, the rebuilt detail
+  URL stayed at `?route=recipes%2Fai-recipe-...` with no hash fragment.
 - Mobile Web shopping-loop smoke check on port 54333: opened the shopping tab,
   added the `感冒药` replenishment suggestion to the list, checked it as
   purchased, confirmed `采购项入库`, saw `已入库 1 项`, and verified the
@@ -260,6 +267,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
   instead of retaining Flutter hash fragments.
 - Web route cleanup now covers the remaining detail entry points from home
   priority rows, item-profile batch rows, and recipe cards.
+- Web route cleanup now also handles generated non-ASCII recipe identifiers,
+  such as AI recipe titles in Chinese, without leaving Flutter hash fragments.
 - Web cold-start loading screen compiles into `build/web/index.html` and uses
   system Chinese fonts until Flutter's first frame has settled.
 - Web app metadata now uses the product name, inventory-focused description,
@@ -330,6 +339,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Recipes page lists priority consumables and concrete recipe suggestions.
 - AI recipe generation falls back to rule suggestions when the AI service is
   not configured, with user-facing copy and a reset action.
+- AI recipe generation succeeds against a reachable local OpenAI-compatible
+  endpoint, replaces the rule list with the AI result, and opens the generated
+  recipe detail without mixed query/hash routing.
 - Recipe detail shows consumed inventory, missing ingredients, steps, and the
   inventory deduction action.
 - Running a recipe deduction updates priority consumable counts in the live
@@ -446,6 +458,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
   avoid mixed query/hash URLs too.
 - Strengthened Web route hash cleanup with delayed retries so direct detail
   URLs also remove late Flutter hash fragments after the Navigator settles.
+- Canonicalized Web route comparisons so non-ASCII generated routes, including
+  Chinese AI recipe ids, are compared consistently with URL-encoded query
+  routes before clearing Flutter hash fragments.
 - Added a lightweight Web loading screen that uses native system Chinese fonts,
   matches the app's warm visual style, honors reduced-motion preferences, and
   hides shortly after Flutter's first frame to reduce the cold-start square-text
