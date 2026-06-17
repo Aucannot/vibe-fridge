@@ -85,6 +85,16 @@ check confirmed it hands off cleanly to the rendered Home screen.
   purchased, confirmed `采购项入库`, saw `已入库 1 项`, and verified the
   catalog count for `感冒药` increased from 1 to 2 with no browser warning or
   error logs.
+- Mobile Web manual shopping edit/convert smoke check on port 54395: added
+  `shopping-edit-test` from the shopping tab with quantity `3`, unit `包`, and
+  a note, edited it to quantity `5` with a new note, checked it as purchased,
+  and converted it into inventory. The first pass exposed that the shopping
+  note was lost after conversion; after preserving it as the inventory batch
+  description without updating the item-profile description, the rebuilt Web
+  app converted `shopping-note-test` and showed `描述 采购备注应保留` on the
+  inventory detail facts card, while the item-profile header stayed
+  `暂无描述`, with no browser warning or error logs. The temporary test
+  inventory and profiles were cleaned up through the UI.
 - Mobile Web catalog-to-shopping smoke check on port 54391: opened the item
   catalog, tapped the cart action on the `感冒药` row, saw
   `已加入采购清单：感冒药` without leaving the catalog, opened the Shopping view,
@@ -403,7 +413,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Shopping-list row deletion removes the pending item and lets its
   replenishment suggestion reappear.
 - Purchased shopping items can be converted into inventory after confirmation,
-  and the catalog count updates in the live mobile Web UI.
+  the catalog count updates in the live mobile Web UI, and shopping notes are
+  retained as inventory batch descriptions without polluting the item-profile
+  description.
 - Catalog row cart actions add the selected item profile to the shopping list
   without navigating away, and deleting that pending item restores the
   replenishment suggestion state.
@@ -477,6 +489,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Order-text review supports editing recognized quantities, filling missing
   units, excluding selected rows such as gifts, and confirming low-confidence
   items before batch import.
+- Repository shopping-list conversion tests now verify converted shopping
+  notes are retained on inventory batches and do not become item-profile
+  descriptions.
 
 ## Fixes Made During This Pass
 
@@ -512,6 +527,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Simplified the backup restore success message so it does not expose an
   implementation-level restored row count as if it were a user-facing item
   count.
+- Preserved shopping-list notes when checked items are converted into
+  inventory by saving the note on the inventory batch description without
+  syncing it into the item-profile description.
 - Reworded local notification sync failures so platform/plugin error codes are
   not shown directly to users.
 - Added Android reminder restoration after device reboot or app update by
@@ -584,3 +602,6 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - The native notification implementations still need runtime proof even though
   the Dart service degrades cleanly when permission is missing, unsupported, or
   the platform channel is absent.
+- Shopping items left with the blank category label show as `未分类` in the
+  shopping list but become `其他` after conversion into inventory, which is a
+  minor cross-surface copy inconsistency still worth smoothing later.

@@ -295,6 +295,12 @@ void main() {
     );
     expect(batches.map((item) => item.quantity), contains(2));
     expect(batches.map((item) => item.sourceApp), contains('采购清单'));
+    final convertedBatch = batches.singleWhere(
+      (item) => item.sourceApp == '采购清单',
+    );
+    expect(convertedBatch.description, '买嫩一点');
+    final wiki = await repository.getWiki(registered.single.wikiId);
+    expect(wiki?.description, isNull);
   });
 
   test('runs app acceptance checks without leaving temporary data', () async {

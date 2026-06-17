@@ -537,6 +537,7 @@ class InventoryRepository {
     required String name,
     String? categoryId,
     String? description,
+    bool syncDescriptionToWiki = true,
     int quantity = 1,
     String? unit,
     DateTime? purchaseDate,
@@ -584,7 +585,7 @@ class InventoryRepository {
           'id': wikiId,
           'name': normalizedName,
           'icon': null,
-          'description': description,
+          'description': syncDescriptionToWiki ? description : null,
           'category_id': categoryId,
           'default_unit': unit,
           'suggested_expiry_days': null,
@@ -599,13 +600,17 @@ class InventoryRepository {
         wikiId = existing.first['id'] as String;
         effectiveReminderDays = reminderDaysBefore ??
             ((existing.first['default_reminder_days'] as int?) ?? 3);
-        if (categoryId != null || unit != null || description != null) {
+        if (categoryId != null ||
+            unit != null ||
+            (syncDescriptionToWiki && description != null)) {
           await txn.update(
             'item_wikis',
             {
               if (categoryId != null) 'category_id': categoryId,
               if (unit != null && unit.trim().isNotEmpty) 'default_unit': unit,
-              if (description != null && description.trim().isNotEmpty)
+              if (syncDescriptionToWiki &&
+                  description != null &&
+                  description.trim().isNotEmpty)
                 'description': description,
               if (storageLocation != null && storageLocation.trim().isNotEmpty)
                 'storage_location': storageLocation.trim(),
@@ -809,6 +814,8 @@ class InventoryRepository {
       await createItem(
         name: item.name,
         categoryId: item.categoryId,
+        description: item.note,
+        syncDescriptionToWiki: false,
         quantity: item.quantity,
         unit: item.unit,
         purchaseDate: boughtAt,
