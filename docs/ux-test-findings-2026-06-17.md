@@ -88,6 +88,11 @@ check confirmed it hands off cleanly to the rendered Home screen.
   searched for `牛奶`, saw the catalog narrow to `鲜牛奶` while keeping the
   expiring mini-card visible, then opened the result to
   `?route=items%2Fwiki%2Fwiki-milk` with no browser warning or error logs.
+- Mobile Web catalog category-filter smoke check on port 54361: opened the
+  Items tab, selected the `日用品` category chip, verified the URL changed to
+  `?route=items&category=cat-daily` and the catalog list narrowed to `牙膏`,
+  then tapped `全部` and verified the URL returned to `?route=items` with the
+  mixed catalog list restored, with no browser warning or error logs.
 - Mobile Web inventory-edit smoke check on ports 54341 and 54342: opening the
   `鲜牛奶` edit screen originally produced a Flutter debug assertion about
   `SwitchListTile` inside a decorated card; after wrapping the switch tile in
@@ -204,6 +209,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Catalog expiring mini cards open inventory batch detail.
 - Catalog search filters the live mobile Web list and search results still open
   the matching item-profile detail route.
+- Catalog category chips filter the mobile Web list and can be cleared back to
+  the full catalog without stale route state.
 - Manual add flow saved a test item, returned to the catalog, and the new
   item-profile detail opened from the live mobile Web UI.
 - Inventory detail quantity controls update visibly in both directions and the
