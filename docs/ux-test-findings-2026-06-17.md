@@ -65,6 +65,9 @@ visual smoke check when browser automation is available.
   and describe the user-triggered photo workflows.
 - Android's system notification channel now uses the broader product term
   `库存提醒` instead of only expiry-focused wording.
+- Android's system notification channel now also includes a system-settings
+  description, `库存到期和处理提醒`, so users can recognize what the reminder
+  covers before enabling or muting it.
 
 ## Passing Checks Observed
 

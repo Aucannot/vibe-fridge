@@ -4,6 +4,7 @@ object LocalNotificationContract {
     const val channelName = "vibe_fridge/local_notifications"
     const val notificationChannelId = "expiry_reminders"
     const val notificationChannelName = "库存提醒"
+    const val notificationChannelDescription = "库存到期和处理提醒"
     const val permissionRequestCode = 4817
     const val prefsName = "vibe_fridge_notifications"
     const val scheduledItemIdsKey = "scheduled_item_ids"

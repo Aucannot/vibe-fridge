@@ -178,7 +178,9 @@ class MainActivity : FlutterActivity() {
             LocalNotificationContract.notificationChannelId,
             LocalNotificationContract.notificationChannelName,
             NotificationManager.IMPORTANCE_DEFAULT,
-        )
+        ).apply {
+            description = LocalNotificationContract.notificationChannelDescription
+        }
         notificationManager.createNotificationChannel(channel)
     }
 
