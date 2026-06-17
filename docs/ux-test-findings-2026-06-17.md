@@ -64,6 +64,10 @@ check confirmed it hands off cleanly to the rendered Home screen.
   `内测手动橙子` with the default quantity and purchase date, saved it, returned
   to the catalog, saw the new item with `1` batch, then opened its item-profile
   detail at `?route=items%2Fwiki%2F...` with no browser warning or error logs.
+- Mobile Web inventory-detail quantity smoke check on port 54336: opened the
+  Home priority row for `鲜牛奶`, reached `?route=items%2Fitem%2Fitem-milk-1`,
+  increased quantity from `2 盒` to `3 盒`, verified the fact row updated, then
+  decreased it back to `2 盒` with no browser warning or error logs.
 - Targeted UI-copy grep for engineering terms found no new actionable
   user-facing leaks. The remaining AI `JSON` wording is confined to prompts or
   internal exceptions and is wrapped by the user-friendly recipe fallback copy.
@@ -113,7 +117,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Catalog expiring mini cards open inventory batch detail.
 - Manual add flow saved a test item, returned to the catalog, and the new
   item-profile detail opened from the live mobile Web UI.
-- Inventory detail quantity controls update visibly.
+- Inventory detail quantity controls update visibly in both directions and the
+  detail fact row stays in sync.
 - Shopping list checkbox moves a pending item into the purchased section.
 - Purchased shopping items can be converted into inventory after confirmation,
   and the catalog count updates in the live mobile Web UI.
