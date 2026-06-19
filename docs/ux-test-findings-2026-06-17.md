@@ -254,7 +254,8 @@ Platform notification checklist for that gate:
   wiring coverage, and after fixing macOS order-recognition secure key storage,
   with no issues. Passed again on the current worktree on 2026-06-19 after
   allowing the pub.dev advisories network check. Passed again after adding the
-  debug-only running-app notification status extension.
+  debug-only running-app notification status extension. Passed again on
+  2026-06-20 on the current worktree with `No issues found!`.
 - `flutter test test/local_notification_service_test.dart`: passed after the
   Android reminder scheduler refactor, notification tap controller handoff
   coverage, notification permission-to-sync controller coverage, and Settings
@@ -514,7 +515,11 @@ Platform notification checklist for that gate:
   checks. Dependency resolution completed, but the local environment could not
   continue because no Android SDK was found; this did not produce an app compile
   error, but leaves Android native runtime validation unproven in this
-  environment.
+  environment. Rechecked on 2026-06-20 with the bundled Flutter SDK after
+  dependency resolution completed: Flutter still stops with `[!] No Android SDK
+  found. Try setting the ANDROID_HOME environment variable.` `flutter emulators`
+  also reports no emulator sources, and `android/local.properties` only points
+  at the bundled Flutter SDK.
 - Native notification bridge static review: Android and macOS implementations
   use the same `vibe_fridge/local_notifications` method channel as Dart,
   preserve `itemId` in scheduled notification payloads, expose launch/tap
@@ -1461,6 +1466,9 @@ Platform notification checklist for that gate:
 - Android local notification behavior still needs runtime validation on a
   machine with Android SDK configured. A current `flutter devices` check still
   detects only macOS, and `flutter doctor -v` still reports no Android SDK.
+  A 2026-06-20 `flutter build apk --debug` recheck still stops before Android
+  compilation with no Android SDK, and `flutter emulators` reports no emulator
+  sources.
   Android source-level manifest/channel/payload wiring and the immediate
   test-notification channel are now covered by tests, but scheduled reminder
   delivery, permission prompts, and notification-click routing still need a

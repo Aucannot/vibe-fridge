@@ -16,11 +16,12 @@ Follow-up beta verification on 2026-06-17 expanded the Flutter suite to 45
 tests, including local notification channel coverage, with `flutter test` still
 passing.
 
-Follow-up beta verification through 2026-06-19 expanded the Flutter suite and
+Follow-up beta verification through 2026-06-20 expanded the Flutter suite and
 macOS native RunnerTests substantially. Current evidence is tracked in
 `docs/ux-test-findings-2026-06-17.md`; macOS build, native tests, debug launch,
 and Xcode first-launch checks now pass locally. Android SDK/device validation
-and real delivered notification click-through remain unproven.
+and real delivered notification click-through remain unproven. Current full
+Flutter regression evidence is 109 passing tests.
 
 The first sandboxed `flutter test` run was blocked by local socket creation
 permissions. Re-running the same command with permission to bind a local test
@@ -51,7 +52,8 @@ verification that is still not fully proven on this machine:
   verification. A 2026-06-19 recheck with `flutter devices` still detected only
   macOS, and `flutter doctor -v` still reported that no Android SDK could be
   located. A 2026-06-20 recheck still detects only macOS and still reports no
-  Android SDK.
+  Android SDK; `flutter build apk --debug` still stops with no Android SDK, and
+  `flutter emulators` reports no emulator sources.
 - macOS Xcode/CocoaPods setup is no longer the blocking item. On 2026-06-19,
   `flutter build macos --debug`, `flutter run -d macos`,
   `xcodebuild -checkFirstLaunchStatus`, and native RunnerTests passed locally.
