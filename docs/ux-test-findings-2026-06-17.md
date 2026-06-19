@@ -145,7 +145,9 @@ Platform notification checklist for that gate:
   malformed-reminder-id guard coverage, 104 tests. Passed again after adding
   launch notification target filtering coverage, 105 tests. Passed again after
   fixing WebDAV password-field cleanup and stale error feedback during retry,
-  106 tests.
+  106 tests. Passed again on the current worktree on 2026-06-19 with 106 tests;
+  the first sandboxed attempt was blocked by the pub.dev advisories DNS check,
+  and the same command passed after network access was allowed.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
@@ -181,7 +183,8 @@ Platform notification checklist for that gate:
   conversion confirmation coverage, and after adding notification sync payload
   handoff coverage, and after adding macOS inventory-reminder content/trigger
   wiring coverage, and after fixing macOS order-recognition secure key storage,
-  with no issues.
+  with no issues. Passed again on the current worktree on 2026-06-19 after
+  allowing the pub.dev advisories network check.
 - `flutter test test/local_notification_service_test.dart`: passed after the
   Android reminder scheduler refactor, notification tap controller handoff
   coverage, notification permission-to-sync controller coverage, and Settings
@@ -297,7 +300,9 @@ Platform notification checklist for that gate:
   Passed again after removing the user-facing Settings self-check controls.
   Passed again after adding no-cache policy for Flutter's generated
   `flutter_service_worker.js`. Passed again before the browser WebDAV smoke
-  that verified password cleanup, retry feedback, and upload.
+  that verified password cleanup, retry feedback, and upload. Passed again on
+  the current worktree on 2026-06-19 after allowing the pub.dev advisories
+  network check.
 - `flutter build macos --debug`: passed after the user completed the local
   Xcode installation and license flow. The build produced
   `build/macos/Build/Products/Debug/vibe-fridge.app`; Flutter also generated
