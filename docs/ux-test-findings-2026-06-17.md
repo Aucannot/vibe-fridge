@@ -159,7 +159,8 @@ Platform notification checklist for that gate:
   and the same command passed after network access was allowed. Passed again
   after the macOS AppDelegate launch fix, still with 106 tests; as before, the
   sandboxed first attempt was blocked by the pub.dev advisories DNS check and
-  the same command passed after network access was allowed.
+  the same command passed after network access was allowed. Passed again after
+  adding the source-level user-facing copy guard, now with 107 tests.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
@@ -1104,6 +1105,11 @@ Platform notification checklist for that gate:
   Android, and macOS bridges. Blank or whitespace-only platform payloads are
   ignored, and item ids with accidental surrounding whitespace are trimmed
   before routing to inventory detail.
+- Added a long-term source-level user-facing copy guard for screens and shared
+  widgets. It scans Dart string literals while ignoring interpolation
+  expressions, and fails if Settings, app pages, dialogs, snackbars, or shared
+  UI copy reintroduce terms such as `应用自检`, `SQLite`, `Wiki`, `legacy`,
+  `ISO-8601`, or `payload`.
 - Bootstrap error page tests now verify startup diagnostics remain copyable
   without exposing technical details on screen by default.
 - AI recipe fallback tests now verify service failures still return rule-based
