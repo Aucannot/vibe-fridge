@@ -156,7 +156,10 @@ Platform notification checklist for that gate:
   fixing WebDAV password-field cleanup and stale error feedback during retry,
   106 tests. Passed again on the current worktree on 2026-06-19 with 106 tests;
   the first sandboxed attempt was blocked by the pub.dev advisories DNS check,
-  and the same command passed after network access was allowed.
+  and the same command passed after network access was allowed. Passed again
+  after the macOS AppDelegate launch fix, still with 106 tests; as before, the
+  sandboxed first attempt was blocked by the pub.dev advisories DNS check and
+  the same command passed after network access was allowed.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
