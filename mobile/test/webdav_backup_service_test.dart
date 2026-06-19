@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -7,6 +9,39 @@ import 'package:vibe_fridge/data/webdav_backup_service.dart';
 import 'package:vibe_fridge/data/webdav_backup_store.dart';
 
 void main() {
+  test('round-trips backup against local WebDAV server', () async {
+    final server = await _LocalWebDavServer.start(
+      username: 'tester',
+      password: 'app-password',
+    );
+    addTearDown(server.close);
+    final service = WebDavBackupService();
+    addTearDown(service.close);
+    final settings = WebDavBackupSettings(
+      serverUrl: server.baseUrl,
+      remoteDirectory: 'vibe-fridge/backups',
+      username: 'tester',
+      password: 'app-password',
+    );
+
+    await service.validateConfiguration(settings);
+    final upload = await service.uploadBackup(
+      settings: settings,
+      fileName: 'vibe-fridge-backup-20260619-120000.json',
+      backupJson: '{"metadata":{"version":1},"items":[{"name":"牛奶"}]}',
+    );
+    final restored = await service.downloadLatestBackup(settings);
+
+    expect(upload.uri.path,
+        '/dav/vibe-fridge/backups/vibe-fridge-backup-20260619-120000.json');
+    expect(restored.fileName, 'vibe-fridge-backup-20260619-120000.json');
+    expect(restored.backupJson, contains('"牛奶"'));
+    expect(server.requests, contains('MKCOL /dav/vibe-fridge/'));
+    expect(server.requests, contains('PUT ${upload.uri.path}'));
+    expect(server.requests, contains('PROPFIND /dav/vibe-fridge/backups/'));
+    expect(server.requests, contains('GET ${upload.uri.path}'));
+  });
+
   test('uploads backup through WebDAV PUT with basic auth', () async {
     final seen = <String>[];
     late String putBody;
@@ -186,4 +221,140 @@ void main() {
       ),
     );
   });
+}
+
+class _LocalWebDavServer {
+  _LocalWebDavServer._(
+    this._server, {
+    required this.baseUrl,
+    required String username,
+    required String password,
+  }) : _authHeader =
+            'Basic ${base64Encode(utf8.encode('$username:$password'))}' {
+    _subscription = _server.listen(_handleRequest);
+  }
+
+  final HttpServer _server;
+  final String baseUrl;
+  final String _authHeader;
+  final requests = <String>[];
+  final _directories = <String>{'/dav/'};
+  final _files = <String, String>{};
+  late final StreamSubscription<HttpRequest> _subscription;
+
+  static Future<_LocalWebDavServer> start({
+    required String username,
+    required String password,
+  }) async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    return _LocalWebDavServer._(
+      server,
+      baseUrl: 'http://${server.address.host}:${server.port}/dav',
+      username: username,
+      password: password,
+    );
+  }
+
+  Future<void> close() async {
+    await _subscription.cancel();
+    await _server.close(force: true);
+  }
+
+  Future<void> _handleRequest(HttpRequest request) async {
+    requests.add('${request.method} ${request.uri.path}');
+    if (request.headers.value(HttpHeaders.authorizationHeader) != _authHeader) {
+      request.response.statusCode = HttpStatus.unauthorized;
+      await request.response.close();
+      return;
+    }
+
+    switch (request.method) {
+      case 'MKCOL':
+        _handleMkcol(request);
+        break;
+      case 'PROPFIND':
+        _handlePropfind(request);
+        break;
+      case 'PUT':
+        await _handlePut(request);
+        break;
+      case 'GET':
+        _handleGet(request);
+        break;
+      default:
+        request.response.statusCode = HttpStatus.methodNotAllowed;
+    }
+    await request.response.close();
+  }
+
+  void _handleMkcol(HttpRequest request) {
+    final path = _ensureTrailingSlash(request.uri.path);
+    if (_directories.add(path)) {
+      request.response.statusCode = HttpStatus.created;
+    } else {
+      request.response.statusCode = HttpStatus.methodNotAllowed;
+    }
+  }
+
+  void _handlePropfind(HttpRequest request) {
+    final directoryPath = _ensureTrailingSlash(request.uri.path);
+    if (!_directories.contains(directoryPath)) {
+      request.response.statusCode = HttpStatus.notFound;
+      return;
+    }
+
+    request.response
+      ..statusCode = 207
+      ..headers.contentType =
+          ContentType('application', 'xml', charset: 'utf-8')
+      ..write(_multistatus(directoryPath));
+  }
+
+  Future<void> _handlePut(HttpRequest request) async {
+    final directoryPath = _ensureTrailingSlash(
+      request.uri.path.substring(0, request.uri.path.lastIndexOf('/') + 1),
+    );
+    if (!_directories.contains(directoryPath)) {
+      request.response.statusCode = HttpStatus.notFound;
+      return;
+    }
+    _files[request.uri.path] = await utf8.decoder.bind(request).join();
+    request.response.statusCode = HttpStatus.created;
+  }
+
+  void _handleGet(HttpRequest request) {
+    final body = _files[request.uri.path];
+    if (body == null) {
+      request.response.statusCode = HttpStatus.notFound;
+      return;
+    }
+    request.response
+      ..statusCode = HttpStatus.ok
+      ..headers.contentType = ContentType.json
+      ..write(body);
+  }
+
+  String _multistatus(String directoryPath) {
+    final hrefs = <String>[
+      directoryPath,
+      ..._files.keys.where((path) => path.startsWith(directoryPath)),
+    ];
+    final responses = hrefs
+        .map(
+          (href) => '''
+  <d:response>
+    <d:href>$href</d:href>
+  </d:response>''',
+        )
+        .join('\n');
+    return '''
+<d:multistatus xmlns:d="DAV:">
+$responses
+</d:multistatus>
+''';
+  }
+
+  String _ensureTrailingSlash(String path) {
+    return path.endsWith('/') ? path : '$path/';
+  }
 }

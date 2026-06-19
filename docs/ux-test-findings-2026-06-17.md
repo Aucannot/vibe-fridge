@@ -130,7 +130,8 @@ Platform notification checklist for that gate:
   again after making macOS notification scheduling wait for native add
   completion and report scheduling failures, 87 tests. Passed again after
   adding WebDAV cloud-backup configuration/upload/restore coverage and
-  Web-facing access copy, 97 tests.
+  Web-facing access copy, 97 tests. Passed again after adding a local HTTP
+  WebDAV round-trip for MKCOL, PUT, PROPFIND, and GET restore flow, 100 tests.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
@@ -221,6 +222,10 @@ Platform notification checklist for that gate:
   delete stale Flutter Cache Storage entries; passed again after adding
   no-cache entry hints, a cache-busted bootstrap script request, inline
   loading-screen hide styles, and HTTP header policy coverage.
+- `flutter test test/webdav_backup_service_test.dart`: passed after adding a
+  `dart:io` local WebDAV server that requires Basic Auth and exercises the
+  real service through MKCOL directory creation, PUT backup upload, PROPFIND
+  listing, and GET restore download against the same local endpoint.
 - `flutter test test/recipes_screen_test.dart`: passed after adding coverage
   that applies a recipe's inventory uses through `InventoryController` and
   verifies the real inventory quantities are deducted.
