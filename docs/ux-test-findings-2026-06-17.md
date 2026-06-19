@@ -118,7 +118,9 @@ Platform notification checklist for that gate:
   83 tests. Passed again after adding notification sync payload handoff
   coverage, 85 tests. Passed again after fixing macOS order-recognition secure
   key storage, 86 tests. Passed again after removing the user-facing Settings
-  self-check controls while keeping the internal coverage, 86 tests.
+  self-check controls while keeping the internal coverage, 86 tests. Passed
+  again after making macOS notification scheduling wait for native add
+  completion and report scheduling failures, 87 tests.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
@@ -155,7 +157,9 @@ Platform notification checklist for that gate:
   test-notification flow coverage, 12 tests. Passed again after adding
   coverage that granted notification sync sends the real pending-reminder
   payload to the platform and denied permission skips platform scheduling, 14
-  tests.
+  tests. Passed again after adding coverage that a native scheduling
+  `PlatformException` reports `同步失败，请稍后重试` instead of a successful sync,
+  15 tests.
 - `flutter test test/settings_screen_test.dart`: passed after adding widget
   coverage that renders the Settings test-notification action and verifies the
   button calls the notification service path. Historical coverage previously
@@ -199,7 +203,8 @@ Platform notification checklist for that gate:
   handoff into the launch target. Passed again after moving test-notification
   request construction into the native request factory. Passed again after
   verifying scheduled inventory reminders use the native content and trigger
-  helpers.
+  helpers. Passed again after updating the macOS bridge contract coverage for
+  asynchronous native scheduling completion and `schedule_failed` propagation.
 - `flutter test test/web_bootstrap_test.dart`: passed after adding the custom
   Web bootstrap guard that clears stale service workers without registering a
   replacement Flutter service worker; passed again after extending the guard to
@@ -237,6 +242,8 @@ Platform notification checklist for that gate:
   extracting inventory-reminder content/trigger construction into tested
   helpers. Passed again after fixing macOS order-recognition secure key
   storage without requiring a development-certificate keychain entitlement.
+  Passed again after routing macOS inventory reminder scheduling through an
+  async scheduler that waits for native add completion and propagates failures.
 - `xcodebuild test -workspace Runner.xcworkspace -scheme Runner -configuration
   Debug -destination 'platform=macOS' -derivedDataPath
   /private/tmp/vibe-fridge-xcode-derived-tap -clonedSourcePackagesDirPath
@@ -251,7 +258,9 @@ Platform notification checklist for that gate:
   with 8 tests after adding direct inventory-reminder content construction and
   future trigger coverage. Passed again with 9 tests after adding a native
   Keychain write/read/delete smoke for VLM API secret storage without the Data
-  Protection Keychain entitlement path.
+  Protection Keychain entitlement path. Passed again with 11 tests after adding
+  native scheduler coverage for both successful pending-request handoff and
+  system add failure reporting.
 - `flutter run -d macos`: launched the debug macOS target successfully and
   exposed a Dart VM Service. The app process started, though `open` could not
   automatically foreground the window in this shell session.
@@ -1115,6 +1124,11 @@ Platform notification checklist for that gate:
   storing the VLM API key through the regular macOS Keychain path instead of
   the Data Protection Keychain path that requires an entitlement not present in
   local debug builds.
+- Fixed macOS reminder sync reporting success before `UNUserNotificationCenter`
+  finished adding pending requests. The native bridge now waits for all add
+  completions and returns `schedule_failed` if the system rejects a request, so
+  Settings shows a sync failure instead of `已同步` for a failed platform
+  schedule.
 
 ## Remaining Risks
 
@@ -1127,8 +1141,9 @@ Platform notification checklist for that gate:
   permission, due reminder delivery, and notification-click routing still need
   targeted desktop runtime validation. The native bridge/delegate source wiring,
   immediate test-notification channel, scheduling payload builder,
-  permission-status mapper, and tap payload handoff are now covered by tests,
-  but system notification behavior is not fully replaceable with unit tests.
+  async scheduling completion/error handling, permission-status mapper, and tap
+  payload handoff are now covered by tests, but system notification behavior is
+  not fully replaceable with unit tests.
 - Web app updates can still be masked by older same-origin browser cache or
   previously registered service-worker state. During Settings retesting, port
   54371 still showed older self-check wording after a rebuild, while fresh port

@@ -101,6 +101,77 @@ enum MacLocalNotificationRequestFactory {
   }
 }
 
+protocol MacNotificationSchedulingCenter {
+  func removeAllPendingNotificationRequests()
+
+  func add(
+    _ request: UNNotificationRequest,
+    withCompletionHandler completionHandler: (@Sendable (Error?) -> Void)?
+  )
+}
+
+extension UNUserNotificationCenter: MacNotificationSchedulingCenter {}
+
+private final class MacNotificationScheduleErrorBox: @unchecked Sendable {
+  private let lock = NSLock()
+  private var firstError: Error?
+
+  func record(_ error: Error?) {
+    guard let error else {
+      return
+    }
+    lock.lock()
+    if firstError == nil {
+      firstError = error
+    }
+    lock.unlock()
+  }
+
+  var value: Error? {
+    lock.lock()
+    defer {
+      lock.unlock()
+    }
+    return firstError
+  }
+}
+
+enum MacLocalNotificationScheduler {
+  static func schedule(
+    _ notifications: [MacLocalNotificationRequest],
+    center: MacNotificationSchedulingCenter = UNUserNotificationCenter
+      .current(),
+    completion: @escaping (Error?) -> Void
+  ) {
+    center.removeAllPendingNotificationRequests()
+
+    guard !notifications.isEmpty else {
+      completion(nil)
+      return
+    }
+
+    let group = DispatchGroup()
+    let errors = MacNotificationScheduleErrorBox()
+
+    for notification in notifications {
+      let request = UNNotificationRequest(
+        identifier: notification.identifier,
+        content: notification.content(),
+        trigger: notification.trigger()
+      )
+      group.enter()
+      center.add(request) { error in
+        errors.record(error)
+        group.leave()
+      }
+    }
+
+    group.notify(queue: .main) {
+      completion(errors.value)
+    }
+  }
+}
+
 struct MacLocalNotificationPermissionSnapshot {
   let granted: Bool
   let status: String

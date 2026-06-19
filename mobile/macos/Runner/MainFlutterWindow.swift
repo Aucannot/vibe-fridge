@@ -75,8 +75,7 @@ final class MacLocalNotificationBridge {
     case "getLaunchItemId":
       result(MacLocalNotificationTapHandler.consumeLaunchItemId())
     case "scheduleInventoryReminders":
-      scheduleInventoryReminders(arguments: call.arguments)
-      result(nil)
+      scheduleInventoryReminders(arguments: call.arguments, result: result)
     case "sendTestNotification":
       sendTestNotification(result: result)
     case "cancelAll":
@@ -113,18 +112,28 @@ final class MacLocalNotificationBridge {
     }
   }
 
-  private func scheduleInventoryReminders(arguments: Any?) {
-    center.removeAllPendingNotificationRequests()
+  private func scheduleInventoryReminders(
+    arguments: Any?,
+    result: @escaping FlutterResult
+  ) {
     let notifications = MacLocalNotificationRequestFactory.requests(
       from: arguments
     )
-    for notification in notifications {
-      let request = UNNotificationRequest(
-        identifier: notification.identifier,
-        content: notification.content(),
-        trigger: notification.trigger()
-      )
-      center.add(request)
+    MacLocalNotificationScheduler.schedule(
+      notifications,
+      center: center
+    ) { error in
+      if let error {
+        result(
+          FlutterError(
+            code: "schedule_failed",
+            message: error.localizedDescription,
+            details: nil
+          )
+        )
+        return
+      }
+      result(nil)
     }
   }
 

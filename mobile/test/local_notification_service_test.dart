@@ -351,6 +351,49 @@ void main() {
     expect(calls, ['getPermissionStatus']);
   });
 
+  test('sync inventory reminders reports platform schedule failure', () async {
+    final appDatabase = await openTestDatabase();
+    addTearDown(() async {
+      await appDatabase.database.close();
+    });
+    final repository = InventoryRepository(appDatabase);
+    final service = LocalNotificationService(channel: channel);
+    final now = DateTime(2026, 6, 19, 8, 30);
+
+    await repository.createItem(
+      name: '调度失败测试酸奶',
+      quantity: 1,
+      unit: '盒',
+      purchaseDate: now.subtract(const Duration(days: 1)),
+      expiryDate: DateTime(2026, 6, 21),
+      reminderDaysBefore: 2,
+    );
+
+    final calls = <String>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+      calls.add(call.method);
+      if (call.method == 'scheduleInventoryReminders') {
+        throw PlatformException(code: 'schedule_failed');
+      }
+      return {
+        'supported': true,
+        'granted': true,
+        'status': 'granted',
+      };
+    });
+
+    final result = await service.syncInventoryReminders(
+      repository,
+      now: now,
+    );
+
+    expect(result.scheduledCount, 0);
+    expect(result.skippedReason, 'schedule_failed');
+    expect(result.displayText, '同步失败，请稍后重试');
+    expect(calls, ['getPermissionStatus', 'scheduleInventoryReminders']);
+  });
+
   test('inventory controller consumes notification tap target once', () async {
     final appDatabase = await openTestDatabase();
     addTearDown(() async {

@@ -1,6 +1,7 @@
 import Cocoa
 import FlutterMacOS
 import Security
+import UserNotifications
 import XCTest
 @testable import vibe_fridge
 
@@ -89,6 +90,86 @@ class RunnerTests: XCTestCase {
 
     XCTAssertEqual(trigger.timeInterval, 180, accuracy: 0.001)
     XCTAssertFalse(trigger.repeats)
+  }
+
+  func testNotificationSchedulerAddsRequestsBeforeReportingSuccess() {
+    let center = FakeNotificationSchedulingCenter()
+    let done = expectation(description: "scheduler completion")
+    let notifications = [
+      MacLocalNotificationRequest(
+        itemId: "item-milk-1",
+        title: "鲜牛奶 今天到期",
+        body: "2盒 · 冷藏 · 打开查看详情",
+        scheduledAt: Date().addingTimeInterval(120)
+      ),
+      MacLocalNotificationRequest(
+        itemId: "item-bread-1",
+        title: "面包 明天到期",
+        body: "1袋 · 常温 · 打开查看详情",
+        scheduledAt: Date().addingTimeInterval(180)
+      ),
+    ]
+    var completionError: Error?
+
+    MacLocalNotificationScheduler.schedule(
+      notifications,
+      center: center
+    ) { error in
+      completionError = error
+      done.fulfill()
+    }
+
+    wait(for: [done], timeout: 1)
+    XCTAssertNil(completionError)
+    XCTAssertEqual(center.removeAllPendingCalls, 1)
+    XCTAssertEqual(
+      center.addedRequests.map(\.identifier),
+      ["inventory-item-milk-1", "inventory-item-bread-1"]
+    )
+    XCTAssertEqual(
+      center.addedRequests[0].content.userInfo["itemId"] as? String,
+      "item-milk-1"
+    )
+  }
+
+  func testNotificationSchedulerReportsSystemAddFailure() {
+    let center = FakeNotificationSchedulingCenter()
+    let expectedError = NSError(
+      domain: "vibe-fridge-tests",
+      code: 42,
+      userInfo: [NSLocalizedDescriptionKey: "add failed"]
+    )
+    center.errorsByIdentifier["inventory-item-bread-1"] = expectedError
+    let done = expectation(description: "scheduler completion")
+    let notifications = [
+      MacLocalNotificationRequest(
+        itemId: "item-milk-1",
+        title: "鲜牛奶 今天到期",
+        body: "2盒 · 冷藏 · 打开查看详情",
+        scheduledAt: Date().addingTimeInterval(120)
+      ),
+      MacLocalNotificationRequest(
+        itemId: "item-bread-1",
+        title: "面包 明天到期",
+        body: "1袋 · 常温 · 打开查看详情",
+        scheduledAt: Date().addingTimeInterval(180)
+      ),
+    ]
+    var completionError: NSError?
+
+    MacLocalNotificationScheduler.schedule(
+      notifications,
+      center: center
+    ) { error in
+      completionError = error as NSError?
+      done.fulfill()
+    }
+
+    wait(for: [done], timeout: 1)
+    XCTAssertEqual(completionError?.domain, expectedError.domain)
+    XCTAssertEqual(completionError?.code, expectedError.code)
+    XCTAssertEqual(center.removeAllPendingCalls, 1)
+    XCTAssertEqual(center.addedRequests.count, 2)
   }
 
   func testDiagnosticNotificationRequestBuildsImmediateTestNotification() {
@@ -244,4 +325,23 @@ class RunnerTests: XCTestCase {
     XCTAssertEqual(SecItemDelete(query as CFDictionary), errSecSuccess)
   }
 
+}
+
+private final class FakeNotificationSchedulingCenter:
+  MacNotificationSchedulingCenter {
+  var removeAllPendingCalls = 0
+  var addedRequests: [UNNotificationRequest] = []
+  var errorsByIdentifier: [String: Error] = [:]
+
+  func removeAllPendingNotificationRequests() {
+    removeAllPendingCalls += 1
+  }
+
+  func add(
+    _ request: UNNotificationRequest,
+    withCompletionHandler completionHandler: (@Sendable (Error?) -> Void)?
+  ) {
+    addedRequests.append(request)
+    completionHandler?(errorsByIdentifier[request.identifier])
+  }
 }
