@@ -63,6 +63,13 @@ permission state. It still does not prove permission approval, delivered
 notification visibility, or notification-click routing because this machine has
 not authorized notifications for the app.
 
+Reusable macOS smoke update on 2026-06-19: `tools/check_notification_status.mjs`
+now wraps the VM Service extension call so future beta passes can reproduce the
+running-app notification status check without ad hoc scripting. Against a fresh
+`flutter run -d macos` session, the tool found the app isolate and returned the
+same live native-channel status: `supported: true`, `granted: false`,
+`status: unknown`, and `displayText: 未确认`.
+
 ## Beta Readiness
 
 Verdict: ready for continued Web beta testing of the core inventory workflow,
@@ -415,6 +422,13 @@ Platform notification checklist for that gate:
   `displayText: 未确认`, proving the live Flutter-to-macOS notification
   permission channel is wired while confirming system notification permission
   remains unapproved on this machine.
+- `node tools/check_notification_status.mjs
+  http://127.0.0.1:57383/rRIjQRZY31c=/`: passed against the live macOS
+  `flutter run` VM Service. The tool found the main app isolate and returned
+  the same native-channel status payload: `supported: true`, `granted: false`,
+  `status: unknown`, `displayText: 未确认`.
+- `node --check tools/check_notification_status.mjs`: passed after adding the
+  reusable VM Service smoke helper.
 - `flutter build macos --debug`: passed again after removing the invalid
   AppDelegate `super.applicationDidFinishLaunching(notification)` call and
   produced `build/macos/Build/Products/Debug/vibe-fridge.app`.
@@ -1347,6 +1361,9 @@ Platform notification checklist for that gate:
   macOS app's notification permission channel. It is not visible in the UI and
   is not release behavior, but it lets local validation prove the live Flutter
   app can reach the native notification bridge.
+- Added `tools/check_notification_status.mjs`, a reusable local smoke helper
+  that calls the debug VM Service extension for a running Flutter app and
+  validates the notification status payload shape before printing the result.
 
 ## Remaining Risks
 
