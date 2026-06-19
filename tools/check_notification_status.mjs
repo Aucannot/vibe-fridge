@@ -25,28 +25,26 @@ async function main() {
     throw new Error('No runnable app isolate found in VM Service response.');
   }
 
+  const extensionName = options.sendTest
+    ? 'ext.vibe_fridge.notificationTest'
+    : 'ext.vibe_fridge.notificationStatus';
   const status = await getJson(
     baseUrl,
-    `ext.vibe_fridge.notificationStatus?isolateId=${encodeURIComponent(
-      isolateId,
-    )}`,
+    `${extensionName}?isolateId=${encodeURIComponent(isolateId)}`,
   );
   const result = status.result;
-  if (
-    typeof result?.supported !== 'boolean' ||
-    typeof result?.granted !== 'boolean' ||
-    typeof result?.status !== 'string' ||
-    typeof result?.displayText !== 'string'
-  ) {
-    throw new Error('Notification status extension returned invalid payload.');
+  const permission = options.sendTest ? result?.permission : result;
+  validatePermissionPayload(permission);
+  if (options.sendTest) {
+    validateTestPayload(result);
   }
-  validateExpectations(result, options);
+  validateExpectations(result, permission, options);
 
   console.log(
     JSON.stringify(
       {
         isolateId,
-        notificationStatus: result,
+        [options.sendTest ? 'notificationTest' : 'notificationStatus']: result,
       },
       null,
       2,
@@ -61,7 +59,10 @@ function usage() {
     'Options:\n' +
     '  --expect-supported true|false\n' +
     '  --expect-granted true|false\n' +
-    '  --expect-status <status>'
+    '  --expect-status <status>\n' +
+    '  --send-test\n' +
+    '  --expect-sent true|false\n' +
+    '  --expect-skipped-reason <reason>'
   );
 }
 
@@ -70,6 +71,9 @@ function parseArgs(args) {
     expectSupported: undefined,
     expectGranted: undefined,
     expectStatus: undefined,
+    expectSent: undefined,
+    expectSkippedReason: undefined,
+    sendTest: false,
     vmServiceUrl: undefined,
   };
 
@@ -87,6 +91,18 @@ function parseArgs(args) {
       options.expectStatus = requireValue(arg, args[++index]);
       continue;
     }
+    if (arg === '--send-test') {
+      options.sendTest = true;
+      continue;
+    }
+    if (arg === '--expect-sent') {
+      options.expectSent = parseBooleanOption(arg, args[++index]);
+      continue;
+    }
+    if (arg === '--expect-skipped-reason') {
+      options.expectSkippedReason = requireValue(arg, args[++index]);
+      continue;
+    }
     if (arg.startsWith('--')) {
       throw new Error(`Unknown option: ${arg}`);
     }
@@ -95,14 +111,47 @@ function parseArgs(args) {
     }
     options.vmServiceUrl = arg;
   }
+  if (!options.sendTest) {
+    if (options.expectSent !== undefined) {
+      throw new Error('--expect-sent requires --send-test.');
+    }
+    if (options.expectSkippedReason !== undefined) {
+      throw new Error('--expect-skipped-reason requires --send-test.');
+    }
+  }
   return options;
 }
 
-function validateExpectations(result, options) {
+function validatePermissionPayload(result) {
+  if (
+    typeof result?.supported !== 'boolean' ||
+    typeof result?.granted !== 'boolean' ||
+    typeof result?.status !== 'string' ||
+    typeof result?.displayText !== 'string'
+  ) {
+    throw new Error('Notification status extension returned invalid payload.');
+  }
+}
+
+function validateTestPayload(result) {
+  if (
+    typeof result?.sent !== 'boolean' ||
+    typeof result?.displayText !== 'string' ||
+    (result.skippedReason !== null &&
+      result.skippedReason !== undefined &&
+      typeof result.skippedReason !== 'string')
+  ) {
+    throw new Error('Notification test extension returned invalid payload.');
+  }
+}
+
+function validateExpectations(result, permission, options) {
   const checks = [
-    ['supported', result.supported, options.expectSupported],
-    ['granted', result.granted, options.expectGranted],
-    ['status', result.status, options.expectStatus],
+    ['supported', permission.supported, options.expectSupported],
+    ['granted', permission.granted, options.expectGranted],
+    ['status', permission.status, options.expectStatus],
+    ['sent', result.sent, options.expectSent],
+    ['skippedReason', result.skippedReason, options.expectSkippedReason],
   ];
 
   for (const [field, actual, expected] of checks) {

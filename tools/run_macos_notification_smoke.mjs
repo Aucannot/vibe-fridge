@@ -52,6 +52,9 @@ function parseArgs(args) {
     expectSupported: undefined,
     expectGranted: undefined,
     expectStatus: undefined,
+    expectSent: undefined,
+    expectSkippedReason: undefined,
+    sendTest: false,
     flutterBin: undefined,
     timeoutMs: 120000,
   };
@@ -70,6 +73,18 @@ function parseArgs(args) {
       options.expectStatus = requireValue(arg, args[++index]);
       continue;
     }
+    if (arg === '--send-test') {
+      options.sendTest = true;
+      continue;
+    }
+    if (arg === '--expect-sent') {
+      options.expectSent = parseBooleanOption(arg, args[++index]);
+      continue;
+    }
+    if (arg === '--expect-skipped-reason') {
+      options.expectSkippedReason = requireValue(arg, args[++index]);
+      continue;
+    }
     if (arg === '--flutter-bin') {
       options.flutterBin = requireValue(arg, args[++index]);
       continue;
@@ -80,11 +95,22 @@ function parseArgs(args) {
     }
     throw new Error(`Unknown option: ${arg}`);
   }
+  if (!options.sendTest) {
+    if (options.expectSent !== undefined) {
+      throw new Error('--expect-sent requires --send-test.');
+    }
+    if (options.expectSkippedReason !== undefined) {
+      throw new Error('--expect-skipped-reason requires --send-test.');
+    }
+  }
   return options;
 }
 
 function expectationArgs(options) {
   const args = [];
+  if (options.sendTest) {
+    args.push('--send-test');
+  }
   if (options.expectSupported !== undefined) {
     args.push('--expect-supported', String(options.expectSupported));
   }
@@ -93,6 +119,12 @@ function expectationArgs(options) {
   }
   if (options.expectStatus !== undefined) {
     args.push('--expect-status', options.expectStatus);
+  }
+  if (options.expectSent !== undefined) {
+    args.push('--expect-sent', String(options.expectSent));
+  }
+  if (options.expectSkippedReason !== undefined) {
+    args.push('--expect-skipped-reason', options.expectSkippedReason);
   }
   return args;
 }

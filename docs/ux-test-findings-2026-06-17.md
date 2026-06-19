@@ -80,6 +80,14 @@ expectations, and exits `flutter run` cleanly. This turns the live notification
 permission-channel check into a single repeatable command while still avoiding
 permission prompts or delivered-notification side effects by default.
 
+Optional notification-send smoke update on 2026-06-19: the debug VM Service now
+also exposes an explicit notification test extension, and the smoke tools can
+call it only when `--send-test` is passed. The default command remains read-only
+and does not request notification permission or send a notification. The
+optional send path is reserved for a manual authorization pass because it may
+open the macOS notification permission prompt or send the diagnostic
+notification if permission has already been granted.
+
 ## Beta Readiness
 
 Verdict: ready for continued Web beta testing of the core inventory workflow,
@@ -449,9 +457,15 @@ Platform notification checklist for that gate:
   --expect-granted false --expect-status unknown`: passed. The runner built and
   launched the macOS debug app, parsed the VM Service URL, verified the live
   notification status payload, then exited `flutter run` with `Application
-  finished.`
+  finished.` Passed again after adding the optional `--send-test` path,
+  confirming the default runner remains read-only and still returns
+  `supported: true`, `granted: false`, `status: unknown`, `displayText: 未确认`.
 - `node --check tools/run_macos_notification_smoke.mjs`: passed after adding
   the automated macOS smoke runner.
+- Tool argument guards: `node tools/check_notification_status.mjs
+  --expect-sent false ...` and `node tools/run_macos_notification_smoke.mjs
+  --expect-sent false` both fail before any runtime call unless `--send-test`
+  is present, protecting the default smoke from accidental permission prompts.
 - `flutter build macos --debug`: passed again after removing the invalid
   AppDelegate `super.applicationDidFinishLaunching(notification)` call and
   produced `build/macos/Build/Products/Debug/vibe-fridge.app`.
@@ -1383,16 +1397,20 @@ Platform notification checklist for that gate:
 - Added a debug-only VM Service extension for beta smoke testing of the running
   macOS app's notification permission channel. It is not visible in the UI and
   is not release behavior, but it lets local validation prove the live Flutter
-  app can reach the native notification bridge.
+  app can reach the native notification bridge. Added a second explicit
+  debug-only extension for sending a diagnostic test notification when a manual
+  authorization pass intentionally opts into `--send-test`.
 - Added `tools/check_notification_status.mjs`, a reusable local smoke helper
   that calls the debug VM Service extension for a running Flutter app and
   validates the notification status payload shape before printing the result.
   It can optionally assert expected `supported`, `granted`, and `status`
-  values for repeatable beta validation.
+  values for repeatable beta validation, and it can call the diagnostic
+  test-notification extension only when `--send-test` is supplied.
 - Added `tools/run_macos_notification_smoke.mjs`, an automated local runner
   that launches the macOS Flutter target, waits for the VM Service URL, runs
   the notification status helper, and exits the app. This makes the current
-  macOS notification-channel smoke reproducible without manual URL copying.
+  macOS notification-channel smoke reproducible without manual URL copying, and
+  keeps the send-test path opt-in.
 
 ## Remaining Risks
 

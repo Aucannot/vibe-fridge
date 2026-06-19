@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'data/app_database.dart';
 import 'data/inventory_controller.dart';
 import 'data/inventory_repository.dart';
+import 'data/local_notification_service.dart';
 import 'screens/app_shell.dart';
 import 'theme/app_theme.dart';
 
@@ -42,14 +43,34 @@ void registerDebugServiceExtensions(InventoryController controller) {
     (method, parameters) async {
       final permission =
           await controller.notificationService.getPermissionStatus();
+      return developer.ServiceExtensionResponse.result(jsonEncode(
+        _notificationPermissionPayload(permission),
+      ));
+    },
+  );
+  developer.registerExtension(
+    'ext.vibe_fridge.notificationTest',
+    (method, parameters) async {
+      final result = await controller.notificationService.sendTestNotification();
       return developer.ServiceExtensionResponse.result(jsonEncode({
-        'supported': permission.supported,
-        'granted': permission.granted,
-        'status': permission.status,
-        'displayText': permission.displayText,
+        'sent': result.sent,
+        'skippedReason': result.skippedReason,
+        'displayText': result.displayText,
+        'permission': _notificationPermissionPayload(result.permission),
       }));
     },
   );
+}
+
+Map<String, Object?> _notificationPermissionPayload(
+  LocalNotificationPermissionSnapshot permission,
+) {
+  return {
+    'supported': permission.supported,
+    'granted': permission.granted,
+    'status': permission.status,
+    'displayText': permission.displayText,
+  };
 }
 
 class VibeFridgeApp extends StatelessWidget {
