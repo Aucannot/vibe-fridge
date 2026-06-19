@@ -19,11 +19,16 @@ class RunnerTests: XCTestCase {
     ])
 
     XCTAssertEqual(requests.count, 1)
+    let content = requests[0].content()
     XCTAssertEqual(requests[0].itemId, "item-milk-1")
     XCTAssertEqual(requests[0].identifier, "inventory-item-milk-1")
     XCTAssertEqual(requests[0].title, "鲜牛奶 今天到期")
     XCTAssertEqual(requests[0].body, "2盒 · 冷藏 · 打开查看详情")
     XCTAssertEqual(requests[0].userInfo["itemId"], "item-milk-1")
+    XCTAssertEqual(content.title, "鲜牛奶 今天到期")
+    XCTAssertEqual(content.body, "2盒 · 冷藏 · 打开查看详情")
+    XCTAssertEqual(content.userInfo["itemId"] as? String, "item-milk-1")
+    XCTAssertNotNil(content.sound)
     XCTAssertEqual(
       requests[0].scheduledAt.timeIntervalSince1970,
       Double(scheduledAtMillis) / 1000,
@@ -68,6 +73,21 @@ class RunnerTests: XCTestCase {
     let now = Date(timeIntervalSince1970: 1_782_000_120)
 
     XCTAssertEqual(request.triggerInterval(now: now), 60, accuracy: 0.001)
+  }
+
+  func testNotificationTriggerUsesFutureSchedule() {
+    let scheduledAt = Date(timeIntervalSince1970: 1_782_000_300)
+    let now = Date(timeIntervalSince1970: 1_782_000_120)
+    let request = MacLocalNotificationRequest(
+      itemId: "item-future",
+      title: "未来提醒",
+      body: "打开查看详情",
+      scheduledAt: scheduledAt
+    )
+    let trigger = request.trigger(now: now)
+
+    XCTAssertEqual(trigger.timeInterval, 180, accuracy: 0.001)
+    XCTAssertFalse(trigger.repeats)
   }
 
   func testDiagnosticNotificationRequestBuildsImmediateTestNotification() {

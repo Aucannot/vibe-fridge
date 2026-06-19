@@ -119,20 +119,10 @@ final class MacLocalNotificationBridge {
       from: arguments
     )
     for notification in notifications {
-      let content = UNMutableNotificationContent()
-      content.title = notification.title
-      content.body = notification.body
-      content.sound = .default
-      content.userInfo = notification.userInfo
-
-      let trigger = UNTimeIntervalNotificationTrigger(
-        timeInterval: notification.triggerInterval(),
-        repeats: false
-      )
       let request = UNNotificationRequest(
         identifier: notification.identifier,
-        content: content,
-        trigger: trigger
+        content: notification.content(),
+        trigger: notification.trigger()
       )
       center.add(request)
     }

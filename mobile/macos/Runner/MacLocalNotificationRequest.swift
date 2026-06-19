@@ -15,8 +15,24 @@ struct MacLocalNotificationRequest {
     ["itemId": itemId]
   }
 
+  func content() -> UNMutableNotificationContent {
+    let content = UNMutableNotificationContent()
+    content.title = title
+    content.body = body
+    content.sound = .default
+    content.userInfo = ["itemId": itemId]
+    return content
+  }
+
   func triggerInterval(now: Date = Date()) -> TimeInterval {
     max(scheduledAt.timeIntervalSince(now), 60)
+  }
+
+  func trigger(now: Date = Date()) -> UNTimeIntervalNotificationTrigger {
+    UNTimeIntervalNotificationTrigger(
+      timeInterval: triggerInterval(now: now),
+      repeats: false
+    )
   }
 }
 

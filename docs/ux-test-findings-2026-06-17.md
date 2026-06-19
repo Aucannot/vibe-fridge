@@ -46,10 +46,10 @@ Not proven yet:
   behavior, the Settings test-notification action, Android manifest wiring
   tests, macOS bridge wiring source tests, repository notification payload
   tests, Dart platform-schedule payload handoff tests, and macOS native
-  scheduling-payload construction, permission-status mapping, and tap payload
-  handoff tests are covered, but real device/desktop scheduled reminder
-  delivery and user-click behavior still need runtime validation on the target
-  platforms.
+  scheduling-payload/content/trigger construction, permission-status mapping,
+  and tap payload handoff tests are covered, but real device/desktop scheduled
+  reminder delivery and user-click behavior still need runtime validation on
+  the target platforms.
 - Web update experience on an existing origin. The custom bootstrap no longer
   registers Flutter's service worker, clears stale registrations, and deletes
   stale Flutter Cache Storage entries when the current index loads. The entry
@@ -144,7 +144,8 @@ Platform notification checklist for that gate:
   coverage, and after adding Settings demo-data reset confirmation coverage,
   after adding order-import review widget coverage, and after adding shopping
   conversion confirmation coverage, and after adding notification sync payload
-  handoff coverage, with no issues.
+  handoff coverage, and after adding macOS inventory-reminder content/trigger
+  wiring coverage, with no issues.
 - `flutter test test/local_notification_service_test.dart`: passed after the
   Android reminder scheduler refactor, notification tap controller handoff
   coverage, notification permission-to-sync controller coverage, and Settings
@@ -188,7 +189,9 @@ Platform notification checklist for that gate:
   macOS source-level checks for method-channel names, native bridge methods,
   notification payload parsing, delegate presentation behavior, and system tap
   handoff into the launch target. Passed again after moving test-notification
-  request construction into the native request factory.
+  request construction into the native request factory. Passed again after
+  verifying scheduled inventory reminders use the native content and trigger
+  helpers.
 - `flutter test test/web_bootstrap_test.dart`: passed after adding the custom
   Web bootstrap guard that clears stale service workers without registering a
   replacement Flutter service worker; passed again after extending the guard to
@@ -220,8 +223,10 @@ Platform notification checklist for that gate:
   Swift Package Manager integration for the macOS project and warned that
   `flutter_secure_storage_macos` still uses CocoaPods. Passed again after
   extracting and testing the macOS notification request builder and permission
-  status mapper, again after adding the native tap payload handoff helper, and
-  again after the Web entry cache and loading-screen fixes.
+  status mapper, again after adding the native tap payload handoff helper,
+  again after the Web entry cache and loading-screen fixes, and again after
+  extracting inventory-reminder content/trigger construction into tested
+  helpers.
 - `xcodebuild test -workspace Runner.xcworkspace -scheme Runner -configuration
   Debug -destination 'platform=macOS' -derivedDataPath
   /private/tmp/vibe-fridge-xcode-derived-tap -clonedSourcePackagesDirPath
@@ -232,7 +237,9 @@ Platform notification checklist for that gate:
   notification trigger delay, immediate test-notification request construction,
   native permission-status channel mapping, and native tap payload handoff into
   the launch target plus Flutter event path. Passed again with 7 tests after
-  extracting the diagnostic test-notification request factory.
+  extracting the diagnostic test-notification request factory. Passed again
+  with 8 tests after adding direct inventory-reminder content construction and
+  future trigger coverage.
 - `flutter run -d macos`: launched the debug macOS target successfully and
   exposed a Dart VM Service. The app process started, though `open` could not
   automatically foreground the window in this shell session.
@@ -904,10 +911,11 @@ Platform notification checklist for that gate:
   Dart channel payloads to `inventory-<itemId>` request identifiers, preserves
   `itemId` in `userInfo`, skips malformed rows, and enforces the minimum
   trigger delay used before adding `UNNotificationRequest`s. They also verify
-  the immediate Settings test notification request uses the expected
+  the scheduled inventory reminder's native content title/body/sound/userInfo,
+  future trigger timing, the immediate Settings test notification request's
   diagnostic identifier prefix, copy, and 1-second trigger; native notification
-  permission statuses map to the Flutter channel contract; and notification
-  tap payloads store/emit the selected inventory item id.
+  permission statuses map to the Flutter channel contract; and notification tap
+  payloads store/emit the selected inventory item id.
 - Android notification scheduling now persists pending reminder payloads and
   registers boot/package-replaced restoration points; runtime proof still needs
   an Android SDK/device environment.
