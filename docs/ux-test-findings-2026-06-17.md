@@ -68,7 +68,10 @@ now wraps the VM Service extension call so future beta passes can reproduce the
 running-app notification status check without ad hoc scripting. Against a fresh
 `flutter run -d macos` session, the tool found the app isolate and returned the
 same live native-channel status: `supported: true`, `granted: false`,
-`status: unknown`, and `displayText: 未确认`.
+`status: unknown`, and `displayText: 未确认`. The tool now also supports
+optional `--expect-supported`, `--expect-granted`, and `--expect-status`
+assertions so the smoke can fail fast when the runtime status diverges from the
+expected beta environment.
 
 ## Beta Readiness
 
@@ -427,8 +430,13 @@ Platform notification checklist for that gate:
   `flutter run` VM Service. The tool found the main app isolate and returned
   the same native-channel status payload: `supported: true`, `granted: false`,
   `status: unknown`, `displayText: 未确认`.
+- `node tools/check_notification_status.mjs --expect-supported true
+  --expect-granted false --expect-status unknown
+  http://127.0.0.1:57872/m5FH7TIIYx8=/`: passed against a fresh live macOS
+  `flutter run` VM Service, proving the reusable smoke helper can assert the
+  current notification permission state rather than only printing it.
 - `node --check tools/check_notification_status.mjs`: passed after adding the
-  reusable VM Service smoke helper.
+  reusable VM Service smoke helper and again after adding expectation options.
 - `flutter build macos --debug`: passed again after removing the invalid
   AppDelegate `super.applicationDidFinishLaunching(notification)` call and
   produced `build/macos/Build/Products/Debug/vibe-fridge.app`.
@@ -1364,6 +1372,8 @@ Platform notification checklist for that gate:
 - Added `tools/check_notification_status.mjs`, a reusable local smoke helper
   that calls the debug VM Service extension for a running Flutter app and
   validates the notification status payload shape before printing the result.
+  It can optionally assert expected `supported`, `granted`, and `status`
+  values for repeatable beta validation.
 
 ## Remaining Risks
 
