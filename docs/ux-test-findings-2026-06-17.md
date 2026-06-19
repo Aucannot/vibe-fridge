@@ -238,6 +238,8 @@ Platform notification checklist for that gate:
   boot/package-update restoration, and click handoff wiring. Passed again after
   adding source-level coverage that Android skips blank reminder item ids and
   non-positive scheduled times before scheduling or showing a notification.
+  Passed again after adding scheduled-receiver permission-revocation guards and
+  `SecurityException` handling, 3 tests.
 - `flutter test test/macos_notification_wiring_test.dart`: passed after adding
   macOS source-level checks for method-channel names, native bridge methods,
   notification payload parsing, delegate presentation behavior, and system tap
@@ -1056,6 +1058,10 @@ Platform notification checklist for that gate:
 - Android notification scheduling now persists pending reminder payloads and
   registers boot/package-replaced restoration points; runtime proof still needs
   an Android SDK/device environment.
+- Android scheduled reminder delivery now checks `POST_NOTIFICATIONS` again in
+  the broadcast receiver and catches `SecurityException` before posting, so a
+  reminder firing after the user revokes notification permission should be
+  skipped instead of crashing the receiver.
 - Bootstrap error page tests now verify startup diagnostics remain copyable
   without exposing technical details on screen by default.
 - AI recipe fallback tests now verify service failures still return rule-based

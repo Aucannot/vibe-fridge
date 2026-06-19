@@ -114,10 +114,14 @@ void main() {
     _expectAllContains(notificationReceiver, [
       'intent.getStringExtra(LocalNotificationContract.extraItemId)',
       'itemId.isBlank()',
+      'hasNotificationPermission(context)',
+      'Manifest.permission.POST_NOTIFICATIONS',
+      'PackageManager.PERMISSION_GRANTED',
       'Intent(context, MainActivity::class.java)',
       'putExtra(LocalNotificationContract.extraItemId, itemId)',
       'setContentIntent(pendingIntent)',
       'setAutoCancel(true)',
+      'catch (ignored: SecurityException)',
       'notificationManager.notify',
     ]);
     _expectAllContains(bootReceiver, [
