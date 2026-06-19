@@ -107,7 +107,9 @@ Platform notification checklist for that gate:
   duplicate handling; passed again after extending the native Web loading
   screen delay to cover desktop CanvasKit font settling, again before the
   latest Settings smoke check, and again as a final current-worktree Web build
-  gate after the browser-history route fix.
+  gate after the browser-history route fix. Passed again after pushing the
+  beta notification and routing validation commit, then served on port 54390
+  for post-push smoke testing.
 - `flutter build macos --debug`: passed after the user completed the local
   Xcode installation and license flow. The build produced
   `build/macos/Build/Products/Debug/vibe-fridge.app`; Flutter also generated
@@ -147,7 +149,8 @@ Platform notification checklist for that gate:
   `密钥状态` / `本机安全保存` / `本机安全区域`.
 - Web build output now includes the native HTML loading screen used to cover
   Flutter Web's cold-start font fallback window.
-- App self-check from Settings: passed, 15/15.
+- App self-check from Settings: passed, 15/15; passed again on the restarted
+  latest Web target on port 54390 in about 354ms.
 - Fresh Web smoke check on a new local port: no new console warnings or errors
   for the latest build.
 - Mobile Web cold-start visual smoke check on port 54331: the native loading
@@ -190,6 +193,10 @@ Platform notification checklist for that gate:
   to return to the recipe list, then browser Forward to reopen the same recipe
   detail. Both transitions preserved hash-free query routes and produced no
   browser warning or error logs.
+- Post-push desktop Web target smoke check on restarted port 54390: opened
+  Settings, switched to Recipes, verified the URL became `?route=recipes`,
+  opened `快手蛋奶早餐` at `?route=recipes%2Fquick-breakfast`, and used browser
+  Back to return to `?route=recipes` with the recipe list restored.
 - Desktop Web direct recipe URL regression check on port 54381 after switching
   the root app shell to `MaterialApp.router`: loaded
   `?route=recipes%2Fquick-breakfast` directly and verified it opened
