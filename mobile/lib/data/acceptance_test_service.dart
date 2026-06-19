@@ -226,6 +226,42 @@ class AcceptanceTestService {
       }
     });
 
+    await check('备份内容包含关键数据', () async {
+      final item = await _activeItem(_required(wikiId, '物品资料'));
+      final categories = await repository.getCategories();
+      final backupShoppingId = await repository.addShoppingListItem(
+        ShoppingListDraft(
+          name: '$testName-备份采购',
+          categoryId: categories.isEmpty ? null : categories.first.id,
+          quantity: 2,
+          unit: '份',
+          note: '应用自检备份验证',
+          source: '应用自检',
+        ),
+      );
+
+      final backup = await repository.exportBackup();
+      final itemRows = _backupRows(backup, 'items');
+      final itemTagRows = _backupRows(backup, 'item_tags');
+      final reminderRows = _backupRows(backup, 'reminder_logs');
+      final shoppingRows = _backupRows(backup, 'shopping_list_items');
+
+      final containsItem = itemRows.any((row) => row['id'] == item.id);
+      final containsTags = itemTagRows.any((row) => row['item_id'] == item.id);
+      final containsIgnoredReminder = reminderRows.any((row) {
+        return row['item_id'] == item.id && row['reminder_type'] == 'ignored';
+      });
+      final containsShoppingItem = shoppingRows.any((row) {
+        return row['id'] == backupShoppingId && row['note'] == '应用自检备份验证';
+      });
+      if (!containsItem ||
+          !containsTags ||
+          !containsIgnoredReminder ||
+          !containsShoppingItem) {
+        throw StateError('备份内容缺少库存、标签、提醒或采购清单数据');
+      }
+    });
+
     await check('更新库存数量', () async {
       final item = await _activeItem(_required(wikiId, '物品资料'));
       await repository.updateItemQuantity(item.id, 1);
@@ -375,6 +411,26 @@ class AcceptanceTestService {
       throw StateError('前置检查未产生 $label');
     }
     return value;
+  }
+
+  List<Map<String, Object?>> _backupRows(
+    Map<String, dynamic> backup,
+    String table,
+  ) {
+    final data = backup['data'];
+    if (data is! Map) {
+      throw StateError('备份内容缺少数据');
+    }
+    final rows = data[table];
+    if (rows is! List) {
+      throw StateError('备份内容缺少 $table');
+    }
+    return rows.map((row) {
+      if (row is! Map) {
+        throw StateError('备份内容包含无效记录');
+      }
+      return Map<String, Object?>.from(row);
+    }).toList();
   }
 }
 

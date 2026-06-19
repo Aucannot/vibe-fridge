@@ -89,7 +89,8 @@ Platform notification checklist for that gate:
   after the macOS native notification request builder extraction. Passed again
   after adding the custom Web bootstrap guard, 58 tests. Passed again after
   adding Android notification wiring source tests, 60 tests. Passed again after
-  adding macOS notification wiring source tests, 62 tests.
+  adding macOS notification wiring source tests, 62 tests. Passed again after
+  extending app self-check backup coverage, 64 tests.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
@@ -98,7 +99,9 @@ Platform notification checklist for that gate:
   Passed again after adding inventory-table export coverage for commas,
   quotes, and newline characters in user-entered fields, 20 tests. Passed
   again after adding backup round-trip coverage for inventory tags, reminder
-  logs, and shopping-list data, 21 tests.
+  logs, and shopping-list data, 21 tests. Passed again after extending the
+  Settings app self-check to verify backup content includes inventory, tags,
+  reminder logs, and shopping-list data, 21 tests.
 - `flutter analyze`: passed after the latest beta fixes including Web route
   cleanup, direct Web detail URL hash cleanup, the `MaterialApp.router`
   browser-history fix, notification channel coverage, the edit-page Material
@@ -185,7 +188,9 @@ Platform notification checklist for that gate:
   port 54390 loaded `vibe-fridge`, hid the loading screen, captured a non-empty
   page screenshot, and reported no browser warnings or errors.
 - App self-check from Settings: passed, 15/15; passed again on the restarted
-  latest Web target on port 54390 in about 354ms.
+  latest Web target on port 54390 in about 354ms. After adding the backup
+  content check and rebuilding Web, the current Settings self-check passed
+  16/16 on port 54390 in about 372ms with no browser warning or error logs.
 - Fresh Web smoke check on a new local port: no new console warnings or errors
   for the latest build.
 - Mobile Web cold-start visual smoke check on port 54331: the native loading
@@ -726,7 +731,7 @@ Platform notification checklist for that gate:
 - Running a recipe deduction updates priority consumable counts in the live
   mobile Web UI and returns to the recipe list with user feedback.
 - Settings self-check completed and cleaned up its temporary data, and the
-  mobile Web UI shows the 15/15 result plus readable per-check timings.
+  current Web UI shows the 16/16 result plus readable per-check timings.
 - Settings recipe preferences save from the mobile Web UI and reload with the
   edited values still visible.
 - Settings order-recognition configuration saves from the mobile Web UI,
@@ -932,6 +937,9 @@ Platform notification checklist for that gate:
   app self-check wording.
 - Cleaned app self-check failure details so users see the actionable reason
   without raw exception prefixes.
+- Extended the app self-check so the user-visible Settings check also verifies
+  backup content includes inventory rows, tag links, reminder logs, and
+  shopping-list data.
 - Clarified the generic error snackbar action from `复制` to `复制详情`, keeping
   technical diagnostics out of the visible message while making the hidden copy
   action understandable.
