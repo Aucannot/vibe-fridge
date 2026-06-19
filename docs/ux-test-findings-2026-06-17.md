@@ -41,6 +41,15 @@ validate that the system accepts a real pending request once macOS notification
 permission has been granted. This still does not replace manual delivered-banner
 and click-through validation.
 
+Runtime macOS update on 2026-06-19: launching the rebuilt debug app exposed a
+startup `NSInvalidArgumentException` from calling
+`super.applicationDidFinishLaunching(notification)` on Flutter's macOS app
+delegate optional selector. The app now only installs the notification-center
+delegate in `applicationDidFinishLaunching`; after rebuilding and launching the
+debug app again, the process checked in as a foreground app, created a
+`UNUserNotificationCenter`, and read notification settings without the previous
+selector exception.
+
 ## Beta Readiness
 
 Verdict: ready for continued Web beta testing of the core inventory workflow,
@@ -253,7 +262,9 @@ Platform notification checklist for that gate:
   helpers. Passed again after updating the macOS bridge contract coverage for
   asynchronous native scheduling completion and `schedule_failed` propagation.
   Passed again after covering macOS bridge item-id trimming before invoking
-  Flutter.
+  Flutter. Passed again after adding coverage that the AppDelegate no longer
+  calls FlutterAppDelegate's unimplemented optional
+  `applicationDidFinishLaunching` selector.
 - `flutter test test/web_bootstrap_test.dart`: passed after adding the custom
   Web bootstrap guard that clears stale service workers without registering a
   replacement Flutter service worker; passed again after extending the guard to
@@ -365,13 +376,23 @@ Platform notification checklist for that gate:
   with 13 passed RunnerTests and 1 skipped pending-request smoke because the
   current test host is not authorized for notifications. Passed again after
   adding native tap-handler coverage for whitespace-trimmed and blank
-  launch-target ids, again with 13 passed and 1 skipped.
+  launch-target ids, again with 13 passed and 1 skipped. Passed again after
+  the AppDelegate launch fix, with 13 passed and 1 skipped.
 - `flutter run -d macos`: launched the current debug macOS target on
   2026-06-19, built `vibe-fridge.app`, started the app process, and exposed a
   Dart VM Service. The shell still reported `Failed to foreground app; open
   returned 1`, so this remains a launch smoke rather than a manual UI or
   delivered-notification validation. The run session was then terminated and
   the app exited with `Application finished.`
+- `flutter build macos --debug`: passed again after removing the invalid
+  AppDelegate `super.applicationDidFinishLaunching(notification)` call and
+  produced `build/macos/Build/Products/Debug/vibe-fridge.app`.
+- `open -n build/macos/Build/Products/Debug/vibe-fridge.app`: launched the
+  rebuilt debug app as process `vibe-fridge`; recent system logs showed the
+  app checked in as foreground, created a user notification center, and read
+  notification settings. The previous `applicationDidFinishLaunching` /
+  `NSInvalidArgumentException` log entries were not present in the repaired
+  launch window.
 - `flutter build apk --debug`: attempted after the latest route and platform
   checks. Dependency resolution completed, but the local environment could not
   continue because no Android SDK was found; this did not produce an app compile
@@ -1278,6 +1299,10 @@ Platform notification checklist for that gate:
   a stopped local WebDAV endpoint produced actionable connection-failure copy,
   then a fresh local endpoint accepted saved credentials, connection testing,
   and backup upload without browser warning/error logs.
+- Fixed a macOS runtime launch exception discovered during desktop validation:
+  AppDelegate no longer calls FlutterAppDelegate's unimplemented optional
+  launch selector, and a rebuilt debug app now starts far enough to initialize
+  and query the notification center without that exception.
 
 ## Remaining Risks
 
@@ -1286,13 +1311,13 @@ Platform notification checklist for that gate:
   manifest/channel/payload wiring and the immediate test-notification channel
   are now covered by tests, but scheduled reminder delivery, permission prompts,
   and notification-click routing still need a device or emulator.
-- macOS app build and launch are now proven locally, but macOS notification
-  permission, due reminder delivery, and notification-click routing still need
-  targeted desktop runtime validation. The native bridge/delegate source wiring,
-  immediate test-notification channel, scheduling payload builder,
-  async scheduling completion/error handling, permission-status mapper, and tap
-  payload handoff are now covered by tests, but system notification behavior is
-  not fully replaceable with unit tests.
+- macOS app build and repaired launch are now proven locally, but macOS
+  notification permission, due reminder delivery, and notification-click routing
+  still need targeted desktop runtime validation. The native bridge/delegate
+  source wiring, immediate test-notification channel, scheduling payload
+  builder, async scheduling completion/error handling, permission-status mapper,
+  and tap payload handoff are now covered by tests, but system notification
+  behavior is not fully replaceable with unit tests.
 - Web app updates can still be masked by older same-origin browser cache or
   previously registered service-worker state. During Settings retesting, port
   54371 still showed older self-check wording after a rebuild, while fresh port

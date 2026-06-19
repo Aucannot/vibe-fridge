@@ -91,6 +91,13 @@ void main() {
       'completionHandler()',
       'Notification.Name("vibeFridgeNotificationTapped")',
     ]);
+    expect(
+      appDelegate,
+      isNot(contains('super.applicationDidFinishLaunching(notification)')),
+      reason:
+          'FlutterAppDelegate does not implement this optional AppKit selector '
+          'in the current runtime; calling super raises an NSInvalidArgumentException.',
+    );
     _expectAllContains(requestSupport, [
       'static let launchItemIdKey = "notification_item_id"',
       'normalizedItemId(userInfo["itemId"])',
