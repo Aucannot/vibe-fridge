@@ -495,7 +495,13 @@ Platform notification checklist for that gate:
   Passed again after extracting and testing the debug notification payload
   builders, proving the real launched app still registers the VM Service
   extensions and the default smoke path still avoids permission prompts or
-  notification delivery.
+  notification delivery. Rechecked on 2026-06-20 against the current
+  `codex/beta-user-testing` worktree with `node
+  tools/run_macos_notification_smoke.mjs --expect-supported true
+  --timeout-ms 180000`: the app built, launched, exposed
+  `http://127.0.0.1:64161/...`, returned `supported: true`, `granted: false`,
+  `status: unknown`, and `displayText: 未确认`, then exited cleanly with
+  `Application finished.`.
 - `node --check tools/run_macos_notification_smoke.mjs`: passed after adding
   the automated macOS smoke runner.
 - Tool argument guards: `node tools/check_notification_status.mjs
