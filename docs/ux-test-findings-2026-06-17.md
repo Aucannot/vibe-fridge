@@ -21,28 +21,130 @@ validation. Flutter Web cold-start text now has a native HTML loading screen to
 cover the short CanvasKit font fallback window, and the latest mobile Web smoke
 check confirmed it hands off cleanly to the rendered Home screen.
 
+## Beta Readiness
+
+Verdict: ready for continued Web beta testing of the core inventory workflow,
+but not yet ready to claim Android/macOS notification readiness.
+
+Proven enough for beta:
+
+- Home dashboard, today actions, reminder snooze/ignore, item catalog, item
+  profile, inventory detail, manual add, order-text import, shopping list,
+  recipes, backup/export, restore/import copy, settings, and app self-check all
+  have passing automated or browser-smoke evidence.
+- Web deep links and browser Back/Forward now preserve hash-free query routes
+  across catalog search detail, inventory detail, and recipe detail paths.
+- User-facing copy has been scrubbed across the main tested flows to avoid raw
+  database, migration, legacy implementation, and diagnostic details.
+
+Not proven yet:
+
+- Android/macOS local notification runtime behavior. Dart fallback behavior,
+  static bridge wiring, repository notification payload tests, and macOS native
+  scheduling-payload construction and permission-status mapping tests are
+  covered, but real device/desktop notification permission, delivery, and
+  tap-to-detail behavior still need runtime validation on the target
+  platforms.
+- Web update experience on an existing origin. Fresh origins load the current
+  build and the current service worker unregisters itself, but older browser
+  cache or prior registration state can still mask a rebuilt app during manual
+  validation.
+
+Recommended next beta gate:
+
+- Run one Android debug build on a machine with Android SDK configured, then
+  manually verify Android notification permission, scheduled reminder delivery,
+  and notification click opening the matching inventory detail. On macOS, build
+  plus native scheduling payload and permission-status mapping are now covered
+  locally; the next gate is manual permission, delivery, and click routing
+  validation.
+
+Platform notification checklist for that gate:
+
+- Build and launch Android debug on a device or emulator with notification
+  permission support; verify Settings shows a supported permission state.
+- On Android, request notification permission from Settings, sync reminders,
+  wait for a due reminder, tap the delivered notification, and confirm the
+  matching inventory detail opens.
+- Restart the Android app or emulator after reminders are scheduled, then
+  confirm boot/package-replaced restoration still delivers the stored reminder.
+- Build and launch macOS debug with full Xcode/CocoaPods tooling; verify
+  Settings shows a supported permission state.
+- On macOS, request notification permission, sync reminders, wait for a due
+  reminder, tap the delivered notification, and confirm the matching inventory
+  detail opens.
+- Re-run the Settings app self-check after platform notification testing to
+  confirm notification experiments did not leave invalid inventory, shopping,
+  recipe, reminder, or history state behind.
+
 ## Verification
 
 - `flutter test`: passed after the latest beta fixes including Android reminder
-  restoration, Web route cleanup, notification channel coverage, startup error
-  copy coverage, AI recipe and order-recognition error-copy coverage, plus the
-  generic error snackbar detail-copy coverage, 54 tests.
+  restoration, Web route cleanup, the `MaterialApp.router` browser-history fix,
+  notification channel coverage, startup error copy coverage, AI recipe and
+  order-recognition error-copy coverage, plus the generic error snackbar
+  detail-copy coverage, notification tap controller handoff coverage, and
+  notification permission-to-sync controller coverage, 57 tests; passed again
+  after the macOS native notification request builder extraction.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
 - `flutter test test/inventory_repository_test.dart`: passed after the
   no-date order duplicate fix and backup-reminder copy cleanup, 19 tests.
 - `flutter analyze`: passed after the latest beta fixes including Web route
-  cleanup, direct Web detail URL hash cleanup, notification channel coverage,
-  the edit-page Material fix, and no-date order duplicate handling.
+  cleanup, direct Web detail URL hash cleanup, the `MaterialApp.router`
+  browser-history fix, notification channel coverage, the edit-page Material
+  fix, and no-date order duplicate handling; passed again during final route
+  code review, after the final Settings copy cleanup, and after adding the
+  notification tap and permission-to-sync controller tests, and after the macOS
+  native notification request builder extraction, with no issues.
 - `flutter test test/local_notification_service_test.dart`: passed after the
-  Android reminder scheduler refactor, 6 tests.
+  Android reminder scheduler refactor, notification tap controller handoff
+  coverage, and notification permission-to-sync controller coverage, 9 tests.
 - `flutter build web --debug --no-wasm-dry-run`: passed after the latest beta
   fixes including Web route cleanup, direct Web detail URL hash cleanup,
   startup error copy coverage, the edit-page Material fix, and no-date order
   duplicate handling; passed again after extending the native Web loading
-  screen delay to cover desktop CanvasKit font settling, and again before the
-  latest Settings smoke check.
+  screen delay to cover desktop CanvasKit font settling, again before the
+  latest Settings smoke check, and again as a final current-worktree Web build
+  gate after the browser-history route fix.
+- `flutter build macos --debug`: passed after the user completed the local
+  Xcode installation and license flow. The build produced
+  `build/macos/Build/Products/Debug/vibe-fridge.app`; Flutter also generated
+  Swift Package Manager integration for the macOS project and warned that
+  `flutter_secure_storage_macos` still uses CocoaPods. Passed again after
+  extracting and testing the macOS notification request builder and permission
+  status mapper.
+- `xcodebuild test -workspace Runner.xcworkspace -scheme Runner -configuration
+  Debug -destination 'platform=macOS' -derivedDataPath
+  /private/tmp/vibe-fridge-xcode-derived-permission
+  -clonedSourcePackagesDirPath /private/tmp/vibe-fridge-xcode-spm-permission`:
+  passed after fixing the RunnerTests `TEST_HOST` product path and importing
+  the app module as `vibe_fridge`. RunnerTests now covers macOS notification
+  request construction, malformed payload skipping, the 60-second minimum
+  notification trigger delay, and native permission-status channel mapping.
+- `flutter run -d macos`: launched the debug macOS target successfully and
+  exposed a Dart VM Service. The app process started, though `open` could not
+  automatically foreground the window in this shell session.
+- `flutter build apk --debug`: attempted after the latest route and platform
+  checks. Dependency resolution completed, but the local environment could not
+  continue because no Android SDK was found; this did not produce an app compile
+  error, but leaves Android native runtime validation unproven in this
+  environment.
+- Native notification bridge static review: Android and macOS implementations
+  use the same `vibe_fridge/local_notifications` method channel as Dart,
+  preserve `itemId` in scheduled notification payloads, expose launch/tap
+  callbacks back to Flutter, and include boot or app-start recovery paths where
+  the platform supports them. No obvious channel-name, payload-key, or click
+  callback mismatch was found, but this does not replace runtime validation on
+  real Android/macOS environments.
+- Final targeted user-facing copy grep: scanned Flutter screens, widgets, and
+  bootstrap UI for database, SQLite, migration, legacy, Wiki, JSON/id, and
+  related implementation wording. Remaining matches were internal identifiers,
+  file extensions, prompts, hidden diagnostics, or already-user-facing product
+  language. The only visible wording tightened in this pass was the order
+  recognition key copy, rephrased from storage terminology to
+  `密钥状态` / `本机安全保存` / `本机安全区域`.
 - Web build output now includes the native HTML loading screen used to cover
   Flutter Web's cold-start font fallback window.
 - App self-check from Settings: passed, 15/15.
@@ -82,6 +184,17 @@ check confirmed it hands off cleanly to the rendered Home screen.
   `快手蛋奶早餐` detail page with inventory use, missing ingredients, and steps;
   tapping back returned to `?route=recipes`, and both URLs stayed hash-free
   with no browser warning or error logs.
+- Desktop Web recipe browser-history smoke check on fresh port 54390 after the
+  `MaterialApp.router` fix: opened `?route=recipes`, tapped
+  `快手蛋奶早餐` to reach `?route=recipes%2Fquick-breakfast`, used browser Back
+  to return to the recipe list, then browser Forward to reopen the same recipe
+  detail. Both transitions preserved hash-free query routes and produced no
+  browser warning or error logs.
+- Desktop Web direct recipe URL regression check on port 54381 after switching
+  the root app shell to `MaterialApp.router`: loaded
+  `?route=recipes%2Fquick-breakfast` directly and verified it opened
+  `快手蛋奶早餐` with inventory use, missing ingredients, and steps. The URL
+  stayed hash-free and no browser warning or error logs appeared.
 - Mobile Web unknown recipe URL smoke check on port 54387: loaded an
   unrecoverable generated-style route,
   `?route=recipes%2Fai-recipe-old-generated-0`, and verified the app replaced
@@ -150,7 +263,17 @@ check confirmed it hands off cleanly to the rendered Home screen.
   ran the app self-check, saw `全部通过` with `15/15` in about 397ms, and saw no
   browser warning or error logs for the fresh origin. A same-port reload on
   port 54371 still showed older self-check copy after rebuilding, indicating
-  service-worker or browser cache can keep stale Web assets during validation.
+  older same-origin cache or previous registration state can keep stale Web
+  assets during validation. The current Web build emits an unregistering
+  `flutter_service_worker.js`, so fresh origins should not retain a Flutter
+  service worker.
+- Desktop and mobile Web Settings regression smoke check on fresh port 54384:
+  opened Settings on the current build, verified backup/notification copy,
+  scrolled to recipe preferences and app self-check, ran self-check, and saw
+  `全部通过` with `15/15`. Then switched to 390 x 844, reloaded Settings,
+  verified the mobile layout stayed readable, opened Recipes from the bottom
+  navigation, and opened `快手蛋奶早餐` at
+  `?route=recipes%2Fquick-breakfast` with no browser warning or error logs.
 - Mobile Web recipe-preference settings smoke check on port 54363: opened
   Settings, scrolled to `食谱偏好`, entered `清淡内测`, `不吃辣`, `电饭煲`,
   changed time to `25` minutes and servings to `3`, saved, saw `食谱偏好已保存`,
@@ -271,17 +394,13 @@ check confirmed it hands off cleanly to the rendered Home screen.
   searched for `牛奶`, saw the catalog narrow to `鲜牛奶` while keeping the
   expiring mini-card visible, then opened the result to
   `?route=items%2Fwiki%2Fwiki-milk` with no browser warning or error logs.
-- Mobile Web browser-history smoke check on ports 54404-54408, then repeated
-  on a rebuilt desktop Web preview at port 54370: loaded
-  `?route=items&q=牛奶`, opened the `鲜牛奶` item-profile detail, and used the
-  browser Back/Forward controls. Back correctly returned to the searched
-  catalog state with `q=牛奶`, but Forward stayed on the catalog and most
-  recently rewrote the address to `?route=items`
-  instead of reopening `?route=items%2Fwiki%2Fwiki-milk`. Several route-restore
-  experiments, including a Navigator stack observer and anonymous route-driven
-  detail pushes, did not produce a verified fix, so the trial code was
-  discarded and the issue is kept as a remaining Web navigation risk. No
-  browser warning or error logs appeared.
+- Mobile Web browser-history smoke check on port 54380 after switching the root
+  app shell to `MaterialApp.router`, then repeated on port 54382 after making
+  route parsing synchronous: loaded `?route=items&q=牛奶`, opened the `鲜牛奶`
+  item-profile detail at `?route=items%2Fwiki%2Fwiki-milk`, used browser Back
+  to return to the searched catalog with `q=牛奶`, then used browser Forward to
+  reopen `?route=items%2Fwiki%2Fwiki-milk`. The URL stayed hash-free, the
+  detail page rendered, and no browser warning or error logs appeared.
 - Mobile Web catalog category-filter smoke check on port 54361: opened the
   Items tab, selected the `日用品` category chip, verified the URL changed to
   `?route=items&category=cat-daily` and the catalog list narrowed to `牙膏`,
@@ -388,6 +507,11 @@ check confirmed it hands off cleanly to the rendered Home screen.
   verified the address bar stayed on the query route without a Flutter hash
   fragment while rendering the inventory detail page with no browser warning
   or error logs.
+- Desktop Web direct inventory-detail URL regression check on port 54381 after
+  switching the root app shell to `MaterialApp.router`: loaded
+  `?route=items%2Fitem%2Fitem-bread-1` directly and verified it rendered the
+  `面包` inventory detail page. The URL stayed hash-free and no browser warning
+  or error logs appeared.
 - Initial targeted UI-copy grep for engineering terms found no new actionable
   user-facing leaks. The remaining AI `JSON` wording is confined to prompts or
   internal exceptions and is wrapped by the user-friendly recipe fallback copy.
@@ -404,16 +528,31 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Inspecting the app self-check failure path found failed check details would
   display raw Dart prefixes such as `Bad state:` before the useful message.
   Self-check failures now strip those technical prefixes before rendering.
-- `flutter build macos --debug`: blocked by local environment. Flutter reached
-  Xcode dependency resolution, then failed because the active developer
-  directory is Command Line Tools and `xcodebuild` is unavailable to `xcrun`.
+- `flutter build macos --debug`: initially blocked by local environment.
+  Flutter reached Xcode dependency resolution, then failed because the active
+  developer directory was Command Line Tools and `xcodebuild` was unavailable
+  to `xcrun`. After the user installed Xcode and accepted the license, the same
+  command passed and produced the debug macOS app bundle.
+- Xcode environment setup attempt after user approval: installed Homebrew
+  `cocoapods`, `mas`, `xcodes`, and `aria2`. `xcodes install 26.5` could not
+  proceed without Apple ID credentials, and `mas get 497799835` failed while
+  looking up Xcode through the App Store API with a TLS error. The App Store
+  Xcode page was opened for manual sign-in/install.
+- `flutter run -d macos`: initially blocked by missing full Xcode, then passed
+  after Xcode 26.5 was installed and selected. The app launched in debug mode
+  and exposed a Dart VM Service; the shell reported `Failed to foreground app`
+  after launch.
 - `flutter build apk --debug`: blocked by local environment after downloading
   Flutter Android artifacts; Flutter reported no Android SDK.
 - `xmllint --noout mobile/android/app/src/main/AndroidManifest.xml`: passed
   after adding the Android boot/package-replaced reminder receiver.
-- `flutter doctor -v`: confirmed no Android SDK, incomplete Xcode, missing
-  CocoaPods, no Chrome binary, and sandboxed network checks failing without
-  elevated network access.
+- `flutter doctor -v`: initially confirmed no Android SDK, incomplete Xcode,
+  missing CocoaPods, no Chrome binary, and sandboxed network checks failing
+  without elevated network access. After installing CocoaPods and rerunning with
+  elevated network access, it confirmed CocoaPods 1.16.2 and healthy network
+  resources. After Xcode 26.5 was installed and selected, doctor no longer
+  reported missing first-launch components; only Android SDK, Chrome, and
+  simulator runtime gaps remained relevant outside the macOS desktop target.
 - `python3 tools/perf_inventory_sqlite.py`: passed. Core inventory queries
   remained well under thresholds with 5,000 generated records: exact catalog
   search 0.683 ms, category filter 2.177 ms, today-action query 1.839 ms,
@@ -587,6 +726,16 @@ check confirmed it hands off cleanly to the rendered Home screen.
   hint shown in Settings when native scheduling actions are disabled.
 - Local notification channel tests now cover tap callbacks, malformed tap
   payloads, and safe launch-target fallback when the platform call fails.
+- Local notification controller handoff tests now verify a notification tap
+  target is stored for the app shell and consumed exactly once.
+- Local notification controller tests now verify requesting permission triggers
+  reminder sync only after authorization is granted, and skips scheduling when
+  permission is denied.
+- macOS RunnerTests now verify the native notification request builder maps
+  Dart channel payloads to `inventory-<itemId>` request identifiers, preserves
+  `itemId` in `userInfo`, skips malformed rows, and enforces the minimum
+  trigger delay used before adding `UNNotificationRequest`s. They also verify
+  native notification permission statuses map to the Flutter channel contract.
 - Android notification scheduling now persists pending reminder payloads and
   registers boot/package-replaced restoration points; runtime proof still needs
   an Android SDK/device environment.
@@ -674,8 +823,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
   only the bundled empty legacy file is present.
 - Cleaned up Web detail route syncing so copied detail URLs are no longer set
   up to keep both the app route query and a Flutter hash route after
-  navigation; this pass verified compilation, while browser address-bar
-  automation was unavailable locally.
+  navigation; later browser-history and direct-route checks verified the
+  address bar stays on hash-free query routes.
 - Extended the same route cleanup pattern to home priority rows, item-profile
   batch rows, and recipe detail navigation so those natural beta-user paths
   avoid mixed query/hash URLs too.
@@ -721,6 +870,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Reworded inventory-detail import traces so old imports show `旧版库存` rather
   than raw internal source values, and internal import batch ids are no longer
   displayed as user-facing details.
+- Switched the main app shell to `MaterialApp.router` with a root Navigator
+  that leaves browser history ownership to the app's query-route state, fixing
+  browser Forward from a searched catalog detail back into the same detail URL.
 - Reworded Settings restore/import feedback from snapshot, health-check, and
   log terminology to backup, check, detail, and record wording.
 - Reworded Settings built-in check copy from acceptance wording to
@@ -739,20 +891,23 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Reworded legacy-import and demo-reset summaries from data-row wording to
   user-facing record wording, including preview counts, import results, and
   example-data cleanup feedback.
+- Reworded the order-recognition key copy from storage terminology to
+  `密钥状态` / `本机安全保存` / `本机安全区域`, so Settings describes the outcome
+  rather than the implementation.
 
 ## Remaining Risks
 
-- Android and macOS local notification behavior still needs device or desktop
-  runtime validation on a machine with Android SDK and full Xcode/CocoaPods.
-- The native notification implementations still need runtime proof even though
-  the Dart service degrades cleanly when permission is missing, unsupported, or
-  the platform channel is absent.
-- Web browser Forward after returning from a detail page can lose the detail
-  entry. Reproduced from `?route=items&q=牛奶` -> `鲜牛奶` detail -> browser
-  Back -> browser Forward; the Forward action remained on the searched catalog
-  and rewrote the URL to `?route=items` instead of reopening the detail route.
-- Web app updates can be masked by same-origin cache or service-worker state.
-  During Settings retesting, port 54371 still showed older self-check wording
-  after a rebuild, while fresh port 54372 loaded the current build. Release
-  validation should use a fresh origin or cache clear until the Web update
-  experience is designed explicitly.
+- Android local notification behavior still needs runtime validation on a
+  machine with Android SDK configured.
+- macOS app build and launch are now proven locally, but macOS notification
+  permission, due reminder delivery, and notification-click routing still need
+  targeted desktop runtime validation. The native scheduling payload builder
+  and permission-status mapper are now covered by RunnerTests, but system
+  notification behavior is not fully replaceable with unit tests.
+- Web app updates can still be masked by older same-origin browser cache or
+  previously registered service-worker state. During Settings retesting, port
+  54371 still showed older self-check wording after a rebuild, while fresh port
+  54372 loaded the current build; the current Flutter build emits an
+  unregistering `flutter_service_worker.js`, but release validation should
+  still use a fresh origin or cache clear until the Web update experience is
+  designed explicitly.

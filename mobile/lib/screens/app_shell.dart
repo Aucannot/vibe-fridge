@@ -110,18 +110,37 @@ class _AppShellState extends State<AppShell> {
       }
       _index = index;
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) {
         return;
       }
       Navigator.of(context).popUntil((route) => route.isFirst);
       if (index == 1) {
         _itemsScreenKey.currentState?.applyRequest(_itemsRequestFromUri(uri));
-        _openItemsDetailForRoute(uri);
+        if (_isItemsDetailRoute(uri)) {
+          await _waitForWebRouteSettle(route);
+          if (!mounted || !isCurrentWebRoute(route)) {
+            return;
+          }
+        }
+        await _openItemsDetailForRoute(uri);
       } else if (index == 3) {
+        if (_isRecipeDetailRoute(uri)) {
+          await _waitForWebRouteSettle(route);
+          if (!mounted || !isCurrentWebRoute(route)) {
+            return;
+          }
+        }
         _openRecipeDetailForRoute(uri);
       }
     });
+  }
+
+  Future<void> _waitForWebRouteSettle(String route) async {
+    if (!supportsWebRouteState || !isCurrentWebRoute(route)) {
+      return;
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 80));
   }
 
   int _indexForWebRoute(Uri uri) {
@@ -185,7 +204,9 @@ class _AppShellState extends State<AppShell> {
       );
       setWebRouteState(route, replace: true);
       await detail;
-      setWebRouteState('/items', replace: true);
+      if (!supportsWebRouteState || isCurrentWebRoute(route)) {
+        setWebRouteState('/items', replace: true);
+      }
       return;
     }
     if (kind == 'wiki') {
@@ -201,8 +222,14 @@ class _AppShellState extends State<AppShell> {
       );
       setWebRouteState(route, replace: true);
       await detail;
-      setWebRouteState('/items', replace: true);
+      if (!supportsWebRouteState || isCurrentWebRoute(route)) {
+        setWebRouteState('/items', replace: true);
+      }
     }
+  }
+
+  bool _isItemsDetailRoute(Uri uri) {
+    return uri.pathSegments.length >= 3 && uri.pathSegments.first == 'items';
   }
 
   void _openRecipeDetailForRoute(Uri uri) {
@@ -217,6 +244,10 @@ class _AppShellState extends State<AppShell> {
     if (!opened) {
       setWebRouteState('/recipes', replace: true);
     }
+  }
+
+  bool _isRecipeDetailRoute(Uri uri) {
+    return uri.pathSegments.length >= 2 && uri.pathSegments.first == 'recipes';
   }
 
   String _routeForIndex(int index) {
@@ -297,7 +328,9 @@ class _AppShellState extends State<AppShell> {
         ),
       )
           .then((_) {
-        setWebRouteState('/items', replace: true);
+        if (!supportsWebRouteState || isCurrentWebRoute(route)) {
+          setWebRouteState('/items', replace: true);
+        }
       });
       setWebRouteState(route, replace: true);
     });

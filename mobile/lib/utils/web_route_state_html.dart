@@ -30,6 +30,10 @@ Stream<String> getWebRouteStateChanges() {
   return controller.stream;
 }
 
+bool isCurrentWebRoute(String route) {
+  return _currentRoute() == _canonicalRoute(route);
+}
+
 void setWebRouteState(String route, {bool replace = false}) {
   final nextRoute = _normalizeRoute(route);
   final canonicalNextRoute = _canonicalRoute(nextRoute);

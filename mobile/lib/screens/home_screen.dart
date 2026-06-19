@@ -405,7 +405,9 @@ class _ExpiringPriorityCard extends StatelessWidget {
     );
     setWebRouteState(route, replace: true);
     await detail;
-    setWebRouteState('/home', replace: true);
+    if (!supportsWebRouteState || isCurrentWebRoute(route)) {
+      setWebRouteState('/home', replace: true);
+    }
     await controller.refresh();
   }
 }
@@ -747,7 +749,9 @@ class _InventoryTile extends StatelessWidget {
         );
         setWebRouteState(route, replace: true);
         await detail;
-        setWebRouteState('/home', replace: true);
+        if (!supportsWebRouteState || isCurrentWebRoute(route)) {
+          setWebRouteState('/home', replace: true);
+        }
         await controller.refresh();
       },
       child: Column(

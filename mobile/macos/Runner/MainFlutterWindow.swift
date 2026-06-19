@@ -90,13 +90,11 @@ final class MacLocalNotificationBridge {
   private func permissionStatus(result: @escaping FlutterResult) {
     center.getNotificationSettings { settings in
       DispatchQueue.main.async {
-        let granted = settings.authorizationStatus == .authorized ||
-          settings.authorizationStatus == .provisional
-        result([
-          "supported": true,
-          "granted": granted,
-          "status": self.statusText(settings.authorizationStatus)
-        ])
+        result(
+          MacLocalNotificationPermissionFactory
+            .snapshot(for: settings.authorizationStatus)
+            .channelMap
+        )
       }
     }
   }
@@ -117,35 +115,22 @@ final class MacLocalNotificationBridge {
 
   private func scheduleInventoryReminders(arguments: Any?) {
     center.removeAllPendingNotificationRequests()
-    guard let payload = arguments as? [String: Any],
-          let notifications = payload["notifications"] as? [[String: Any]]
-    else {
-      return
-    }
-    for row in notifications {
-      guard let itemId = row["itemId"] as? String,
-            let title = row["title"] as? String,
-            let body = row["body"] as? String,
-            let scheduledAtMillis = row["scheduledAtMillis"] as? NSNumber
-      else {
-        continue
-      }
+    let notifications = MacLocalNotificationRequestFactory.requests(
+      from: arguments
+    )
+    for notification in notifications {
       let content = UNMutableNotificationContent()
-      content.title = title
-      content.body = body
+      content.title = notification.title
+      content.body = notification.body
       content.sound = .default
-      content.userInfo = ["itemId": itemId]
+      content.userInfo = notification.userInfo
 
-      let scheduledDate = Date(
-        timeIntervalSince1970: scheduledAtMillis.doubleValue / 1000
-      )
-      let interval = max(scheduledDate.timeIntervalSinceNow, 60)
       let trigger = UNTimeIntervalNotificationTrigger(
-        timeInterval: interval,
+        timeInterval: notification.triggerInterval(),
         repeats: false
       )
       let request = UNNotificationRequest(
-        identifier: "inventory-\(itemId)",
+        identifier: notification.identifier,
         content: content,
         trigger: trigger
       )
@@ -160,20 +145,4 @@ final class MacLocalNotificationBridge {
     channel.invokeMethod("notificationTapped", arguments: ["itemId": itemId])
   }
 
-  private func statusText(
-    _ status: UNAuthorizationStatus
-  ) -> String {
-    switch status {
-    case .authorized:
-      return "granted"
-    case .denied:
-      return "denied"
-    case .notDetermined:
-      return "unknown"
-    case .provisional:
-      return "provisional"
-    @unknown default:
-      return "unknown"
-    }
-  }
 }

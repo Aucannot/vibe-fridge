@@ -302,7 +302,9 @@ class _ItemWikiDetailScreenState extends State<ItemWikiDetailScreen> {
     );
     setWebRouteState(route, replace: true);
     await detail;
-    setWebRouteState('/items/wiki/${widget.wikiId}', replace: true);
+    if (!supportsWebRouteState || isCurrentWebRoute(route)) {
+      setWebRouteState('/items/wiki/${widget.wikiId}', replace: true);
+    }
     if (mounted) {
       setState(() {
         _future = _load();

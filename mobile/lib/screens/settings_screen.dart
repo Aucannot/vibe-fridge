@@ -453,8 +453,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         const _SettingRow(
                           icon: Icons.security_outlined,
-                          label: '密钥存储',
-                          value: '系统安全存储',
+                          label: '密钥状态',
+                          value: '本机安全保存',
                         ),
                         const SizedBox(height: AppSpacing.cardGap),
                         TextField(
@@ -483,7 +483,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             labelText: 'API 密钥',
                             hintText: _hasStoredVlmApiKey
                                 ? '已安全保存，留空保持不变'
-                                : '只保存在系统安全存储',
+                                : '只保存在本机安全区域',
                             helperText: _hasStoredVlmApiKey
                                 ? '已保存的密钥不会明文显示'
                                 : '仅保存在本机安全区域',

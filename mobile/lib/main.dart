@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/services.dart';
@@ -34,7 +35,7 @@ class VibeFridgeApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       title: 'vibe-fridge',
       theme: AppTheme.light(),
@@ -49,7 +50,58 @@ class VibeFridgeApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      home: AppShell(controller: controller),
+      routeInformationParser: const _VibeFridgeRouteParser(),
+      routerDelegate: _VibeFridgeRouterDelegate(controller),
+    );
+  }
+}
+
+class _VibeFridgeRouteParser extends RouteInformationParser<String> {
+  const _VibeFridgeRouteParser();
+
+  @override
+  Future<String> parseRouteInformation(
+    RouteInformation routeInformation,
+  ) {
+    return SynchronousFuture(routeInformation.uri.toString());
+  }
+
+  @override
+  RouteInformation restoreRouteInformation(String configuration) {
+    return RouteInformation(uri: Uri.parse(configuration));
+  }
+}
+
+class _VibeFridgeRouterDelegate extends RouterDelegate<String>
+    with ChangeNotifier, PopNavigatorRouterDelegateMixin<String> {
+  _VibeFridgeRouterDelegate(this.controller);
+
+  final InventoryController controller;
+
+  @override
+  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+  String _configuration = '/';
+
+  @override
+  String get currentConfiguration => _configuration;
+
+  @override
+  Future<void> setNewRoutePath(String configuration) async {
+    _configuration = configuration;
+    notifyListeners();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Navigator(
+      key: navigatorKey,
+      pages: [
+        MaterialPage<void>(
+          child: AppShell(controller: controller),
+        ),
+      ],
+      onDidRemovePage: (_) {},
     );
   }
 }

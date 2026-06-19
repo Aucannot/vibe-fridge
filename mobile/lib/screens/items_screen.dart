@@ -302,7 +302,10 @@ class ItemsScreenState extends State<ItemsScreen> {
                               );
                               setWebRouteState(route, replace: true);
                               await detail;
-                              _syncItemsRoute(replace: true);
+                              if (!supportsWebRouteState ||
+                                  isCurrentWebRoute(route)) {
+                                _syncItemsRoute(replace: true);
+                              }
                               if (mounted) {
                                 await widget.controller.refresh();
                               }
@@ -380,7 +383,9 @@ class ItemsScreenState extends State<ItemsScreen> {
     );
     setWebRouteState(route, replace: true);
     await detail;
-    _syncItemsRoute(replace: true);
+    if (!supportsWebRouteState || isCurrentWebRoute(route)) {
+      _syncItemsRoute(replace: true);
+    }
     if (mounted) {
       await widget.controller.refresh();
     }

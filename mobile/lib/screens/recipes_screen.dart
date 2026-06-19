@@ -251,7 +251,9 @@ class RecipesScreenState extends State<RecipesScreen> {
     );
     setWebRouteState(route, replace: true);
     await detail;
-    setWebRouteState('/recipes', replace: true);
+    if (!supportsWebRouteState || isCurrentWebRoute(route)) {
+      setWebRouteState('/recipes', replace: true);
+    }
     if (mounted) {
       setState(() {});
     }

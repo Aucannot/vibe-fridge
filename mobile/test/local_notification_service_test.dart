@@ -1,6 +1,10 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vibe_fridge/data/inventory_controller.dart';
+import 'package:vibe_fridge/data/inventory_repository.dart';
 import 'package:vibe_fridge/data/local_notification_service.dart';
+
+import 'test_database.dart';
 
 void main() {
   const channel = MethodChannel('vibe_fridge/local_notifications_test');
@@ -170,6 +174,86 @@ void main() {
 
     expect(await service.getLaunchItemId(), isNull);
   });
+
+  test('inventory controller consumes notification tap target once', () async {
+    final appDatabase = await openTestDatabase();
+    addTearDown(() async {
+      await appDatabase.database.close();
+    });
+
+    final notificationService = _FakeNotificationService();
+    final controller = InventoryController(
+      InventoryRepository(appDatabase),
+      notificationService: notificationService,
+    );
+    addTearDown(controller.dispose);
+
+    notificationService.tap('item-123');
+
+    expect(controller.consumeNotificationTappedItemId(), 'item-123');
+    expect(controller.consumeNotificationTappedItemId(), isNull);
+  });
+
+  test('inventory controller syncs reminders after permission is granted',
+      () async {
+    final appDatabase = await openTestDatabase();
+    addTearDown(() async {
+      await appDatabase.database.close();
+    });
+
+    final notificationService = _FakeNotificationService(
+      requestPermissionResult: const LocalNotificationPermissionSnapshot(
+        supported: true,
+        granted: true,
+        status: 'granted',
+      ),
+      syncResult: const LocalNotificationSyncResult(
+        permission: LocalNotificationPermissionSnapshot(
+          supported: true,
+          granted: true,
+          status: 'granted',
+        ),
+        scheduledCount: 2,
+      ),
+    );
+    final controller = InventoryController(
+      InventoryRepository(appDatabase),
+      notificationService: notificationService,
+    );
+    addTearDown(controller.dispose);
+
+    final permission = await controller.requestNotificationPermission();
+
+    expect(permission.granted, isTrue);
+    expect(notificationService.syncCalls, 1);
+    expect(controller.lastNotificationSyncResult?.scheduledCount, 2);
+  });
+
+  test('inventory controller skips sync when permission is denied', () async {
+    final appDatabase = await openTestDatabase();
+    addTearDown(() async {
+      await appDatabase.database.close();
+    });
+
+    final notificationService = _FakeNotificationService(
+      requestPermissionResult: const LocalNotificationPermissionSnapshot(
+        supported: true,
+        granted: false,
+        status: 'denied',
+      ),
+    );
+    final controller = InventoryController(
+      InventoryRepository(appDatabase),
+      notificationService: notificationService,
+    );
+    addTearDown(controller.dispose);
+
+    final permission = await controller.requestNotificationPermission();
+
+    expect(permission.granted, isFalse);
+    expect(notificationService.syncCalls, 0);
+    expect(controller.lastNotificationSyncResult, isNull);
+  });
 }
 
 Future<void> _sendPlatformCall(MethodChannel channel, MethodCall call) async {
@@ -181,4 +265,44 @@ Future<void> _sendPlatformCall(MethodChannel channel, MethodCall call) async {
     encodedCall,
     (ByteData? data) {},
   );
+}
+
+class _FakeNotificationService extends LocalNotificationService {
+  _FakeNotificationService({
+    this.requestPermissionResult =
+        LocalNotificationPermissionSnapshot.unsupported,
+    this.syncResult = const LocalNotificationSyncResult(
+      permission: LocalNotificationPermissionSnapshot.unsupported,
+      scheduledCount: 0,
+      skippedReason: 'unsupported',
+    ),
+  }) : super(channel: const MethodChannel('vibe_fridge/fake_notifications'));
+
+  final LocalNotificationPermissionSnapshot requestPermissionResult;
+  final LocalNotificationSyncResult syncResult;
+  void Function(String itemId)? _onTap;
+  int syncCalls = 0;
+
+  @override
+  void setOnNotificationTap(void Function(String itemId)? handler) {
+    _onTap = handler;
+  }
+
+  void tap(String itemId) {
+    _onTap?.call(itemId);
+  }
+
+  @override
+  Future<LocalNotificationPermissionSnapshot> requestPermission() async {
+    return requestPermissionResult;
+  }
+
+  @override
+  Future<LocalNotificationSyncResult> syncInventoryReminders(
+    InventoryRepository repository, {
+    DateTime? now,
+  }) async {
+    syncCalls += 1;
+    return syncResult;
+  }
 }
