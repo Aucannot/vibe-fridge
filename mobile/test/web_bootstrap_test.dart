@@ -18,4 +18,24 @@ void main() {
     expect(script, contains('window.location.reload()'));
     expect(script, contains('_flutter.loader.load();'));
   });
+
+  test('web entry discourages stale bootstrap caching', () {
+    final index = File('web/index.html').readAsStringSync();
+    const cacheBustedBootstrapSource =
+        r'bootstrapScript.src = `flutter_bootstrap.js?v=${Date.now()}`;';
+
+    expect(
+      index,
+      contains(
+        '<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">',
+      ),
+    );
+    expect(index, contains('<meta http-equiv="Pragma" content="no-cache">'));
+    expect(index, contains('<meta http-equiv="Expires" content="0">'));
+    expect(index, contains('document.createElement(\'script\')'));
+    expect(index, contains('bootstrapScript.async = true'));
+    expect(index, contains(cacheBustedBootstrapSource));
+    expect(index, contains('document.body.appendChild(bootstrapScript)'));
+    expect(index, isNot(contains('<script src="flutter_bootstrap.js" async>')));
+  });
 }

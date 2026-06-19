@@ -51,9 +51,11 @@ Not proven yet:
   validation on the target platforms.
 - Web update experience on an existing origin. The custom bootstrap no longer
   registers Flutter's service worker, clears stale registrations, and deletes
-  stale Flutter Cache Storage entries when the current index loads, but an old
-  service worker or browser cache can still mask the first request for the new
-  index during manual validation.
+  stale Flutter Cache Storage entries when the current index loads. The entry
+  HTML now also discourages stale browser caching and requests
+  `flutter_bootstrap.js` with a cache-busting query, but an old service worker
+  or browser cache can still mask the first request for the new index during
+  manual validation.
 
 Recommended next beta gate:
 
@@ -135,7 +137,8 @@ Platform notification checklist for that gate:
 - `flutter test test/web_bootstrap_test.dart`: passed after adding the custom
   Web bootstrap guard that clears stale service workers without registering a
   replacement Flutter service worker; passed again after extending the guard to
-  delete stale Flutter Cache Storage entries.
+  delete stale Flutter Cache Storage entries; passed again after adding
+  no-cache entry hints and a cache-busted bootstrap script request.
 - `flutter build web --debug --no-wasm-dry-run`: passed after the latest beta
   fixes including Web route cleanup, direct Web detail URL hash cleanup,
   startup error copy coverage, the edit-page Material fix, and no-date order
@@ -147,6 +150,8 @@ Platform notification checklist for that gate:
   for post-push smoke testing. Passed again after adding the custom Web
   bootstrap; generated `flutter_bootstrap.js` now calls `_flutter.loader.load()`
   without `serviceWorkerSettings` and contains the stale-registration cleanup.
+  Passed again after adding no-cache entry hints and a cache-busted bootstrap
+  request to `index.html`.
 - `flutter build macos --debug`: passed after the user completed the local
   Xcode installation and license flow. The build produced
   `build/macos/Build/Products/Debug/vibe-fridge.app`; Flutter also generated
@@ -201,6 +206,9 @@ Platform notification checklist for that gate:
   contained the cache-deletion calls, and a follow-up Settings smoke check on
   port 54390 loaded `vibe-fridge`, hid the loading screen, captured a non-empty
   page screenshot, and reported no browser warnings or errors.
+- Web entry HTML now carries no-cache meta hints and loads
+  `flutter_bootstrap.js` through a cache-busted dynamic script request, reducing
+  the chance that a current index page reuses stale bootstrap code.
 - App self-check from Settings: passed, 15/15; passed again on the restarted
   latest Web target on port 54390 in about 354ms. After adding the backup
   content check and rebuilding Web, the current Settings self-check passed
@@ -917,6 +925,9 @@ Platform notification checklist for that gate:
   unregisters stale same-origin service workers, deletes stale Flutter Cache
   Storage entries, and reloads once when the current page is still controlled
   by an old worker.
+- Added no-cache hints to the Web entry HTML and cache-busted the bootstrap
+  script request so a current index page is less likely to execute stale Web
+  startup code.
 - Replaced Web/PWA template metadata so browser tabs and installed app surfaces
   show `vibe-fridge`, the app's actual inventory purpose, and product colors.
 - Reworded macOS camera and photo permission prompts to match the app's Chinese
@@ -990,6 +1001,7 @@ Platform notification checklist for that gate:
   54371 still showed older self-check wording after a rebuild, while fresh port
   54372 loaded the current build. The custom bootstrap now avoids registering a
   replacement Flutter service worker, clears stale registrations, and deletes
-  stale Flutter Cache Storage entries once the current index is loaded, but
-  release validation should still use a fresh origin or cache clear until the
-  Web update experience is designed explicitly.
+  stale Flutter Cache Storage entries once the current index is loaded, and the
+  current entry HTML discourages browser caching plus cache-busts the bootstrap
+  request. Release validation should still use a fresh origin or cache clear
+  until HTTP-level cache policy is controlled by the deployment host.
