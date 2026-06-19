@@ -73,6 +73,13 @@ optional `--expect-supported`, `--expect-granted`, and `--expect-status`
 assertions so the smoke can fail fast when the runtime status diverges from the
 expected beta environment.
 
+Automated macOS smoke update on 2026-06-19:
+`tools/run_macos_notification_smoke.mjs` now starts `flutter run -d macos`,
+waits for the VM Service URL, runs the notification status helper with optional
+expectations, and exits `flutter run` cleanly. This turns the live notification
+permission-channel check into a single repeatable command while still avoiding
+permission prompts or delivered-notification side effects by default.
+
 ## Beta Readiness
 
 Verdict: ready for continued Web beta testing of the core inventory workflow,
@@ -437,6 +444,14 @@ Platform notification checklist for that gate:
   current notification permission state rather than only printing it.
 - `node --check tools/check_notification_status.mjs`: passed after adding the
   reusable VM Service smoke helper and again after adding expectation options.
+- `HOME=/private/tmp/vibe-fridge-flutter-home node
+  tools/run_macos_notification_smoke.mjs --expect-supported true
+  --expect-granted false --expect-status unknown`: passed. The runner built and
+  launched the macOS debug app, parsed the VM Service URL, verified the live
+  notification status payload, then exited `flutter run` with `Application
+  finished.`
+- `node --check tools/run_macos_notification_smoke.mjs`: passed after adding
+  the automated macOS smoke runner.
 - `flutter build macos --debug`: passed again after removing the invalid
   AppDelegate `super.applicationDidFinishLaunching(notification)` call and
   produced `build/macos/Build/Products/Debug/vibe-fridge.app`.
@@ -1374,6 +1389,10 @@ Platform notification checklist for that gate:
   validates the notification status payload shape before printing the result.
   It can optionally assert expected `supported`, `granted`, and `status`
   values for repeatable beta validation.
+- Added `tools/run_macos_notification_smoke.mjs`, an automated local runner
+  that launches the macOS Flutter target, waits for the VM Service URL, runs
+  the notification status helper, and exits the app. This makes the current
+  macOS notification-channel smoke reproducible without manual URL copying.
 
 ## Remaining Risks
 

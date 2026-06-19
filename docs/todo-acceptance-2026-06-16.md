@@ -58,10 +58,11 @@ verification that is still not fully proven on this machine:
   channel can read macOS notification permission state from the native bridge;
   `tools/check_notification_status.mjs` now makes that smoke check reusable for
   future `flutter run -d macos` sessions and can assert expected supported,
-  granted, and status values. macOS system notification permission approval,
-  delivered reminder visibility, and notification-click routing still need
-  targeted runtime validation after the test host/app is authorized for
-  notifications.
+  granted, and status values. `tools/run_macos_notification_smoke.mjs` wraps
+  the launch, VM Service parsing, assertion, and clean shutdown into one local
+  command. macOS system notification permission approval, delivered reminder
+  visibility, and notification-click routing still need targeted runtime
+  validation after the test host/app is authorized for notifications.
 
 `flutter doctor -v` was rechecked on 2026-06-19 with the bundled Flutter SDK.
 Android SDK is still absent, Chrome is not installed at Flutter's default path,
