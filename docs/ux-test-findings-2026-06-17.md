@@ -69,15 +69,10 @@ Not proven yet:
   and tap payload handoff tests are covered, but real device/desktop scheduled
   reminder delivery and system notification click behavior still need runtime
   validation on the target platforms.
-- Web update experience on an existing origin. The custom bootstrap no longer
-  registers Flutter's service worker, clears stale registrations, and deletes
-  stale Flutter Cache Storage entries when the current index loads. The entry
-  HTML now also discourages stale browser caching and requests
-  `flutter_bootstrap.js` with a cache-busting query, and the Web build now
-  carries `_headers` cache policy for static hosts that honor that file. A
-  deployment host that ignores `_headers` still needs equivalent HTTP headers,
-  and an old service worker or browser cache can still mask the first request
-  for the new index during manual validation.
+- Hosted Web update behavior on the final deployment origin. Local same-origin
+  stale service-worker and stale Flutter Cache Storage recovery is now proven
+  with browser smokes. A deployment host that ignores `_headers` still needs
+  equivalent HTTP cache headers before hosted update behavior is fully proven.
 
 Recommended next beta gate:
 
@@ -395,6 +390,11 @@ Platform notification checklist for that gate:
   Flutter view, the stale registration list was empty, the stale Flutter cache
   was gone, the loading screen was hidden, and browser warning/error logs were
   empty.
+- Existing-origin Web update simulation recheck on port 54397: seeded
+  `registrations=1` and `caches=flutter-stale-smoke-cache` from a same-origin
+  page, then opened the current Settings build. The Settings page rendered
+  successfully, browser warning/error logs were empty, and a follow-up
+  same-origin check page reported `registrations=0;caches=`.
 - Web entry HTML now carries no-cache meta hints and loads
   `flutter_bootstrap.js` through a cache-busted dynamic script request, reducing
   the chance that a current index page reuses stale bootstrap code.
@@ -824,6 +824,10 @@ Platform notification checklist for that gate:
   resources. After Xcode 26.5 was installed and selected, doctor no longer
   reported missing first-launch components; only Android SDK, Chrome, and
   simulator runtime gaps remained relevant outside the macOS desktop target.
+  Rechecked on 2026-06-19 with the bundled Flutter SDK: Android SDK is still
+  absent, only the macOS desktop device is detected, sandboxed network resource
+  checks still fail, and `xcodebuild -checkFirstLaunchStatus` returns success
+  even though `flutter doctor` still emits a stale first-launch warning.
 - `python3 tools/perf_inventory_sqlite.py`: passed. Core inventory queries
   remained well under thresholds with 5,000 generated records: exact catalog
   search 0.683 ms, category filter 2.177 ms, today-action query 1.839 ms,
