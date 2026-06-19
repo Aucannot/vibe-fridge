@@ -77,6 +77,8 @@ final class MacLocalNotificationBridge {
     case "scheduleInventoryReminders":
       scheduleInventoryReminders(arguments: call.arguments)
       result(nil)
+    case "sendTestNotification":
+      sendTestNotification(result: result)
     case "cancelAll":
       center.removeAllPendingNotificationRequests()
       result(nil)
@@ -133,6 +135,38 @@ final class MacLocalNotificationBridge {
         trigger: trigger
       )
       center.add(request)
+    }
+  }
+
+  private func sendTestNotification(result: @escaping FlutterResult) {
+    let content = UNMutableNotificationContent()
+    content.title = "库存提醒测试"
+    content.body = "看到这条通知说明本地通知可用"
+    content.sound = .default
+
+    let trigger = UNTimeIntervalNotificationTrigger(
+      timeInterval: 1,
+      repeats: false
+    )
+    let request = UNNotificationRequest(
+      identifier: "diagnostic-\(UUID().uuidString)",
+      content: content,
+      trigger: trigger
+    )
+    center.add(request) { error in
+      DispatchQueue.main.async {
+        if let error {
+          result(
+            FlutterError(
+              code: "schedule_failed",
+              message: error.localizedDescription,
+              details: nil
+            )
+          )
+          return
+        }
+        result(nil)
+      }
     }
   }
 

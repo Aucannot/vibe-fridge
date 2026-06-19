@@ -204,9 +204,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             '尚未同步',
                       ),
                       const SizedBox(height: AppSpacing.cardGap),
-                      Row(
+                      Column(
                         children: [
-                          Expanded(
+                          SizedBox(
+                            width: double.infinity,
                             child: OutlinedButton.icon(
                               onPressed: _syncingNotifications ||
                                       !notificationsSupported
@@ -220,8 +221,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               label: const Text('请求权限'),
                             ),
                           ),
-                          const SizedBox(width: AppSpacing.cardGap),
-                          Expanded(
+                          const SizedBox(height: AppSpacing.compactPadding),
+                          SizedBox(
+                            width: double.infinity,
                             child: FilledButton.icon(
                               onPressed: _syncingNotifications ||
                                       !notificationsSupported
@@ -231,6 +233,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   ? const _TinyProgress()
                                   : const Icon(Icons.sync_outlined),
                               label: const Text('同步提醒'),
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.compactPadding),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: _syncingNotifications ||
+                                      !notificationsSupported
+                                  ? null
+                                  : _sendTestNotification,
+                              icon: _syncingNotifications
+                                  ? const _TinyProgress()
+                                  : const Icon(
+                                      Icons.notification_important_outlined,
+                                    ),
+                              label: const Text('测试通知'),
                             ),
                           ),
                         ],
@@ -593,6 +611,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
       showAppErrorSnackBar(
         context,
         message: '同步本地通知失败',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _syncingNotifications = false);
+      }
+    }
+  }
+
+  Future<void> _sendTestNotification() async {
+    setState(() => _syncingNotifications = true);
+    try {
+      final result = await widget.controller.sendTestNotification();
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result.displayText)),
+      );
+    } catch (error, stackTrace) {
+      if (!mounted) {
+        return;
+      }
+      showAppErrorSnackBar(
+        context,
+        message: '测试通知发送失败',
         error: error,
         stackTrace: stackTrace,
       );

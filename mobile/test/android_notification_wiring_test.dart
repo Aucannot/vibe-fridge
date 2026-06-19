@@ -65,6 +65,7 @@ void main() {
       "'requestPermission'",
       "'getLaunchItemId'",
       "'scheduleInventoryReminders'",
+      "'sendTestNotification'",
       "'cancelAll'",
       "'notificationTapped'",
       "'notifications'",
@@ -75,6 +76,7 @@ void main() {
       'const val prefsName = "vibe_fridge_notifications"',
       'const val scheduledItemIdsKey = "scheduled_item_ids"',
       'const val scheduledNotificationsKey = "scheduled_notifications"',
+      'const val testNotificationRequestCode = 4818',
       'const val extraItemId = "item_id"',
       'fun requestCodeFor(itemId: String): Int',
     ]);
@@ -86,12 +88,15 @@ void main() {
       '"getLaunchItemId" -> {',
       '"scheduleInventoryReminders" -> {',
       'LocalReminderScheduler.scheduleFromChannel',
+      '"sendTestNotification" -> sendTestNotification(result)',
       '"cancelAll" -> {',
       'LocalReminderScheduler.cancelScheduledReminders(this)',
       'intent.getStringExtra(LocalNotificationContract.extraItemId)',
       '"notificationTapped"',
       'mapOf("itemId" to itemId)',
       'Manifest.permission.POST_NOTIFICATIONS',
+      'setContentTitle("库存提醒测试")',
+      'LocalNotificationContract.testNotificationRequestCode',
     ]);
     _expectAllContains(scheduler, [
       'fun restoreScheduledReminders(context: Context)',

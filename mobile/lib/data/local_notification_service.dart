@@ -39,6 +39,37 @@ class LocalNotificationService {
     return _permissionCall('requestPermission');
   }
 
+  Future<LocalNotificationTestResult> sendTestNotification() async {
+    final permission = await requestPermission();
+    if (!permission.supported || !permission.granted) {
+      return LocalNotificationTestResult(
+        permission: permission,
+        sent: false,
+        skippedReason: permission.supported ? 'permission' : 'unsupported',
+      );
+    }
+
+    try {
+      await _channel.invokeMethod<void>('sendTestNotification');
+      return LocalNotificationTestResult(
+        permission: permission,
+        sent: true,
+      );
+    } on MissingPluginException {
+      return const LocalNotificationTestResult(
+        permission: LocalNotificationPermissionSnapshot.unsupported,
+        sent: false,
+        skippedReason: 'missing_plugin',
+      );
+    } on PlatformException catch (error) {
+      return LocalNotificationTestResult(
+        permission: permission,
+        sent: false,
+        skippedReason: error.code,
+      );
+    }
+  }
+
   Future<String?> getLaunchItemId() async {
     try {
       final itemId = await _channel.invokeMethod<String>('getLaunchItemId');
@@ -200,5 +231,31 @@ class LocalNotificationSyncResult {
       return '当前平台不可用';
     }
     return '同步失败，请稍后重试';
+  }
+}
+
+class LocalNotificationTestResult {
+  const LocalNotificationTestResult({
+    required this.permission,
+    required this.sent,
+    this.skippedReason,
+  });
+
+  final LocalNotificationPermissionSnapshot permission;
+  final bool sent;
+  final String? skippedReason;
+
+  String get displayText {
+    if (sent) {
+      return '已发送测试通知';
+    }
+    final reason = skippedReason;
+    if (reason == 'permission') {
+      return '通知未授权';
+    }
+    if (reason == 'unsupported' || reason == 'missing_plugin') {
+      return '当前平台不可用';
+    }
+    return '测试通知发送失败，请稍后重试';
   }
 }

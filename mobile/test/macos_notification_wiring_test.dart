@@ -17,6 +17,7 @@ void main() {
       "'requestPermission'",
       "'getLaunchItemId'",
       "'scheduleInventoryReminders'",
+      "'sendTestNotification'",
       "'cancelAll'",
       "'notificationTapped'",
       "'notifications'",
@@ -31,9 +32,13 @@ void main() {
       'MacLocalNotificationTapHandler.consumeLaunchItemId()',
       'case "scheduleInventoryReminders":',
       'scheduleInventoryReminders(arguments: call.arguments)',
+      'case "sendTestNotification":',
+      'sendTestNotification(result: result)',
       'case "cancelAll":',
       'center.removeAllPendingNotificationRequests()',
       'MacLocalNotificationRequestFactory.requests',
+      'content.title = "库存提醒测试"',
+      'UNTimeIntervalNotificationTrigger(',
       'channel.invokeMethod("notificationTapped", arguments: ["itemId": itemId])',
     ]);
     _expectAllContains(requestFactory, [

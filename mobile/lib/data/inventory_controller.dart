@@ -397,6 +397,13 @@ class InventoryController extends ChangeNotifier {
     return result;
   }
 
+  Future<LocalNotificationTestResult> sendTestNotification() async {
+    final result = await notificationService.sendTestNotification();
+    notificationPermission = result.permission;
+    notifyListeners();
+    return result;
+  }
+
   String? consumeNotificationTappedItemId() {
     final itemId = _notificationTappedItemId;
     _notificationTappedItemId = null;

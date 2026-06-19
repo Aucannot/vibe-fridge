@@ -16,7 +16,10 @@ item, see it in the catalog, open expiring inventory detail, adjust quantity,
 add an item to the shopping list, mark it purchased, convert it back to
 inventory, open recipe suggestions, and deduct inventory after cooking.
 
-The strongest remaining product gap is platform-specific notification
+The strongest remaining product gap is platform-specific notification runtime
+validation. Settings now has an immediate test-notification action to make
+permission and delivery checks faster on Android/macOS, but scheduled reminder
+delivery and notification-click routing still require target-platform manual
 validation. Flutter Web cold-start text now has a native HTML loading screen to
 cover the short CanvasKit font fallback window, and the latest mobile Web smoke
 check confirmed it hands off cleanly to the rendered Home screen.
@@ -39,12 +42,13 @@ Proven enough for beta:
 
 Not proven yet:
 
-- Android/macOS local notification runtime behavior. Dart fallback behavior,
-  Android manifest wiring tests, macOS bridge wiring source tests, repository
-  notification payload tests, and macOS native scheduling-payload construction,
-  permission-status mapping, and tap payload handoff tests are covered, but real
-  device/desktop notification permission, delivery, and user-click behavior
-  still need runtime validation on the target platforms.
+- Android/macOS scheduled local notification runtime behavior. Dart fallback
+  behavior, the Settings test-notification action, Android manifest wiring
+  tests, macOS bridge wiring source tests, repository notification payload
+  tests, and macOS native scheduling-payload construction, permission-status
+  mapping, and tap payload handoff tests are covered, but real device/desktop
+  scheduled reminder delivery and user-click behavior still need runtime
+  validation on the target platforms.
 - Web update experience on an existing origin. The custom bootstrap no longer
   registers Flutter's service worker, clears stale registrations, and deletes
   stale Flutter Cache Storage entries when the current index loads, but an old
@@ -64,16 +68,16 @@ Platform notification checklist for that gate:
 
 - Build and launch Android debug on a device or emulator with notification
   permission support; verify Settings shows a supported permission state.
-- On Android, request notification permission from Settings, sync reminders,
-  wait for a due reminder, tap the delivered notification, and confirm the
-  matching inventory detail opens.
+- On Android, request notification permission from Settings, send a test
+  notification, sync reminders, wait for a due reminder, tap the delivered
+  reminder notification, and confirm the matching inventory detail opens.
 - Restart the Android app or emulator after reminders are scheduled, then
   confirm boot/package-replaced restoration still delivers the stored reminder.
 - Build and launch macOS debug with full Xcode/CocoaPods tooling; verify
   Settings shows a supported permission state.
-- On macOS, request notification permission, sync reminders, wait for a due
-  reminder, tap the delivered notification, and confirm the matching inventory
-  detail opens.
+- On macOS, request notification permission, send a test notification, sync
+  reminders, wait for a due reminder, tap the delivered reminder notification,
+  and confirm the matching inventory detail opens.
 - Re-run the Settings app self-check after platform notification testing to
   confirm notification experiments did not leave invalid inventory, shopping,
   recipe, reminder, or history state behind.
@@ -90,7 +94,8 @@ Platform notification checklist for that gate:
   after adding the custom Web bootstrap guard, 58 tests. Passed again after
   adding Android notification wiring source tests, 60 tests. Passed again after
   adding macOS notification wiring source tests, 62 tests. Passed again after
-  extending app self-check backup coverage, 64 tests.
+  extending app self-check backup coverage, 64 tests. Passed again after adding
+  the Settings test-notification action and channel coverage, 67 tests.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
@@ -111,7 +116,8 @@ Platform notification checklist for that gate:
   native notification request builder extraction, with no issues.
 - `flutter test test/local_notification_service_test.dart`: passed after the
   Android reminder scheduler refactor, notification tap controller handoff
-  coverage, and notification permission-to-sync controller coverage, 9 tests.
+  coverage, notification permission-to-sync controller coverage, and Settings
+  test-notification flow coverage, 12 tests.
 - `flutter test test/android_notification_wiring_test.dart`: passed after
   adding Android source-level checks for notification manifest permissions,
   receivers, method-channel names, payload keys, scheduling persistence,
@@ -960,15 +966,15 @@ Platform notification checklist for that gate:
 
 - Android local notification behavior still needs runtime validation on a
   machine with Android SDK configured. Android source-level
-  manifest/channel/payload wiring is now covered by tests, but delivery,
-  permission prompts, and notification-click routing still need a device or
-  emulator.
+  manifest/channel/payload wiring and the immediate test-notification channel
+  are now covered by tests, but scheduled reminder delivery, permission prompts,
+  and notification-click routing still need a device or emulator.
 - macOS app build and launch are now proven locally, but macOS notification
   permission, due reminder delivery, and notification-click routing still need
   targeted desktop runtime validation. The native bridge/delegate source wiring,
-  scheduling payload builder, permission-status mapper, and tap payload handoff
-  are now covered by tests, but system notification behavior is not fully
-  replaceable with unit tests.
+  immediate test-notification channel, scheduling payload builder,
+  permission-status mapper, and tap payload handoff are now covered by tests,
+  but system notification behavior is not fully replaceable with unit tests.
 - Web app updates can still be masked by older same-origin browser cache or
   previously registered service-worker state. During Settings retesting, port
   54371 still showed older self-check wording after a rebuild, while fresh port

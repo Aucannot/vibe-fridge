@@ -72,6 +72,37 @@ void main() {
       ).displayText,
       '同步失败，请稍后重试',
     );
+    expect(
+      const LocalNotificationTestResult(
+        permission: granted,
+        sent: true,
+      ).displayText,
+      '已发送测试通知',
+    );
+    expect(
+      const LocalNotificationTestResult(
+        permission: denied,
+        sent: false,
+        skippedReason: 'permission',
+      ).displayText,
+      '通知未授权',
+    );
+    expect(
+      const LocalNotificationTestResult(
+        permission: LocalNotificationPermissionSnapshot.unsupported,
+        sent: false,
+        skippedReason: 'unsupported',
+      ).displayText,
+      '当前平台不可用',
+    );
+    expect(
+      const LocalNotificationTestResult(
+        permission: granted,
+        sent: false,
+        skippedReason: 'platform_internal_error',
+      ).displayText,
+      '测试通知发送失败，请稍后重试',
+    );
   });
 
   test('permission calls parse platform status snapshots', () async {
@@ -175,6 +206,51 @@ void main() {
     expect(await service.getLaunchItemId(), isNull);
   });
 
+  test('send test notification requests permission before platform call',
+      () async {
+    final service = LocalNotificationService(channel: channel);
+    final calls = <String>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+      calls.add(call.method);
+      return switch (call.method) {
+        'requestPermission' => {
+            'supported': true,
+            'granted': true,
+            'status': 'granted',
+          },
+        'sendTestNotification' => null,
+        _ => null,
+      };
+    });
+
+    final result = await service.sendTestNotification();
+
+    expect(result.sent, isTrue);
+    expect(result.displayText, '已发送测试通知');
+    expect(calls, ['requestPermission', 'sendTestNotification']);
+  });
+
+  test('send test notification stops when permission is denied', () async {
+    final service = LocalNotificationService(channel: channel);
+    final calls = <String>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+      calls.add(call.method);
+      return {
+        'supported': true,
+        'granted': false,
+        'status': 'denied',
+      };
+    });
+
+    final result = await service.sendTestNotification();
+
+    expect(result.sent, isFalse);
+    expect(result.displayText, '通知未授权');
+    expect(calls, ['requestPermission']);
+  });
+
   test('inventory controller consumes notification tap target once', () async {
     final appDatabase = await openTestDatabase();
     addTearDown(() async {
@@ -254,6 +330,37 @@ void main() {
     expect(notificationService.syncCalls, 0);
     expect(controller.lastNotificationSyncResult, isNull);
   });
+
+  test('inventory controller updates permission after test notification',
+      () async {
+    final appDatabase = await openTestDatabase();
+    addTearDown(() async {
+      await appDatabase.database.close();
+    });
+
+    const permission = LocalNotificationPermissionSnapshot(
+      supported: true,
+      granted: true,
+      status: 'granted',
+    );
+    final notificationService = _FakeNotificationService(
+      testResult: const LocalNotificationTestResult(
+        permission: permission,
+        sent: true,
+      ),
+    );
+    final controller = InventoryController(
+      InventoryRepository(appDatabase),
+      notificationService: notificationService,
+    );
+    addTearDown(controller.dispose);
+
+    final result = await controller.sendTestNotification();
+
+    expect(result.sent, isTrue);
+    expect(notificationService.testCalls, 1);
+    expect(controller.notificationPermission, permission);
+  });
 }
 
 Future<void> _sendPlatformCall(MethodChannel channel, MethodCall call) async {
@@ -276,12 +383,19 @@ class _FakeNotificationService extends LocalNotificationService {
       scheduledCount: 0,
       skippedReason: 'unsupported',
     ),
+    this.testResult = const LocalNotificationTestResult(
+      permission: LocalNotificationPermissionSnapshot.unsupported,
+      sent: false,
+      skippedReason: 'unsupported',
+    ),
   }) : super(channel: const MethodChannel('vibe_fridge/fake_notifications'));
 
   final LocalNotificationPermissionSnapshot requestPermissionResult;
   final LocalNotificationSyncResult syncResult;
+  final LocalNotificationTestResult testResult;
   void Function(String itemId)? _onTap;
   int syncCalls = 0;
+  int testCalls = 0;
 
   @override
   void setOnNotificationTap(void Function(String itemId)? handler) {
@@ -304,5 +418,11 @@ class _FakeNotificationService extends LocalNotificationService {
   }) async {
     syncCalls += 1;
     return syncResult;
+  }
+
+  @override
+  Future<LocalNotificationTestResult> sendTestNotification() async {
+    testCalls += 1;
+    return testResult;
   }
 }
