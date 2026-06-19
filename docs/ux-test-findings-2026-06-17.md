@@ -105,7 +105,8 @@ Platform notification checklist for that gate:
   hardening loading-screen hiding, 69 tests. Passed again after adding recipe
   cooking inventory-deduction coverage, 70 tests. Passed again after adding
   Settings widget coverage for the app self-check 17/17 result, 71 tests.
-  Passed again after adding Web deployment header coverage, 72 tests.
+  Passed again after adding Web deployment header coverage, 72 tests. Passed
+  again after adding Settings backup reminder widget coverage, 73 tests.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
@@ -127,7 +128,8 @@ Platform notification checklist for that gate:
   native notification request builder extraction, and after the Web entry cache
   and loading-screen fixes, and after adding recipe cooking deduction coverage,
   after adding Settings app self-check result coverage, and after adding Web
-  deployment headers, with no issues.
+  deployment headers, and after adding Settings backup reminder coverage, with
+  no issues.
 - `flutter test test/local_notification_service_test.dart`: passed after the
   Android reminder scheduler refactor, notification tap controller handoff
   coverage, notification permission-to-sync controller coverage, and Settings
@@ -136,7 +138,8 @@ Platform notification checklist for that gate:
   coverage that renders the Settings test-notification action and verifies the
   button calls the notification service path. Passed again after adding widget
   coverage that taps `运行自检` and verifies the user-visible
-  `应用自检通过：17/17` result.
+  `应用自检通过：17/17` result. Passed again after adding widget coverage for
+  the pending backup reminder card and its user-facing copy.
 - `flutter test test/android_notification_wiring_test.dart`: passed after
   adding Android source-level checks for notification manifest permissions,
   receivers, method-channel names, payload keys, scheduling persistence,
@@ -787,6 +790,8 @@ Platform notification checklist for that gate:
   coverage now verifies 17 checks including recipe cooking deduction.
 - Settings self-check UI now has widget coverage that taps the run action and
   verifies the user-visible `应用自检通过：17/17` result.
+- Settings backup reminder UI now has widget coverage for the pending reminder
+  card, reason copy, accumulated change count, and export action.
 - Settings recipe preferences save from the mobile Web UI and reload with the
   edited values still visible.
 - Settings order-recognition configuration saves from the mobile Web UI,

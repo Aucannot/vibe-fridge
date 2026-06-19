@@ -132,6 +132,55 @@ void main() {
     expect(find.text('应用自检通过：17/17'), findsOneWidget);
     expect(find.text('17/17'), findsOneWidget);
   });
+
+  testWidgets('settings shows backup reminder with user-facing copy',
+      (tester) async {
+    tester.view.physicalSize = const Size(430, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final controller = InventoryController(
+      InventoryRepository(appDatabase),
+      notificationService: _FakeNotificationService(
+        testResult: const LocalNotificationTestResult(
+          permission: LocalNotificationPermissionSnapshot(
+            supported: true,
+            granted: true,
+            status: 'granted',
+          ),
+          sent: true,
+        ),
+      ),
+    );
+    controller.backupReminderState = const BackupReminderState(
+      isPending: true,
+      reason: '新增库存',
+      dirtyCount: 10,
+    );
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: SettingsScreen(
+            controller: controller,
+            vlmSettingsStore: VlmSettingsStore(
+              secretStore: _MemorySecretStore(),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text('建议导出备份'), findsOneWidget);
+    expect(find.text('因为新增库存，建议备份一次'), findsOneWidget);
+    expect(find.text('累计 10 次库存资料变更尚未备份'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, '导出'), findsOneWidget);
+  });
 }
 
 Future<void> _pumpUntilFound(
