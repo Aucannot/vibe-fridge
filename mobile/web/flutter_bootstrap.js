@@ -3,13 +3,28 @@
 
 const staleServiceWorkerReloadKey = 'vibe_fridge_stale_service_worker_reload';
 
+async function clearStaleFlutterCaches() {
+  if (!('caches' in window)) {
+    return;
+  }
+
+  const cacheNames = await caches.keys();
+  await Promise.all(
+    cacheNames
+      .filter((cacheName) => cacheName.startsWith('flutter-'))
+      .map((cacheName) => caches.delete(cacheName)),
+  );
+}
+
 async function clearStaleServiceWorkers() {
   if (!('serviceWorker' in navigator)) {
+    await clearStaleFlutterCaches();
     return true;
   }
 
   const registrations = await navigator.serviceWorker.getRegistrations();
   if (registrations.length === 0) {
+    await clearStaleFlutterCaches();
     sessionStorage.removeItem(staleServiceWorkerReloadKey);
     return true;
   }
@@ -17,6 +32,7 @@ async function clearStaleServiceWorkers() {
   await Promise.all(
     registrations.map((registration) => registration.unregister()),
   );
+  await clearStaleFlutterCaches();
 
   if (
     navigator.serviceWorker.controller &&

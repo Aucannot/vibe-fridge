@@ -46,9 +46,10 @@ Not proven yet:
   device/desktop notification permission, delivery, and user-click behavior
   still need runtime validation on the target platforms.
 - Web update experience on an existing origin. The custom bootstrap no longer
-  registers Flutter's service worker and clears stale registrations when the
-  current index loads, but an old service worker or browser cache can still
-  mask the first request for the new index during manual validation.
+  registers Flutter's service worker, clears stale registrations, and deletes
+  stale Flutter Cache Storage entries when the current index loads, but an old
+  service worker or browser cache can still mask the first request for the new
+  index during manual validation.
 
 Recommended next beta gate:
 
@@ -114,7 +115,8 @@ Platform notification checklist for that gate:
   handoff into the launch target.
 - `flutter test test/web_bootstrap_test.dart`: passed after adding the custom
   Web bootstrap guard that clears stale service workers without registering a
-  replacement Flutter service worker.
+  replacement Flutter service worker; passed again after extending the guard to
+  delete stale Flutter Cache Storage entries.
 - `flutter build web --debug --no-wasm-dry-run`: passed after the latest beta
   fixes including Web route cleanup, direct Web detail URL hash cleanup,
   startup error copy coverage, the edit-page Material fix, and no-date order
@@ -169,11 +171,15 @@ Platform notification checklist for that gate:
   `密钥状态` / `本机安全保存` / `本机安全区域`.
 - Web build output now includes the native HTML loading screen used to cover
   Flutter Web's cold-start font fallback window.
-- Web bootstrap output now omits Flutter service-worker registration settings
-  and unregisters stale same-origin service workers before loading the app. A
-  same-origin Settings smoke check on port 54390 loaded successfully with no
-  active controller, no registrations, hidden loading screen, and no browser
-  warnings or errors in this environment.
+- Web bootstrap output now omits Flutter service-worker registration settings,
+  unregisters stale same-origin service workers, and deletes stale Flutter
+  Cache Storage entries before loading the app. A same-origin Settings smoke
+  check on port 54390 loaded successfully with no active controller, no
+  registrations, hidden loading screen, and no browser warnings or errors in
+  this environment. After adding Cache Storage cleanup, the rebuilt Web output
+  contained the cache-deletion calls, and a follow-up Settings smoke check on
+  port 54390 loaded `vibe-fridge`, hid the loading screen, captured a non-empty
+  page screenshot, and reported no browser warnings or errors.
 - App self-check from Settings: passed, 15/15; passed again on the restarted
   latest Web target on port 54390 in about 354ms.
 - Fresh Web smoke check on a new local port: no new console warnings or errors
@@ -877,8 +883,9 @@ Platform notification checklist for that gate:
   testing showed CanvasKit could briefly expose square Chinese glyphs before
   fonts settled.
 - Added a custom Web bootstrap that omits Flutter service-worker registration,
-  unregisters stale same-origin service workers, and reloads once when the
-  current page is still controlled by an old worker.
+  unregisters stale same-origin service workers, deletes stale Flutter Cache
+  Storage entries, and reloads once when the current page is still controlled
+  by an old worker.
 - Replaced Web/PWA template metadata so browser tabs and installed app surfaces
   show `vibe-fridge`, the app's actual inventory purpose, and product colors.
 - Reworded macOS camera and photo permission prompts to match the app's Chinese
@@ -948,6 +955,7 @@ Platform notification checklist for that gate:
   previously registered service-worker state. During Settings retesting, port
   54371 still showed older self-check wording after a rebuild, while fresh port
   54372 loaded the current build. The custom bootstrap now avoids registering a
-  replacement Flutter service worker and clears stale registrations once the
-  current index is loaded, but release validation should still use a fresh
-  origin or cache clear until the Web update experience is designed explicitly.
+  replacement Flutter service worker, clears stale registrations, and deletes
+  stale Flutter Cache Storage entries once the current index is loaded, but
+  release validation should still use a fresh origin or cache clear until the
+  Web update experience is designed explicitly.
