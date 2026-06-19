@@ -95,6 +95,8 @@ Platform notification checklist for that gate:
   stay hidden from the visible message.
 - `flutter test test/inventory_repository_test.dart`: passed after the
   no-date order duplicate fix and backup-reminder copy cleanup, 19 tests.
+  Passed again after adding inventory-table export coverage for commas,
+  quotes, and newline characters in user-entered fields, 20 tests.
 - `flutter analyze`: passed after the latest beta fixes including Web route
   cleanup, direct Web detail URL hash cleanup, the `MaterialApp.router`
   browser-history fix, notification channel coverage, the edit-page Material
@@ -754,6 +756,9 @@ Platform notification checklist for that gate:
   plain calendar dates.
 - Repository export tests now verify the inventory table starts with a UTF-8
   marker so spreadsheet apps can detect Chinese text more reliably.
+- Repository export tests now verify inventory-table cells escape commas,
+  quotes, and newlines in user-entered item names, storage locations, tags,
+  and source labels.
 - Notification payload tests cover pending reminders, ignored reminders, title
   and body content, schedule time, and serialized timestamp fields.
 - Local notification sync result tests now cover supported, unauthorized,

@@ -663,6 +663,35 @@ void main() {
     expect((await repository.checkDataHealth()).passed, isTrue);
   });
 
+  test('escapes special characters in inventory table export', () async {
+    final categories = await repository.getCategories();
+
+    await repository.createItem(
+      name: '导出测试 "牛奶,大盒"\n第二行',
+      categoryId: categories.first.id,
+      quantity: 1,
+      unit: '盒',
+      purchaseDate: DateTime(2026, 6, 18),
+      expiryDate: DateTime(2026, 6, 25),
+      storageLocation: '冷藏,第二层',
+      tags: const ['临期,优先', '常用"标签'],
+      sourceApp: '采购"清单,手动',
+    );
+
+    final csv = await repository.exportInventoryCsv();
+
+    expect(csv, contains('"导出测试 ""牛奶,大盒""\n第二行"'));
+    expect(csv, contains('"冷藏,第二层"'));
+    expect(
+      csv,
+      anyOf(
+        contains('"临期,优先;常用""标签"'),
+        contains('"常用""标签;临期,优先"'),
+      ),
+    );
+    expect(csv, contains('"采购""清单,手动"'));
+  });
+
   test('rejects incomplete backup before changing current data', () async {
     final categories = await repository.getCategories();
     await repository.createItem(
