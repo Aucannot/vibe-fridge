@@ -53,11 +53,12 @@ Not proven yet:
 - Android/macOS scheduled local notification runtime behavior. Dart fallback
   behavior, the Settings test-notification action, Android manifest wiring
   tests, macOS bridge wiring source tests, repository notification payload
-  tests, Dart platform-schedule payload handoff tests, and macOS native
+  tests, Dart platform-schedule payload handoff tests, Flutter shell
+  notification-tap detail routing, and macOS native
   scheduling-payload/content/trigger construction, permission-status mapping,
   and tap payload handoff tests are covered, but real device/desktop scheduled
-  reminder delivery and user-click behavior still need runtime validation on
-  the target platforms.
+  reminder delivery and system notification click behavior still need runtime
+  validation on the target platforms.
 - Web update experience on an existing origin. The custom bootstrap no longer
   registers Flutter's service worker, clears stale registrations, and deletes
   stale Flutter Cache Storage entries when the current index loads. The entry
@@ -133,9 +134,15 @@ Platform notification checklist for that gate:
   Web-facing access copy, 97 tests. Passed again after adding a local HTTP
   WebDAV round-trip for MKCOL, PUT, PROPFIND, and GET restore flow, 100 tests.
   Passed again after adding WebDAV restore-cancellation coverage, 101 tests.
+  Passed again after adding AppShell notification tap-to-detail route coverage,
+  102 tests.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
+- `flutter test test/app_shell_widget_test.dart`: passed after adding widget
+  coverage that a local-notification tap callback is consumed by AppShell and
+  opens the matching inventory detail route with the expected quantity and
+  storage-location content.
 - `flutter test test/inventory_repository_test.dart`: passed after the
   no-date order duplicate fix and backup-reminder copy cleanup, 19 tests.
   Passed again after adding inventory-table export coverage for commas,
