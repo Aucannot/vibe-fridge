@@ -25,7 +25,8 @@ cover the short CanvasKit font fallback window, and the latest mobile Web smoke
 check confirmed it hands off cleanly to the rendered Home screen.
 
 Update on 2026-06-19: current-worktree macOS debug build, native RunnerTests,
-and a `flutter run -d macos` launch smoke all pass. This proves the macOS app
+and a `flutter run -d macos` launch smoke all pass. `xcodebuild
+-checkFirstLaunchStatus` now also returns success. This proves the macOS app
 still builds, the native notification bridge remains wired at source/runtime
 test level, and the debug app can start and expose a Dart VM Service. It still
 does not prove system notification permission prompts, delivered notification
@@ -284,10 +285,14 @@ Platform notification checklist for that gate:
   `flutter_secure_storage_macos` has not adopted Swift Package Manager support,
   and Xcode emitted stale DerivedData path warnings, but neither blocked the
   app build.
+- `xcodebuild -checkFirstLaunchStatus`: returned success on 2026-06-19,
+  confirming the local Xcode first-launch setup is no longer blocking macOS
+  build/test validation.
 - `xcodebuild test -workspace Runner.xcworkspace -scheme Runner -configuration
   Debug -destination 'platform=macOS' -derivedDataPath
-  /private/tmp/vibe-fridge-xcode-derived-tap -clonedSourcePackagesDirPath
-  /private/tmp/vibe-fridge-xcode-spm-tap`:
+  /private/tmp/vibe-fridge-xcode-derived-empty-launch
+  -clonedSourcePackagesDirPath
+  /private/tmp/vibe-fridge-xcode-spm-empty-launch`:
   passed after fixing the RunnerTests `TEST_HOST` product path and importing
   the app module as `vibe_fridge`. RunnerTests now covers macOS notification
   request construction, malformed payload skipping, the 60-second minimum
@@ -301,11 +306,11 @@ Platform notification checklist for that gate:
   Protection Keychain entitlement path. Passed again with 11 tests after adding
   native scheduler coverage for both successful pending-request handoff and
   system add failure reporting.
-  Passed again on the current worktree on 2026-06-19 with the same 11
-  RunnerTests: diagnostic notification request construction, Keychain secret
-  smoke, inventory-reminder request parsing, malformed payload skipping,
-  scheduler success/failure reporting, tap payload storage/event handoff,
-  trigger timing, and permission-status channel mapping.
+  Passed again on the current worktree on 2026-06-19 with 12 RunnerTests:
+  diagnostic notification request construction, Keychain secret smoke,
+  inventory-reminder request parsing, malformed payload skipping, scheduler
+  success/failure reporting, tap payload storage/event handoff, empty stored
+  launch-target cleanup, trigger timing, and permission-status channel mapping.
 - `flutter run -d macos`: launched the current debug macOS target on
   2026-06-19, built `vibe-fridge.app`, started the app process, and exposed a
   Dart VM Service. The shell still reported `Failed to foreground app; open

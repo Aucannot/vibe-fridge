@@ -296,6 +296,28 @@ class RunnerTests: XCTestCase {
     XCTAssertEqual(eventCount, 0)
   }
 
+  func testNotificationTapHandlerClearsEmptyStoredLaunchTarget() {
+    let suiteName = "com.vibefridge.tests.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defer {
+      defaults.removePersistentDomain(forName: suiteName)
+    }
+
+    defaults.set(
+      "",
+      forKey: MacLocalNotificationTapHandler.launchItemIdKey
+    )
+
+    XCTAssertNil(
+      MacLocalNotificationTapHandler.consumeLaunchItemId(
+        userDefaults: defaults
+      )
+    )
+    XCTAssertNil(
+      defaults.string(forKey: MacLocalNotificationTapHandler.launchItemIdKey)
+    )
+  }
+
   func testKeychainCanStoreApiSecretWithoutDataProtectionEntitlement() {
     let account = "vlm-api-key-\(UUID().uuidString)"
     var query: [CFString: Any] = [
