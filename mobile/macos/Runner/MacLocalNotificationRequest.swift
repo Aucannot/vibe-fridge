@@ -91,3 +91,37 @@ enum MacLocalNotificationPermissionFactory {
     }
   }
 }
+
+enum MacLocalNotificationTapHandler {
+  static let launchItemIdKey = "notification_item_id"
+
+  @discardableResult
+  static func handleTap(
+    userInfo: [AnyHashable: Any],
+    userDefaults: UserDefaults = .standard,
+    notificationCenter: NotificationCenter = .default
+  ) -> String? {
+    guard let itemId = userInfo["itemId"] as? String, !itemId.isEmpty else {
+      return nil
+    }
+
+    userDefaults.set(itemId, forKey: launchItemIdKey)
+    notificationCenter.post(
+      name: .vibeFridgeNotificationTapped,
+      object: nil,
+      userInfo: ["itemId": itemId]
+    )
+    return itemId
+  }
+
+  static func consumeLaunchItemId(
+    userDefaults: UserDefaults = .standard
+  ) -> String? {
+    let itemId = userDefaults.string(forKey: launchItemIdKey)
+    userDefaults.removeObject(forKey: launchItemIdKey)
+    guard let itemId, !itemId.isEmpty else {
+      return nil
+    }
+    return itemId
+  }
+}

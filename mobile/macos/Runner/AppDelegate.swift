@@ -35,15 +35,9 @@ class AppDelegate: FlutterAppDelegate, UNUserNotificationCenterDelegate {
     didReceive response: UNNotificationResponse,
     withCompletionHandler completionHandler: @escaping () -> Void
   ) {
-    if let itemId = response.notification.request.content.userInfo["itemId"]
-        as? String {
-      UserDefaults.standard.set(itemId, forKey: "notification_item_id")
-      NotificationCenter.default.post(
-        name: .vibeFridgeNotificationTapped,
-        object: nil,
-        userInfo: ["itemId": itemId]
-      )
-    }
+    MacLocalNotificationTapHandler.handleTap(
+      userInfo: response.notification.request.content.userInfo
+    )
     completionHandler()
   }
 }

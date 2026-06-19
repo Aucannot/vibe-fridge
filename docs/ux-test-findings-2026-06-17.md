@@ -41,9 +41,9 @@ Not proven yet:
 
 - Android/macOS local notification runtime behavior. Dart fallback behavior,
   static bridge wiring, repository notification payload tests, and macOS native
-  scheduling-payload construction and permission-status mapping tests are
-  covered, but real device/desktop notification permission, delivery, and
-  tap-to-detail behavior still need runtime validation on the target
+  scheduling-payload construction, permission-status mapping, and tap payload
+  handoff tests are covered, but real device/desktop notification permission,
+  delivery, and user-click behavior still need runtime validation on the target
   platforms.
 - Web update experience on an existing origin. Fresh origins load the current
   build and the current service worker unregisters itself, but older browser
@@ -55,9 +55,9 @@ Recommended next beta gate:
 - Run one Android debug build on a machine with Android SDK configured, then
   manually verify Android notification permission, scheduled reminder delivery,
   and notification click opening the matching inventory detail. On macOS, build
-  plus native scheduling payload and permission-status mapping are now covered
-  locally; the next gate is manual permission, delivery, and click routing
-  validation.
+  plus native scheduling payload, permission-status mapping, and tap payload
+  handoff are now covered locally; the next gate is manual permission,
+  delivery, and system notification click validation.
 
 Platform notification checklist for that gate:
 
@@ -116,15 +116,16 @@ Platform notification checklist for that gate:
   Swift Package Manager integration for the macOS project and warned that
   `flutter_secure_storage_macos` still uses CocoaPods. Passed again after
   extracting and testing the macOS notification request builder and permission
-  status mapper.
+  status mapper, and again after adding the native tap payload handoff helper.
 - `xcodebuild test -workspace Runner.xcworkspace -scheme Runner -configuration
   Debug -destination 'platform=macOS' -derivedDataPath
-  /private/tmp/vibe-fridge-xcode-derived-permission
-  -clonedSourcePackagesDirPath /private/tmp/vibe-fridge-xcode-spm-permission`:
+  /private/tmp/vibe-fridge-xcode-derived-tap -clonedSourcePackagesDirPath
+  /private/tmp/vibe-fridge-xcode-spm-tap`:
   passed after fixing the RunnerTests `TEST_HOST` product path and importing
   the app module as `vibe_fridge`. RunnerTests now covers macOS notification
   request construction, malformed payload skipping, the 60-second minimum
-  notification trigger delay, and native permission-status channel mapping.
+  notification trigger delay, native permission-status channel mapping, and
+  native tap payload handoff into the launch target plus Flutter event path.
 - `flutter run -d macos`: launched the debug macOS target successfully and
   exposed a Dart VM Service. The app process started, though `open` could not
   automatically foreground the window in this shell session.
@@ -742,7 +743,8 @@ Platform notification checklist for that gate:
   Dart channel payloads to `inventory-<itemId>` request identifiers, preserves
   `itemId` in `userInfo`, skips malformed rows, and enforces the minimum
   trigger delay used before adding `UNNotificationRequest`s. They also verify
-  native notification permission statuses map to the Flutter channel contract.
+  native notification permission statuses map to the Flutter channel contract
+  and notification tap payloads store/emit the selected inventory item id.
 - Android notification scheduling now persists pending reminder payloads and
   registers boot/package-replaced restoration points; runtime proof still needs
   an Android SDK/device environment.
@@ -909,8 +911,9 @@ Platform notification checklist for that gate:
 - macOS app build and launch are now proven locally, but macOS notification
   permission, due reminder delivery, and notification-click routing still need
   targeted desktop runtime validation. The native scheduling payload builder
-  and permission-status mapper are now covered by RunnerTests, but system
-  notification behavior is not fully replaceable with unit tests.
+  permission-status mapper, and tap payload handoff are now covered by
+  RunnerTests, but system notification behavior is not fully replaceable with
+  unit tests.
 - Web app updates can still be masked by older same-origin browser cache or
   previously registered service-worker state. During Settings retesting, port
   54371 still showed older self-check wording after a rebuild, while fresh port

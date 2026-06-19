@@ -97,4 +97,84 @@ class RunnerTests: XCTestCase {
     XCTAssertEqual(unknown.status, "unknown")
   }
 
+  func testNotificationTapHandlerStoresLaunchTargetAndPostsEvent() {
+    let suiteName = "com.vibefridge.tests.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    let center = NotificationCenter()
+    let event = expectation(description: "notification tap event")
+    var postedItemId: String?
+    let observer = center.addObserver(
+      forName: .vibeFridgeNotificationTapped,
+      object: nil,
+      queue: nil
+    ) { notification in
+      postedItemId = notification.userInfo?["itemId"] as? String
+      event.fulfill()
+    }
+    defer {
+      center.removeObserver(observer)
+      defaults.removePersistentDomain(forName: suiteName)
+    }
+
+    let itemId = MacLocalNotificationTapHandler.handleTap(
+      userInfo: ["itemId": "item-milk-1"],
+      userDefaults: defaults,
+      notificationCenter: center
+    )
+
+    XCTAssertEqual(itemId, "item-milk-1")
+    XCTAssertEqual(
+      defaults.string(forKey: MacLocalNotificationTapHandler.launchItemIdKey),
+      "item-milk-1"
+    )
+    wait(for: [event], timeout: 1)
+    XCTAssertEqual(postedItemId, "item-milk-1")
+    XCTAssertEqual(
+      MacLocalNotificationTapHandler.consumeLaunchItemId(
+        userDefaults: defaults
+      ),
+      "item-milk-1"
+    )
+    XCTAssertNil(
+      defaults.string(forKey: MacLocalNotificationTapHandler.launchItemIdKey)
+    )
+  }
+
+  func testNotificationTapHandlerIgnoresMalformedPayloads() {
+    let suiteName = "com.vibefridge.tests.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    let center = NotificationCenter()
+    var eventCount = 0
+    let observer = center.addObserver(
+      forName: .vibeFridgeNotificationTapped,
+      object: nil,
+      queue: nil
+    ) { _ in
+      eventCount += 1
+    }
+    defer {
+      center.removeObserver(observer)
+      defaults.removePersistentDomain(forName: suiteName)
+    }
+
+    XCTAssertNil(
+      MacLocalNotificationTapHandler.handleTap(
+        userInfo: ["itemId": ""],
+        userDefaults: defaults,
+        notificationCenter: center
+      )
+    )
+    XCTAssertNil(
+      MacLocalNotificationTapHandler.handleTap(
+        userInfo: ["itemId": 42],
+        userDefaults: defaults,
+        notificationCenter: center
+      )
+    )
+    XCTAssertNil(
+      defaults.string(forKey: MacLocalNotificationTapHandler.launchItemIdKey)
+    )
+    XCTAssertEqual(eventCount, 0)
+  }
+
 }

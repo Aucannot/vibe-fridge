@@ -73,9 +73,7 @@ final class MacLocalNotificationBridge {
     case "requestPermission":
       requestPermission(result: result)
     case "getLaunchItemId":
-      let itemId = UserDefaults.standard.string(forKey: "notification_item_id")
-      UserDefaults.standard.removeObject(forKey: "notification_item_id")
-      result(itemId)
+      result(MacLocalNotificationTapHandler.consumeLaunchItemId())
     case "scheduleInventoryReminders":
       scheduleInventoryReminders(arguments: call.arguments)
       result(nil)
