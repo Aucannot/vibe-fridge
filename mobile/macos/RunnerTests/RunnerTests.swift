@@ -235,6 +235,16 @@ class RunnerTests: XCTestCase {
     XCTAssertNotNil(snapshot?.status)
   }
 
+  func testAppDelegateRegistersAsNotificationCenterDelegate() {
+    let appDelegate = NSApp.delegate as? AppDelegate
+
+    XCTAssertNotNil(appDelegate)
+    XCTAssertTrue(
+      UNUserNotificationCenter.current().delegate as? AppDelegate ===
+        appDelegate
+    )
+  }
+
   func testSystemNotificationCenterAcceptsPendingRequestWhenAuthorized()
     throws
   {
