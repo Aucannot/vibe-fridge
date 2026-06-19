@@ -32,6 +32,15 @@ test level, and the debug app can start and expose a Dart VM Service. It still
 does not prove system notification permission prompts, delivered notification
 visibility, or click routing from a real delivered macOS notification.
 
+Additional macOS notification update on 2026-06-19: RunnerTests now also query
+the real `UNUserNotificationCenter` from the Runner app/test host and confirm
+that the bundle can read the system notification permission state. A pending
+system-request smoke test is available and passed as a controlled skip on this
+machine because notifications are not yet authorized for the test host; it will
+validate that the system accepts a real pending request once macOS notification
+permission has been granted. This still does not replace manual delivered-banner
+and click-through validation.
+
 ## Beta Readiness
 
 Verdict: ready for continued Web beta testing of the core inventory workflow,
@@ -338,6 +347,9 @@ Platform notification checklist for that gate:
   inventory-reminder request parsing, malformed payload skipping, scheduler
   success/failure reporting, tap payload storage/event handoff, empty stored
   launch-target cleanup, trigger timing, and permission-status channel mapping.
+  Passed again after adding real `UNUserNotificationCenter` status coverage,
+  with 13 passed RunnerTests and 1 skipped pending-request smoke because the
+  current test host is not authorized for notifications.
 - `flutter run -d macos`: launched the current debug macOS target on
   2026-06-19, built `vibe-fridge.app`, started the app process, and exposed a
   Dart VM Service. The shell still reported `Failed to foreground app; open

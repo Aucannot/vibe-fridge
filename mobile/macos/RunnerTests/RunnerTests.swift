@@ -216,6 +216,82 @@ class RunnerTests: XCTestCase {
     XCTAssertEqual(unknown.status, "unknown")
   }
 
+  func testSystemNotificationCenterReportsRunnerPermissionStatus() {
+    XCTAssertNotNil(Bundle.main.bundleIdentifier)
+
+    let center = UNUserNotificationCenter.current()
+    let done = expectation(description: "system permission status")
+    var snapshot: MacLocalNotificationPermissionSnapshot?
+
+    center.getNotificationSettings { settings in
+      snapshot = MacLocalNotificationPermissionFactory.snapshot(
+        for: settings.authorizationStatus
+      )
+      done.fulfill()
+    }
+
+    wait(for: [done], timeout: 5)
+    XCTAssertEqual(snapshot?.channelMap["supported"] as? Bool, true)
+    XCTAssertNotNil(snapshot?.status)
+  }
+
+  func testSystemNotificationCenterAcceptsPendingRequestWhenAuthorized()
+    throws
+  {
+    let center = UNUserNotificationCenter.current()
+    let settings = notificationSettings(from: center)
+    let snapshot = MacLocalNotificationPermissionFactory.snapshot(
+      for: settings.authorizationStatus
+    )
+    guard snapshot.granted else {
+      throw XCTSkip(
+        "macOS notifications are not authorized for this test host; " +
+        "permission, delivery, and click routing still need manual validation."
+      )
+    }
+
+    let notification = MacLocalNotificationRequest(
+      itemId: "system-smoke-\(UUID().uuidString)",
+      title: "库存提醒系统测试",
+      body: "这条请求用于验证系统是否接受待投递提醒",
+      scheduledAt: Date().addingTimeInterval(3600)
+    )
+    let request = UNNotificationRequest(
+      identifier: notification.identifier,
+      content: notification.content(),
+      trigger: notification.trigger()
+    )
+    defer {
+      center.removePendingNotificationRequests(
+        withIdentifiers: [request.identifier]
+      )
+    }
+
+    let addDone = expectation(description: "system pending request add")
+    var addError: Error?
+    center.add(request) { error in
+      addError = error
+      addDone.fulfill()
+    }
+    wait(for: [addDone], timeout: 5)
+    XCTAssertNil(addError)
+
+    let pendingDone = expectation(description: "system pending request lookup")
+    var pendingRequest: UNNotificationRequest?
+    center.getPendingNotificationRequests { requests in
+      pendingRequest = requests.first { candidate in
+        candidate.identifier == request.identifier
+      }
+      pendingDone.fulfill()
+    }
+    wait(for: [pendingDone], timeout: 5)
+    XCTAssertEqual(pendingRequest?.content.title, "库存提醒系统测试")
+    XCTAssertEqual(
+      pendingRequest?.content.userInfo["itemId"] as? String,
+      notification.itemId
+    )
+  }
+
   func testNotificationTapHandlerStoresLaunchTargetAndPostsEvent() {
     let suiteName = "com.vibefridge.tests.\(UUID().uuidString)"
     let defaults = UserDefaults(suiteName: suiteName)!
@@ -345,6 +421,21 @@ class RunnerTests: XCTestCase {
     )
     XCTAssertEqual(result as? Data, Data("secret".utf8))
     XCTAssertEqual(SecItemDelete(query as CFDictionary), errSecSuccess)
+  }
+
+  private func notificationSettings(
+    from center: UNUserNotificationCenter
+  ) -> UNNotificationSettings {
+    let done = expectation(description: "system notification settings")
+    var captured: UNNotificationSettings?
+
+    center.getNotificationSettings { settings in
+      captured = settings
+      done.fulfill()
+    }
+
+    wait(for: [done], timeout: 5)
+    return captured!
   }
 
 }
