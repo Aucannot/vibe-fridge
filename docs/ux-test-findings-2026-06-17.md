@@ -40,11 +40,11 @@ Proven enough for beta:
 Not proven yet:
 
 - Android/macOS local notification runtime behavior. Dart fallback behavior,
-  Android manifest/channel wiring source tests, repository notification payload
-  tests, and macOS native scheduling-payload construction, permission-status
-  mapping, and tap payload handoff tests are covered, but real device/desktop
-  notification permission, delivery, and user-click behavior still need runtime
-  validation on the target platforms.
+  Android manifest wiring tests, macOS bridge wiring source tests, repository
+  notification payload tests, and macOS native scheduling-payload construction,
+  permission-status mapping, and tap payload handoff tests are covered, but real
+  device/desktop notification permission, delivery, and user-click behavior
+  still need runtime validation on the target platforms.
 - Web update experience on an existing origin. The custom bootstrap no longer
   registers Flutter's service worker and clears stale registrations when the
   current index loads, but an old service worker or browser cache can still
@@ -87,7 +87,8 @@ Platform notification checklist for that gate:
   notification permission-to-sync controller coverage, 57 tests; passed again
   after the macOS native notification request builder extraction. Passed again
   after adding the custom Web bootstrap guard, 58 tests. Passed again after
-  adding Android notification wiring source tests, 60 tests.
+  adding Android notification wiring source tests, 60 tests. Passed again after
+  adding macOS notification wiring source tests, 62 tests.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
@@ -107,6 +108,10 @@ Platform notification checklist for that gate:
   adding Android source-level checks for notification manifest permissions,
   receivers, method-channel names, payload keys, scheduling persistence,
   boot/package-update restoration, and click handoff wiring.
+- `flutter test test/macos_notification_wiring_test.dart`: passed after adding
+  macOS source-level checks for method-channel names, native bridge methods,
+  notification payload parsing, delegate presentation behavior, and system tap
+  handoff into the launch target.
 - `flutter test test/web_bootstrap_test.dart`: passed after adding the custom
   Web bootstrap guard that clears stale service workers without registering a
   replacement Flutter service worker.
@@ -149,10 +154,12 @@ Platform notification checklist for that gate:
   use the same `vibe_fridge/local_notifications` method channel as Dart,
   preserve `itemId` in scheduled notification payloads, expose launch/tap
   callbacks back to Flutter, and include boot or app-start recovery paths where
-  the platform supports them. Android manifest/channel/payload-key wiring is
-  now covered by `android_notification_wiring_test.dart`. No obvious
-  channel-name, payload-key, or click callback mismatch was found, but this does
-  not replace runtime validation on real Android/macOS environments.
+  the platform supports them. Android manifest/channel/payload-key wiring and
+  macOS bridge/delegate wiring are now covered by
+  `android_notification_wiring_test.dart` and
+  `macos_notification_wiring_test.dart`. No obvious channel-name, payload-key,
+  or click callback mismatch was found, but this does not replace runtime
+  validation on real Android/macOS environments.
 - Final targeted user-facing copy grep: scanned Flutter screens, widgets, and
   bootstrap UI for database, SQLite, migration, legacy, Wiki, JSON/id, and
   related implementation wording. Remaining matches were internal identifiers,
@@ -933,10 +940,10 @@ Platform notification checklist for that gate:
   emulator.
 - macOS app build and launch are now proven locally, but macOS notification
   permission, due reminder delivery, and notification-click routing still need
-  targeted desktop runtime validation. The native scheduling payload builder,
-  permission-status mapper, and tap payload handoff are now covered by
-  RunnerTests, but system notification behavior is not fully replaceable with
-  unit tests.
+  targeted desktop runtime validation. The native bridge/delegate source wiring,
+  scheduling payload builder, permission-status mapper, and tap payload handoff
+  are now covered by tests, but system notification behavior is not fully
+  replaceable with unit tests.
 - Web app updates can still be masked by older same-origin browser cache or
   previously registered service-worker state. During Settings retesting, port
   54371 still showed older self-check wording after a rebuild, while fresh port
