@@ -270,7 +270,13 @@ Platform notification checklist for that gate:
   verified that the password input DOM value is cleared after save, confirmed
   a successful connection and upload do not retain the earlier authentication
   error copy, and the smoke endpoint recorded MKCOL, PROPFIND, and PUT
-  requests plus two uploaded backup JSON files.
+  requests plus two uploaded backup JSON files. Rechecked on 2026-06-19 after
+  the earlier local smoke endpoint had stopped: Settings first showed the
+  user-actionable network error copy with no console warnings/errors; after
+  starting a fresh local WebDAV endpoint, re-saving `codex/codex`
+  credentials, and verifying the password field no longer exposed the typed
+  value, `测试连接` showed `WebDAV 连接可用` and `上传备份` showed
+  `备份已上传到 WebDAV` with the latest uploaded file name.
 - Browser WebDAV restore smoke on
   `http://127.0.0.1:54393/?route=settings`: passed against a temporary
   CORS-enabled local WebDAV endpoint on `http://127.0.0.1:54394/`. The browser
@@ -1268,6 +1274,10 @@ Platform notification checklist for that gate:
   longer keeps the secret in the active text-editing DOM value; WebDAV actions
   also clear stale snackbars before running so a previous authentication error
   does not remain visible after a successful retry or upload.
+- Rechecked the live Settings WebDAV path on the existing in-app browser tab:
+  a stopped local WebDAV endpoint produced actionable connection-failure copy,
+  then a fresh local endpoint accepted saved credentials, connection testing,
+  and backup upload without browser warning/error logs.
 
 ## Remaining Risks
 
