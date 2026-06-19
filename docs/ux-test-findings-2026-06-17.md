@@ -472,6 +472,10 @@ Platform notification checklist for that gate:
   finished.` Passed again after adding the optional `--send-test` path,
   confirming the default runner remains read-only and still returns
   `supported: true`, `granted: false`, `status: unknown`, `displayText: 未确认`.
+  Passed again after extracting and testing the debug notification payload
+  builders, proving the real launched app still registers the VM Service
+  extensions and the default smoke path still avoids permission prompts or
+  notification delivery.
 - `node --check tools/run_macos_notification_smoke.mjs`: passed after adding
   the automated macOS smoke runner.
 - Tool argument guards: `node tools/check_notification_status.mjs
