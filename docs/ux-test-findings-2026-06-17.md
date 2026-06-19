@@ -53,9 +53,11 @@ Not proven yet:
   registers Flutter's service worker, clears stale registrations, and deletes
   stale Flutter Cache Storage entries when the current index loads. The entry
   HTML now also discourages stale browser caching and requests
-  `flutter_bootstrap.js` with a cache-busting query, but an old service worker
-  or browser cache can still mask the first request for the new index during
-  manual validation.
+  `flutter_bootstrap.js` with a cache-busting query, and the Web build now
+  carries `_headers` cache policy for static hosts that honor that file. A
+  deployment host that ignores `_headers` still needs equivalent HTTP headers,
+  and an old service worker or browser cache can still mask the first request
+  for the new index during manual validation.
 
 Recommended next beta gate:
 
@@ -103,6 +105,7 @@ Platform notification checklist for that gate:
   hardening loading-screen hiding, 69 tests. Passed again after adding recipe
   cooking inventory-deduction coverage, 70 tests. Passed again after adding
   Settings widget coverage for the app self-check 17/17 result, 71 tests.
+  Passed again after adding Web deployment header coverage, 72 tests.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
@@ -123,7 +126,8 @@ Platform notification checklist for that gate:
   notification tap and permission-to-sync controller tests, after the macOS
   native notification request builder extraction, and after the Web entry cache
   and loading-screen fixes, and after adding recipe cooking deduction coverage,
-  and after adding Settings app self-check result coverage, with no issues.
+  after adding Settings app self-check result coverage, and after adding Web
+  deployment headers, with no issues.
 - `flutter test test/local_notification_service_test.dart`: passed after the
   Android reminder scheduler refactor, notification tap controller handoff
   coverage, notification permission-to-sync controller coverage, and Settings
@@ -146,8 +150,8 @@ Platform notification checklist for that gate:
   Web bootstrap guard that clears stale service workers without registering a
   replacement Flutter service worker; passed again after extending the guard to
   delete stale Flutter Cache Storage entries; passed again after adding
-  no-cache entry hints, a cache-busted bootstrap script request, and inline
-  loading-screen hide styles.
+  no-cache entry hints, a cache-busted bootstrap script request, inline
+  loading-screen hide styles, and HTTP header policy coverage.
 - `flutter test test/recipes_screen_test.dart`: passed after adding coverage
   that applies a recipe's inventory uses through `InventoryController` and
   verifies the real inventory quantities are deducted.
@@ -164,7 +168,9 @@ Platform notification checklist for that gate:
   without `serviceWorkerSettings` and contains the stale-registration cleanup.
   Passed again after adding no-cache entry hints and a cache-busted bootstrap
   request to `index.html`. Passed again after adding recipe cooking deduction
-  to the app self-check.
+  to the app self-check. Passed again after adding `_headers`; the generated
+  `build/web/_headers` contains no-cache policy for `index.html`,
+  `flutter_bootstrap.js`, `flutter.js`, `main.dart.js`, and `sqflite_sw.js`.
 - `flutter build macos --debug`: passed after the user completed the local
   Xcode installation and license flow. The build produced
   `build/macos/Build/Products/Debug/vibe-fridge.app`; Flutter also generated
@@ -958,6 +964,8 @@ Platform notification checklist for that gate:
 - Added no-cache hints to the Web entry HTML and cache-busted the bootstrap
   script request so a current index page is less likely to execute stale Web
   startup code.
+- Added Web `_headers` cache policy for common static hosts so entry and
+  startup scripts are served with no-cache/no-store semantics after deployment.
 - Replaced Web/PWA template metadata so browser tabs and installed app surfaces
   show `vibe-fridge`, the app's actual inventory purpose, and product colors.
 - Reworded macOS camera and photo permission prompts to match the app's Chinese
@@ -1033,5 +1041,7 @@ Platform notification checklist for that gate:
   replacement Flutter service worker, clears stale registrations, and deletes
   stale Flutter Cache Storage entries once the current index is loaded, and the
   current entry HTML discourages browser caching plus cache-busts the bootstrap
-  request. Release validation should still use a fresh origin or cache clear
-  until HTTP-level cache policy is controlled by the deployment host.
+  request. The generated Web build also includes `_headers` no-cache policy for
+  common static hosts, but deployment hosts that ignore `_headers` still need
+  equivalent HTTP cache headers before same-origin update behavior is fully
+  proven.

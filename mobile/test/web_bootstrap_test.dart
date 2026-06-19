@@ -42,4 +42,34 @@ void main() {
     expect(index, contains("loadingScreen.style.visibility = 'hidden'"));
     expect(index, isNot(contains('<script src="flutter_bootstrap.js" async>')));
   });
+
+  test('web deployment headers discourage stale entry scripts', () {
+    final headers = File('web/_headers').readAsStringSync();
+
+    for (final path in [
+      '/index.html',
+      '/flutter_bootstrap.js',
+      '/flutter.js',
+      '/main.dart.js',
+      '/sqflite_sw.js',
+    ]) {
+      expect(headers, contains(path));
+    }
+    expect(
+      RegExp(
+        r'/index\.html\s+Cache-Control: no-cache, no-store, must-revalidate',
+        multiLine: true,
+      ).hasMatch(headers),
+      isTrue,
+    );
+    expect(
+      RegExp(
+        r'/flutter_bootstrap\.js\s+Cache-Control: no-cache, no-store, must-revalidate',
+        multiLine: true,
+      ).hasMatch(headers),
+      isTrue,
+    );
+    expect(headers, contains('Pragma: no-cache'));
+    expect(headers, contains('Expires: 0'));
+  });
 }
