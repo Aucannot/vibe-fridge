@@ -113,7 +113,8 @@ Platform notification checklist for that gate:
   after adding recipe-preference store and Settings save coverage, 80 tests.
   Passed again after adding Settings demo-data reset confirmation coverage, 81
   tests. Passed again after adding order-import review widget coverage, 82
-  tests.
+  tests. Passed again after adding shopping conversion confirmation coverage,
+  83 tests.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
@@ -139,7 +140,8 @@ Platform notification checklist for that gate:
   adding Settings order-recognition key privacy coverage, and after fixing
   order-recognition clear persistence, and after adding recipe-preference
   coverage, and after adding Settings demo-data reset confirmation coverage,
-  and after adding order-import review widget coverage, with no issues.
+  after adding order-import review widget coverage, and after adding shopping
+  conversion confirmation coverage, with no issues.
 - `flutter test test/local_notification_service_test.dart`: passed after the
   Android reminder scheduler refactor, notification tap controller handoff
   coverage, notification permission-to-sync controller coverage, and Settings
@@ -161,6 +163,10 @@ Platform notification checklist for that gate:
   adding widget coverage that low-confidence rows remain excluded until marked
   confirmed, the primary import count updates, the batch-confirmation copy is
   shown, and the controller receives the confirmed items.
+- `flutter test test/items_screen_test.dart`: passed after adding widget
+  coverage that the shopping view asks for confirmation before converting
+  checked items, the cancel path does not call conversion, and confirmation
+  reports the `已入库 1 项` success feedback.
 - `flutter test test/recipe_preferences_store_test.dart`: passed after adding
   coverage for default first-run preferences, trimmed text persistence, bounded
   time/serving values, and damaged persisted numeric values.
@@ -786,6 +792,8 @@ Platform notification checklist for that gate:
   the catalog count updates in the live mobile Web UI, and shopping notes are
   retained as inventory batch descriptions without polluting the item-profile
   description.
+- Shopping conversion now has widget coverage for the confirmation dialog,
+  cancel path, controller handoff, and success feedback.
 - Uncategorized shopping items remain labeled `未分类` after conversion into
   catalog, item-profile, and inventory-detail surfaces.
 - Catalog row cart actions add the selected item profile to the shopping list
