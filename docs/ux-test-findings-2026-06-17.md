@@ -109,7 +109,8 @@ Platform notification checklist for that gate:
   again after adding Settings backup reminder widget coverage, 73 tests.
   Passed again after adding Settings order-recognition key privacy widget
   coverage, 74 tests. Passed again after fixing order-recognition clear
-  persistence and adding clear-confirmation coverage, 76 tests.
+  persistence and adding clear-confirmation coverage, 76 tests. Passed again
+  after adding recipe-preference store and Settings save coverage, 80 tests.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
@@ -133,7 +134,8 @@ Platform notification checklist for that gate:
   after adding Settings app self-check result coverage, and after adding Web
   deployment headers, after adding Settings backup reminder coverage, after
   adding Settings order-recognition key privacy coverage, and after fixing
-  order-recognition clear persistence, with no issues.
+  order-recognition clear persistence, and after adding recipe-preference
+  coverage, with no issues.
 - `flutter test test/local_notification_service_test.dart`: passed after the
   Android reminder scheduler refactor, notification tap controller handoff
   coverage, notification permission-to-sync controller coverage, and Settings
@@ -146,7 +148,12 @@ Platform notification checklist for that gate:
   the pending backup reminder card and its user-facing copy. Passed again after
   adding widget coverage that verifies a stored order-recognition key is shown
   as configured without exposing the saved secret. Passed again after adding
-  widget coverage for the order-recognition clear confirmation flow.
+  widget coverage for the order-recognition clear confirmation flow. Passed
+  again after adding widget coverage for saving recipe preferences from user
+  inputs and reloading the normalized values into the fields.
+- `flutter test test/recipe_preferences_store_test.dart`: passed after adding
+  coverage for default first-run preferences, trimmed text persistence, bounded
+  time/serving values, and damaged persisted numeric values.
 - `flutter test test/vlm_settings_store_test.dart`: passed after verifying
   fresh settings still load the default endpoint/model while the explicit
   clear action persists blank endpoint/model values and removes the secure API
@@ -808,6 +815,9 @@ Platform notification checklist for that gate:
   locally saved status copy.
 - Settings recipe preferences save from the mobile Web UI and reload with the
   edited values still visible.
+- Settings recipe preferences now have automated coverage for default values,
+  text trimming, time/serving bounds, damaged persisted numeric values, and the
+  Settings save action that reloads normalized field values.
 - Settings order-recognition configuration saves from the mobile Web UI,
   persists after reload without revealing the saved key, and can be cleared
   through the confirmation dialog.

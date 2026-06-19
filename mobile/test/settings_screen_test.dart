@@ -7,6 +7,7 @@ import 'package:vibe_fridge/data/app_database.dart';
 import 'package:vibe_fridge/data/inventory_controller.dart';
 import 'package:vibe_fridge/data/inventory_repository.dart';
 import 'package:vibe_fridge/data/local_notification_service.dart';
+import 'package:vibe_fridge/data/recipe_preferences_store.dart';
 import 'package:vibe_fridge/data/vlm_settings_store.dart';
 import 'package:vibe_fridge/screens/settings_screen.dart';
 import 'package:vibe_fridge/theme/app_theme.dart';
@@ -180,6 +181,83 @@ void main() {
     expect(find.text('因为新增库存，建议备份一次'), findsOneWidget);
     expect(find.text('累计 10 次库存资料变更尚未备份'), findsOneWidget);
     expect(find.widgetWithText(TextButton, '导出'), findsOneWidget);
+  });
+
+  testWidgets('settings saves recipe preferences from user inputs',
+      (tester) async {
+    tester.view.physicalSize = const Size(430, 1700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final recipePreferencesStore = RecipePreferencesStore();
+    final controller = InventoryController(
+      InventoryRepository(appDatabase),
+      notificationService: _FakeNotificationService(
+        testResult: const LocalNotificationTestResult(
+          permission: LocalNotificationPermissionSnapshot(
+            supported: true,
+            granted: true,
+            status: 'granted',
+          ),
+          sent: true,
+        ),
+      ),
+    );
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: SettingsScreen(
+            controller: controller,
+            recipePreferencesStore: recipePreferencesStore,
+            vlmSettingsStore: VlmSettingsStore(
+              secretStore: _MemorySecretStore(),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final flavorField = _textFieldWithLabel('口味偏好');
+    final dietaryField = _textFieldWithLabel('忌口/饮食限制');
+    final toolsField = _textFieldWithLabel('可用厨具');
+    final minutesField = _textFieldWithLabel('时间');
+    final servingsField = _textFieldWithLabel('人数');
+    await _pumpUntilFound(
+      tester,
+      flavorField,
+      timeout: const Duration(seconds: 5),
+    );
+
+    await tester.enterText(flavorField, ' 清淡内测 ');
+    await tester.enterText(dietaryField, ' 不吃辣 ');
+    await tester.enterText(toolsField, ' 电饭煲 ');
+    await tester.enterText(minutesField, '25');
+    await tester.enterText(servingsField, '3');
+    await tester.tap(find.widgetWithText(OutlinedButton, '保存食谱偏好'));
+    await tester.pumpAndSettle();
+
+    final loaded = await recipePreferencesStore.load();
+    final savedFlavorField = tester.widget<TextField>(flavorField);
+    final savedDietaryField = tester.widget<TextField>(dietaryField);
+    final savedToolsField = tester.widget<TextField>(toolsField);
+    final savedMinutesField = tester.widget<TextField>(minutesField);
+    final savedServingsField = tester.widget<TextField>(servingsField);
+
+    expect(find.text('食谱偏好已保存'), findsOneWidget);
+    expect(loaded.flavorProfile, '清淡内测');
+    expect(loaded.dietaryRestrictions, '不吃辣');
+    expect(loaded.tools, '电饭煲');
+    expect(loaded.cookMinutes, 25);
+    expect(loaded.servings, 3);
+    expect(savedFlavorField.controller?.text, '清淡内测');
+    expect(savedDietaryField.controller?.text, '不吃辣');
+    expect(savedToolsField.controller?.text, '电饭煲');
+    expect(savedMinutesField.controller?.text, '25');
+    expect(savedServingsField.controller?.text, '3');
   });
 
   testWidgets('settings keeps stored order recognition key hidden',
@@ -357,6 +435,13 @@ Future<void> _pumpUntilFound(
   while (finder.evaluate().isEmpty && stopwatch.elapsed < timeout) {
     await tester.pump(const Duration(milliseconds: 100));
   }
+}
+
+Finder _textFieldWithLabel(String label) {
+  return find.byWidgetPredicate(
+    (widget) => widget is TextField && widget.decoration?.labelText == label,
+    description: '$label text field',
+  );
 }
 
 AcceptanceReport _passingAcceptanceReport({required int checkCount}) {
