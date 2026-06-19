@@ -24,6 +24,13 @@ validation. Flutter Web cold-start text now has a native HTML loading screen to
 cover the short CanvasKit font fallback window, and the latest mobile Web smoke
 check confirmed it hands off cleanly to the rendered Home screen.
 
+Update on 2026-06-19: current-worktree macOS debug build, native RunnerTests,
+and a `flutter run -d macos` launch smoke all pass. This proves the macOS app
+still builds, the native notification bridge remains wired at source/runtime
+test level, and the debug app can start and expose a Dart VM Service. It still
+does not prove system notification permission prompts, delivered notification
+visibility, or click routing from a real delivered macOS notification.
+
 ## Beta Readiness
 
 Verdict: ready for continued Web beta testing of the core inventory workflow,
@@ -249,6 +256,11 @@ Platform notification checklist for that gate:
   storage without requiring a development-certificate keychain entitlement.
   Passed again after routing macOS inventory reminder scheduling through an
   async scheduler that waits for native add completion and propagates failures.
+  Passed again on the current worktree on 2026-06-19; the build produced
+  `build/macos/Build/Products/Debug/vibe-fridge.app`. Flutter still warns that
+  `flutter_secure_storage_macos` has not adopted Swift Package Manager support,
+  and Xcode emitted stale DerivedData path warnings, but neither blocked the
+  app build.
 - `xcodebuild test -workspace Runner.xcworkspace -scheme Runner -configuration
   Debug -destination 'platform=macOS' -derivedDataPath
   /private/tmp/vibe-fridge-xcode-derived-tap -clonedSourcePackagesDirPath
@@ -266,9 +278,17 @@ Platform notification checklist for that gate:
   Protection Keychain entitlement path. Passed again with 11 tests after adding
   native scheduler coverage for both successful pending-request handoff and
   system add failure reporting.
-- `flutter run -d macos`: launched the debug macOS target successfully and
-  exposed a Dart VM Service. The app process started, though `open` could not
-  automatically foreground the window in this shell session.
+  Passed again on the current worktree on 2026-06-19 with the same 11
+  RunnerTests: diagnostic notification request construction, Keychain secret
+  smoke, inventory-reminder request parsing, malformed payload skipping,
+  scheduler success/failure reporting, tap payload storage/event handoff,
+  trigger timing, and permission-status channel mapping.
+- `flutter run -d macos`: launched the current debug macOS target on
+  2026-06-19, built `vibe-fridge.app`, started the app process, and exposed a
+  Dart VM Service. The shell still reported `Failed to foreground app; open
+  returned 1`, so this remains a launch smoke rather than a manual UI or
+  delivered-notification validation. The run session was then terminated and
+  the app exited with `Application finished.`
 - `flutter build apk --debug`: attempted after the latest route and platform
   checks. Dependency resolution completed, but the local environment could not
   continue because no Android SDK was found; this did not produce an app compile
