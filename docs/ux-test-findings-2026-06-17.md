@@ -214,7 +214,9 @@ Platform notification checklist for that gate:
   the same command passed after network access was allowed. Passed again after
   adding the source-level user-facing copy guard, now with 107 tests.
   Passed again after adding the debug-only running-app notification status
-  extension, still with 107 tests.
+  extension, still with 107 tests. Passed again on 2026-06-20 on the current
+  worktree with 109 tests after the WebDAV, debug smoke payload, and platform
+  validation record work.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
@@ -396,6 +398,10 @@ Platform notification checklist for that gate:
   generated `build/web/_headers` still contains no-cache/no-store policy for
   entry scripts and service-worker files, and the generated Web entry still
   uses a cache-busted bootstrap request plus stale service-worker/cache cleanup.
+  Passed again on 2026-06-20 with the bundled Flutter SDK; `build/web` was
+  generated and `build/web/_headers` still includes no-cache/no-store policy
+  for `index.html`, `flutter_bootstrap.js`, `flutter.js`,
+  `flutter_service_worker.js`, `main.dart.js`, and `sqflite_sw.js`.
 - `flutter build macos --debug`: passed after the user completed the local
   Xcode installation and license flow. The build produced
   `build/macos/Build/Products/Debug/vibe-fridge.app`; Flutter also generated
