@@ -94,6 +94,14 @@ the app-side JSON contract used by `tools/check_notification_status.mjs` is
 covered without registering duplicate VM extensions or triggering notification
 permission prompts during tests.
 
+Environment recheck on 2026-06-20: Android SDK and Android devices are still
+absent. `xcodebuild -runFirstLaunch`, `xcodebuild -checkFirstLaunchStatus`,
+and `xcodebuild -license check` all return success, while `flutter doctor -v`
+still reports Xcode additional-component setup because no Simulator runtimes or
+Simulator devices are installed. The macOS desktop target itself remains
+usable: `flutter build macos --debug` passed and native RunnerTests passed with
+14 passed tests and 1 authorization-gated notification request test skipped.
+
 ## Beta Readiness
 
 Verdict: ready for continued Web beta testing of the core inventory workflow,
@@ -405,7 +413,10 @@ Platform notification checklist for that gate:
   `build/macos/Build/Products/Debug/vibe-fridge.app`. Flutter still warns that
   `flutter_secure_storage_macos` has not adopted Swift Package Manager support,
   and Xcode emitted stale DerivedData path warnings, but neither blocked the
-  app build.
+  app build. Passed again on 2026-06-20 with the bundled Flutter SDK, producing
+  `build/macos/Build/Products/Debug/vibe-fridge.app`; the same
+  `flutter_secure_storage_macos` Swift Package Manager adoption warning remains
+  informational for this build.
 - `xcodebuild -checkFirstLaunchStatus`: returned success on 2026-06-19,
   confirming the local Xcode first-launch setup is no longer blocking macOS
   build/test validation.
@@ -439,7 +450,9 @@ Platform notification checklist for that gate:
   launch-target ids, again with 13 passed and 1 skipped. Passed again after
   the AppDelegate launch fix, with 13 passed and 1 skipped. Passed again after
   adding runtime notification-center delegate registration coverage, with 14
-  passed and 1 skipped.
+  passed and 1 skipped. Passed again on 2026-06-20 with 14 passed RunnerTests
+  and 1 skipped pending-request smoke because notification authorization has
+  not been granted for the test host.
 - `flutter run -d macos`: launched the current debug macOS target on
   2026-06-19, built `vibe-fridge.app`, started the app process, and exposed a
   Dart VM Service. The shell still reported `Failed to foreground app; open
@@ -968,6 +981,13 @@ Platform notification checklist for that gate:
   absent, only the macOS desktop device is detected, sandboxed network resource
   checks still fail, and `xcodebuild -checkFirstLaunchStatus` returns success
   even though `flutter doctor` still emits a stale first-launch warning.
+  Rechecked on 2026-06-20 after `xcodebuild -runFirstLaunch`,
+  `xcodebuild -checkFirstLaunchStatus`, and `xcodebuild -license check` all
+  returned success: `flutter doctor` still reports the Xcode
+  additional-component warning, and elevated `xcrun simctl list runtimes` /
+  `xcrun simctl list devices` show no Simulator runtimes or devices. This
+  leaves iOS/Simulator validation unavailable, but does not block macOS desktop
+  build/test validation.
 - `python3 tools/perf_inventory_sqlite.py`: passed. Core inventory queries
   remained well under thresholds with 5,000 generated records: exact catalog
   search 0.683 ms, category filter 2.177 ms, today-action query 1.839 ms,

@@ -50,7 +50,8 @@ verification that is still not fully proven on this machine:
   scheduling, and tap-through behavior still need Android SDK/device
   verification. A 2026-06-19 recheck with `flutter devices` still detected only
   macOS, and `flutter doctor -v` still reported that no Android SDK could be
-  located.
+  located. A 2026-06-20 recheck still detects only macOS and still reports no
+  Android SDK.
 - macOS Xcode/CocoaPods setup is no longer the blocking item. On 2026-06-19,
   `flutter build macos --debug`, `flutter run -d macos`,
   `xcodebuild -checkFirstLaunchStatus`, and native RunnerTests passed locally.
@@ -64,11 +65,18 @@ verification that is still not fully proven on this machine:
   manual authorization pass, but the default command remains read-only. macOS
   system notification permission approval, delivered reminder visibility, and
   notification-click routing still need targeted runtime validation after the
-  test host/app is authorized for notifications.
+  test host/app is authorized for notifications. On 2026-06-20,
+  `xcodebuild -runFirstLaunch`, `xcodebuild -checkFirstLaunchStatus`, and
+  `xcodebuild -license check` returned success; `flutter build macos --debug`
+  and native RunnerTests also passed again. `flutter doctor -v` still reports
+  the Xcode additional-component warning because no Simulator runtimes/devices
+  are installed, but macOS desktop build/test validation remains usable.
 
 `flutter doctor -v` was rechecked on 2026-06-19 with the bundled Flutter SDK.
 Android SDK is still absent, Chrome is not installed at Flutter's default path,
 and sandboxed network resource checks still fail. `xcodebuild
 -checkFirstLaunchStatus` returns success even though `flutter doctor` still
-emits a stale first-launch warning. Web launch verification used the generated
-Web build served locally instead.
+emits a stale first-launch warning. Rechecked on 2026-06-20: Android SDK is
+still absent, only macOS is detected, elevated `xcrun simctl list` reports no
+Simulator runtimes/devices, and macOS build/RunnerTests still pass. Web launch
+verification used the generated Web build served locally instead.
