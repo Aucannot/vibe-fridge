@@ -260,6 +260,68 @@ void main() {
     expect(savedServingsField.controller?.text, '3');
   });
 
+  testWidgets('settings confirms before resetting demo data', (tester) async {
+    tester.view.physicalSize = const Size(430, 1300);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final controller = _FakeResetDemoController(
+      InventoryRepository(appDatabase),
+      clearedRows: 9,
+      notificationService: _FakeNotificationService(
+        testResult: const LocalNotificationTestResult(
+          permission: LocalNotificationPermissionSnapshot(
+            supported: true,
+            granted: true,
+            status: 'granted',
+          ),
+          sent: true,
+        ),
+      ),
+    );
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: SettingsScreen(
+            controller: controller,
+            vlmSettingsStore: VlmSettingsStore(
+              secretStore: _MemorySecretStore(),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final resetButton = find.widgetWithText(OutlinedButton, '重置示例数据');
+    expect(resetButton, findsOneWidget);
+
+    await tester.tap(resetButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('重置示例数据'), findsNWidgets(2));
+    expect(find.text('仅清理并重建内置示例资料/库存，不会删除用户自己创建的数据。'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(TextButton, '取消'));
+    await tester.pumpAndSettle();
+
+    expect(controller.resetDemoCalls, 0);
+    expect(find.text('示例数据已重置，清理 9 条旧示例数据'), findsNothing);
+
+    await tester.tap(resetButton);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, '重置'));
+    await tester.pumpAndSettle();
+
+    expect(controller.resetDemoCalls, 1);
+    expect(find.text('示例数据已重置，清理 9 条旧示例数据'), findsOneWidget);
+  });
+
   testWidgets('settings keeps stored order recognition key hidden',
       (tester) async {
     tester.view.physicalSize = const Size(430, 1600);
@@ -473,6 +535,23 @@ class _FakeAcceptanceController extends InventoryController {
   Future<AcceptanceReport> runAcceptanceChecks() async {
     acceptanceCalls += 1;
     return report;
+  }
+}
+
+class _FakeResetDemoController extends InventoryController {
+  _FakeResetDemoController(
+    super.repository, {
+    required this.clearedRows,
+    required LocalNotificationService notificationService,
+  }) : super(notificationService: notificationService);
+
+  final int clearedRows;
+  int resetDemoCalls = 0;
+
+  @override
+  Future<int> resetDemoData() async {
+    resetDemoCalls += 1;
+    return clearedRows;
   }
 }
 

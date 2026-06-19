@@ -111,6 +111,8 @@ Platform notification checklist for that gate:
   coverage, 74 tests. Passed again after fixing order-recognition clear
   persistence and adding clear-confirmation coverage, 76 tests. Passed again
   after adding recipe-preference store and Settings save coverage, 80 tests.
+  Passed again after adding Settings demo-data reset confirmation coverage, 81
+  tests.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
@@ -135,7 +137,8 @@ Platform notification checklist for that gate:
   deployment headers, after adding Settings backup reminder coverage, after
   adding Settings order-recognition key privacy coverage, and after fixing
   order-recognition clear persistence, and after adding recipe-preference
-  coverage, with no issues.
+  coverage, and after adding Settings demo-data reset confirmation coverage,
+  with no issues.
 - `flutter test test/local_notification_service_test.dart`: passed after the
   Android reminder scheduler refactor, notification tap controller handoff
   coverage, notification permission-to-sync controller coverage, and Settings
@@ -150,7 +153,9 @@ Platform notification checklist for that gate:
   as configured without exposing the saved secret. Passed again after adding
   widget coverage for the order-recognition clear confirmation flow. Passed
   again after adding widget coverage for saving recipe preferences from user
-  inputs and reloading the normalized values into the fields.
+  inputs and reloading the normalized values into the fields. Passed again
+  after adding widget coverage that confirms demo-data reset cancellation does
+  not run the reset and confirmation reports the cleared-row count.
 - `flutter test test/recipe_preferences_store_test.dart`: passed after adding
   coverage for default first-run preferences, trimmed text persistence, bounded
   time/serving values, and damaged persisted numeric values.
@@ -829,6 +834,8 @@ Platform notification checklist for that gate:
   key in the UI.
 - Settings demo-data reset rebuilds the built-in sample data from the mobile
   Web UI while preserving user-created inventory.
+- Settings demo-data reset now has widget coverage for the confirmation copy,
+  cancel path, reset call, and success message with cleared-row count.
 - Settings inventory-table export can be triggered from the live mobile Web UI,
   and the app shows success feedback without console warnings or errors.
 - Settings backup export can be triggered from the live mobile Web UI, and the
