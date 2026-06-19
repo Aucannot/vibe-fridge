@@ -71,6 +71,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _testingWebDavConnection = false;
   bool _uploadingWebDavBackup = false;
   bool _restoringWebDavBackup = false;
+  int _webDavPasswordFieldRevision = 0;
   bool _resettingDemoData = false;
   bool _syncingNotifications = false;
   bool _hasStoredVlmApiKey = false;
@@ -202,6 +203,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         usernameController: _webDavUsernameController,
                         passwordController: _webDavPasswordController,
                         hasStoredPassword: _hasStoredWebDavPassword,
+                        passwordFieldRevision: _webDavPasswordFieldRevision,
                         statusMessage: _webDavStatusMessage,
                         statusPassed: _webDavStatusPassed,
                         saving: _savingWebDavSettings,
@@ -981,14 +983,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _saveWebDavSettings() async {
+    ScaffoldMessenger.of(context).clearSnackBars();
     setState(() => _savingWebDavSettings = true);
+    final password = _webDavPasswordController.text;
+    FocusManager.instance.primaryFocus?.unfocus();
     try {
       await _webDavBackupSettingsStore.save(
         WebDavBackupSettings(
           serverUrl: _webDavServerUrlController.text,
           remoteDirectory: _webDavRemoteDirectoryController.text,
           username: _webDavUsernameController.text,
-          password: _webDavPasswordController.text,
+          password: password,
           hasStoredPassword: _hasStoredWebDavPassword,
         ),
         preserveExistingPasswordIfBlank: true,
@@ -1006,11 +1011,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _webDavRemoteDirectoryController.text = saved.remoteDirectory;
       _webDavUsernameController.text = saved.username;
       _webDavPasswordController.clear();
+      FocusManager.instance.primaryFocus?.unfocus();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('WebDAV 配置已保存')),
       );
       setState(() {
         _hasStoredWebDavPassword = saved.hasStoredPassword;
+        _webDavPasswordFieldRevision += 1;
         _webDavStatusMessage = null;
         _webDavStatusPassed = null;
       });
@@ -1032,6 +1039,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _testWebDavConnection() async {
+    ScaffoldMessenger.of(context).clearSnackBars();
     setState(() {
       _testingWebDavConnection = true;
       _webDavStatusMessage = null;
@@ -1071,6 +1079,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _uploadBackupToWebDav() async {
+    ScaffoldMessenger.of(context).clearSnackBars();
     setState(() {
       _uploadingWebDavBackup = true;
       _webDavStatusMessage = null;
@@ -1119,6 +1128,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _restoreBackupFromWebDav() async {
+    ScaffoldMessenger.of(context).clearSnackBars();
     setState(() {
       _restoringWebDavBackup = true;
       _webDavStatusMessage = null;
@@ -1213,6 +1223,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _clearWebDavSettings() async {
+    ScaffoldMessenger.of(context).clearSnackBars();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -1246,6 +1257,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
       setState(() {
         _hasStoredWebDavPassword = false;
+        _webDavPasswordFieldRevision += 1;
         _webDavStatusMessage = null;
         _webDavStatusPassed = null;
       });
@@ -1537,6 +1549,7 @@ class _WebDavBackupPanel extends StatelessWidget {
     required this.usernameController,
     required this.passwordController,
     required this.hasStoredPassword,
+    required this.passwordFieldRevision,
     required this.statusMessage,
     required this.statusPassed,
     required this.saving,
@@ -1557,6 +1570,7 @@ class _WebDavBackupPanel extends StatelessWidget {
   final TextEditingController usernameController;
   final TextEditingController passwordController;
   final bool hasStoredPassword;
+  final int passwordFieldRevision;
   final String? statusMessage;
   final bool? statusPassed;
   final bool saving;
@@ -1651,6 +1665,7 @@ class _WebDavBackupPanel extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.cardGap),
           TextField(
+            key: ValueKey('webdav-password-$passwordFieldRevision'),
             controller: passwordController,
             obscureText: true,
             onChanged: (_) => onPasswordChanged(),

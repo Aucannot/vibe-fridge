@@ -139,7 +139,9 @@ Platform notification checklist for that gate:
   102 tests. Passed again after adding AppShell launch-notification target
   routing coverage, 103 tests. Passed again after adding Android native
   malformed-reminder-id guard coverage, 104 tests. Passed again after adding
-  launch notification target filtering coverage, 105 tests.
+  launch notification target filtering coverage, 105 tests. Passed again after
+  fixing WebDAV password-field cleanup and stale error feedback during retry,
+  106 tests.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
@@ -203,7 +205,9 @@ Platform notification checklist for that gate:
   again after replacing the Settings self-check action coverage with a
   regression check that developer-only self-check controls are not rendered.
   Passed again after adding coverage that cancelling a WebDAV restore leaves
-  the current inventory unchanged.
+  the current inventory unchanged. Passed again after covering that a failed
+  WebDAV connection retry clears the stale authentication error once the retry
+  succeeds, 12 Settings tests.
 - `flutter test test/order_import_review_screen_test.dart`: passed after
   adding widget coverage that low-confidence rows remain excluded until marked
   confirmed, the primary import count updates, the batch-confirmation copy is
@@ -245,6 +249,13 @@ Platform notification checklist for that gate:
   `dart:io` local WebDAV server that requires Basic Auth and exercises the
   real service through MKCOL directory creation, PUT backup upload, PROPFIND
   listing, and GET restore download against the same local endpoint.
+- Browser WebDAV smoke on `http://127.0.0.1:54391/?route=settings`: passed
+  against a temporary CORS-enabled local WebDAV endpoint on
+  `http://127.0.0.1:54392/`. The browser flow saved WebDAV configuration,
+  verified that the password input DOM value is cleared after save, confirmed
+  a successful connection and upload do not retain the earlier authentication
+  error copy, and the smoke endpoint recorded MKCOL, PROPFIND, and PUT
+  requests plus two uploaded backup JSON files.
 - `flutter test test/recipes_screen_test.dart`: passed after adding coverage
   that applies a recipe's inventory uses through `InventoryController` and
   verifies the real inventory quantities are deducted.
@@ -266,7 +277,8 @@ Platform notification checklist for that gate:
   `flutter_bootstrap.js`, `flutter.js`, `main.dart.js`, and `sqflite_sw.js`.
   Passed again after removing the user-facing Settings self-check controls.
   Passed again after adding no-cache policy for Flutter's generated
-  `flutter_service_worker.js`.
+  `flutter_service_worker.js`. Passed again before the browser WebDAV smoke
+  that verified password cleanup, retry feedback, and upload.
 - `flutter build macos --debug`: passed after the user completed the local
   Xcode installation and license flow. The build produced
   `build/macos/Build/Products/Debug/vibe-fridge.app`; Flutter also generated
@@ -1193,6 +1205,11 @@ Platform notification checklist for that gate:
   connection testing, backup upload, latest-backup restore confirmation, and
   user-facing copy that warns Web users when the cloud service needs to allow
   browser access.
+- Fixed two WebDAV Settings issues found during browser smoke testing: after
+  saving a WebDAV password, the password field is now rebuilt so Flutter Web no
+  longer keeps the secret in the active text-editing DOM value; WebDAV actions
+  also clear stale snackbars before running so a previous authentication error
+  does not remain visible after a successful retry or upload.
 
 ## Remaining Risks
 

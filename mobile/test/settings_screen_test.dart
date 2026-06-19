@@ -251,6 +251,10 @@ void main() {
     expect(find.text('本机安全保存'), findsWidgets);
     expect(find.text('secret'), findsNothing);
     expect(passwordField.controller?.text, isEmpty);
+    expect(
+      FocusManager.instance.primaryFocus?.context?.widget,
+      isNot(isA<EditableText>()),
+    );
     expect(loaded.serverUrl, 'https://dav.example.com/dav');
     expect(loaded.remoteDirectory, 'fridge/backups');
     expect(loaded.username, 'alice');
@@ -323,6 +327,79 @@ void main() {
     expect(webDavService.lastBackupJson, contains('"items"'));
     expect(find.text('备份已上传到 WebDAV'), findsOneWidget);
     expect(find.textContaining('最近上传：vibe-fridge-backup-'), findsOneWidget);
+  });
+
+  testWidgets('settings clears stale WebDAV error after successful retry',
+      (tester) async {
+    tester.view.physicalSize = const Size(430, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final webDavService = _FakeWebDavBackupService(
+      validateErrors: [
+        const WebDavBackupException(
+          'wrong password',
+          type: WebDavBackupErrorType.authentication,
+        ),
+      ],
+    );
+    final controller = InventoryController(
+      InventoryRepository(appDatabase),
+      notificationService: _FakeNotificationService(
+        testResult: const LocalNotificationTestResult(
+          permission: LocalNotificationPermissionSnapshot(
+            supported: true,
+            granted: true,
+            status: 'granted',
+          ),
+          sent: true,
+        ),
+      ),
+    );
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: SettingsScreen(
+            controller: controller,
+            vlmSettingsStore: VlmSettingsStore(
+              secretStore: _MemorySecretStore(),
+            ),
+            webDavBackupSettingsStore: WebDavBackupSettingsStore(
+              secretStore: _MemorySecretStore(),
+            ),
+            webDavBackupService: webDavService,
+          ),
+        ),
+      ),
+    );
+
+    final serverUrlField = _textFieldWithLabel('WebDAV 服务地址');
+    await _pumpUntilFound(
+      tester,
+      serverUrlField,
+      timeout: const Duration(seconds: 5),
+    );
+    await tester.enterText(serverUrlField, 'https://dav.example.com/dav');
+    await tester.enterText(_textFieldWithLabel('用户名'), 'alice');
+    await tester.enterText(_textFieldWithLabel('密码或应用密码'), 'wrong');
+
+    final testButton = find.widgetWithText(OutlinedButton, '测试连接');
+    await tester.ensureVisible(testButton);
+    await tester.tap(testButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('WebDAV 鉴权失败：请检查用户名和密码'), findsWidgets);
+
+    await tester.tap(testButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('WebDAV 连接可用'), findsOneWidget);
+    expect(find.text('WebDAV 鉴权失败：请检查用户名和密码'), findsNothing);
+    expect(webDavService.validateCalls, 2);
   });
 
   testWidgets('settings restores latest WebDAV backup after confirmation',
@@ -874,6 +951,7 @@ class _FakeBackupController extends InventoryController {
 class _FakeWebDavBackupService extends WebDavBackupService {
   _FakeWebDavBackupService({
     WebDavBackupDownloadResult? downloadResult,
+    List<Object> validateErrors = const [],
   }) : downloadResult = downloadResult ??
             WebDavBackupDownloadResult(
               fileName: 'vibe-fridge-backup-20260619-120000.json',
@@ -881,9 +959,11 @@ class _FakeWebDavBackupService extends WebDavBackupService {
                 'https://dav.example.com/dav/fridge/backups/vibe-fridge-backup-20260619-120000.json',
               ),
               backupJson: '{"metadata":{"format":"vibe-fridge"},"data":{}}',
-            );
+            ),
+        validateErrors = List<Object>.of(validateErrors);
 
   final WebDavBackupDownloadResult downloadResult;
+  final List<Object> validateErrors;
   int validateCalls = 0;
   int uploadCalls = 0;
   int downloadCalls = 0;
@@ -893,6 +973,9 @@ class _FakeWebDavBackupService extends WebDavBackupService {
   @override
   Future<void> validateConfiguration(WebDavBackupSettings settings) async {
     validateCalls += 1;
+    if (validateErrors.isNotEmpty) {
+      throw validateErrors.removeAt(0);
+    }
   }
 
   @override
