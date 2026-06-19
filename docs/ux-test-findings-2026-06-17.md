@@ -45,10 +45,10 @@ Not proven yet:
   handoff tests are covered, but real device/desktop notification permission,
   delivery, and user-click behavior still need runtime validation on the target
   platforms.
-- Web update experience on an existing origin. Fresh origins load the current
-  build and the current service worker unregisters itself, but older browser
-  cache or prior registration state can still mask a rebuilt app during manual
-  validation.
+- Web update experience on an existing origin. The custom bootstrap no longer
+  registers Flutter's service worker and clears stale registrations when the
+  current index loads, but an old service worker or browser cache can still
+  mask the first request for the new index during manual validation.
 
 Recommended next beta gate:
 
@@ -101,6 +101,9 @@ Platform notification checklist for that gate:
 - `flutter test test/local_notification_service_test.dart`: passed after the
   Android reminder scheduler refactor, notification tap controller handoff
   coverage, and notification permission-to-sync controller coverage, 9 tests.
+- `flutter test test/web_bootstrap_test.dart`: passed after adding the custom
+  Web bootstrap guard that clears stale service workers without registering a
+  replacement Flutter service worker.
 - `flutter build web --debug --no-wasm-dry-run`: passed after the latest beta
   fixes including Web route cleanup, direct Web detail URL hash cleanup,
   startup error copy coverage, the edit-page Material fix, and no-date order
@@ -109,7 +112,9 @@ Platform notification checklist for that gate:
   latest Settings smoke check, and again as a final current-worktree Web build
   gate after the browser-history route fix. Passed again after pushing the
   beta notification and routing validation commit, then served on port 54390
-  for post-push smoke testing.
+  for post-push smoke testing. Passed again after adding the custom Web
+  bootstrap; generated `flutter_bootstrap.js` now calls `_flutter.loader.load()`
+  without `serviceWorkerSettings` and contains the stale-registration cleanup.
 - `flutter build macos --debug`: passed after the user completed the local
   Xcode installation and license flow. The build produced
   `build/macos/Build/Products/Debug/vibe-fridge.app`; Flutter also generated
@@ -150,6 +155,11 @@ Platform notification checklist for that gate:
   `密钥状态` / `本机安全保存` / `本机安全区域`.
 - Web build output now includes the native HTML loading screen used to cover
   Flutter Web's cold-start font fallback window.
+- Web bootstrap output now omits Flutter service-worker registration settings
+  and unregisters stale same-origin service workers before loading the app. A
+  same-origin Settings smoke check on port 54390 loaded successfully with no
+  active controller, no registrations, hidden loading screen, and no browser
+  warnings or errors in this environment.
 - App self-check from Settings: passed, 15/15; passed again on the restarted
   latest Web target on port 54390 in about 354ms.
 - Fresh Web smoke check on a new local port: no new console warnings or errors
@@ -272,9 +282,9 @@ Platform notification checklist for that gate:
   browser warning or error logs for the fresh origin. A same-port reload on
   port 54371 still showed older self-check copy after rebuilding, indicating
   older same-origin cache or previous registration state can keep stale Web
-  assets during validation. The current Web build emits an unregistering
-  `flutter_service_worker.js`, so fresh origins should not retain a Flutter
-  service worker.
+  assets during validation. The Web bootstrap now avoids registering a
+  replacement Flutter service worker and clears stale registrations once the
+  current index is loaded.
 - Desktop and mobile Web Settings regression smoke check on fresh port 54384:
   opened Settings on the current build, verified backup/notification copy,
   scrolled to recipe preferences and app self-check, ran self-check, and saw
@@ -852,6 +862,9 @@ Platform notification checklist for that gate:
 - Extended the Web loading screen's first-frame delay after desktop direct-route
   testing showed CanvasKit could briefly expose square Chinese glyphs before
   fonts settled.
+- Added a custom Web bootstrap that omits Flutter service-worker registration,
+  unregisters stale same-origin service workers, and reloads once when the
+  current page is still controlled by an old worker.
 - Replaced Web/PWA template metadata so browser tabs and installed app surfaces
   show `vibe-fridge`, the app's actual inventory purpose, and product colors.
 - Reworded macOS camera and photo permission prompts to match the app's Chinese
@@ -910,14 +923,14 @@ Platform notification checklist for that gate:
   machine with Android SDK configured.
 - macOS app build and launch are now proven locally, but macOS notification
   permission, due reminder delivery, and notification-click routing still need
-  targeted desktop runtime validation. The native scheduling payload builder
+  targeted desktop runtime validation. The native scheduling payload builder,
   permission-status mapper, and tap payload handoff are now covered by
   RunnerTests, but system notification behavior is not fully replaceable with
   unit tests.
 - Web app updates can still be masked by older same-origin browser cache or
   previously registered service-worker state. During Settings retesting, port
   54371 still showed older self-check wording after a rebuild, while fresh port
-  54372 loaded the current build; the current Flutter build emits an
-  unregistering `flutter_service_worker.js`, but release validation should
-  still use a fresh origin or cache clear until the Web update experience is
-  designed explicitly.
+  54372 loaded the current build. The custom bootstrap now avoids registering a
+  replacement Flutter service worker and clears stale registrations once the
+  current index is loaded, but release validation should still use a fresh
+  origin or cache clear until the Web update experience is designed explicitly.
