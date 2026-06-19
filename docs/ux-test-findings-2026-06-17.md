@@ -216,7 +216,8 @@ Platform notification checklist for that gate:
   Passed again after adding the debug-only running-app notification status
   extension, still with 107 tests. Passed again on 2026-06-20 on the current
   worktree with 109 tests after the WebDAV, debug smoke payload, and platform
-  validation record work.
+  validation record work. Passed again on 2026-06-20 after the macOS
+  notification smoke recheck, with 109 tests and `All tests passed!`.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
@@ -255,7 +256,9 @@ Platform notification checklist for that gate:
   with no issues. Passed again on the current worktree on 2026-06-19 after
   allowing the pub.dev advisories network check. Passed again after adding the
   debug-only running-app notification status extension. Passed again on
-  2026-06-20 on the current worktree with `No issues found!`.
+  2026-06-20 on the current worktree with `No issues found!`. Passed again on
+  2026-06-20 after the macOS notification smoke recheck with
+  `No issues found! (ran in 1.5s)`.
 - `flutter test test/local_notification_service_test.dart`: passed after the
   Android reminder scheduler refactor, notification tap controller handoff
   coverage, notification permission-to-sync controller coverage, and Settings
