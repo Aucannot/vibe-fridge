@@ -99,7 +99,8 @@ Platform notification checklist for that gate:
   extending app self-check backup coverage, 64 tests. Passed again after adding
   the Settings test-notification action and channel coverage, 67 tests. Passed
   again after adding Settings widget coverage for the test-notification action,
-  68 tests.
+  68 tests. Passed again after adding Web entry cache-busting coverage and
+  hardening loading-screen hiding, 69 tests.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
