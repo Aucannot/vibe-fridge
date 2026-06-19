@@ -117,8 +117,9 @@ Platform notification checklist for that gate:
   browser-history fix, notification channel coverage, the edit-page Material
   fix, and no-date order duplicate handling; passed again during final route
   code review, after the final Settings copy cleanup, and after adding the
-  notification tap and permission-to-sync controller tests, and after the macOS
-  native notification request builder extraction, with no issues.
+  notification tap and permission-to-sync controller tests, after the macOS
+  native notification request builder extraction, and after the Web entry cache
+  and loading-screen fixes, with no issues.
 - `flutter test test/local_notification_service_test.dart`: passed after the
   Android reminder scheduler refactor, notification tap controller handoff
   coverage, notification permission-to-sync controller coverage, and Settings
@@ -160,7 +161,8 @@ Platform notification checklist for that gate:
   Swift Package Manager integration for the macOS project and warned that
   `flutter_secure_storage_macos` still uses CocoaPods. Passed again after
   extracting and testing the macOS notification request builder and permission
-  status mapper, and again after adding the native tap payload handoff helper.
+  status mapper, again after adding the native tap payload handoff helper, and
+  again after the Web entry cache and loading-screen fixes.
 - `xcodebuild test -workspace Runner.xcworkspace -scheme Runner -configuration
   Debug -destination 'platform=macOS' -derivedDataPath
   /private/tmp/vibe-fridge-xcode-derived-tap -clonedSourcePackagesDirPath
