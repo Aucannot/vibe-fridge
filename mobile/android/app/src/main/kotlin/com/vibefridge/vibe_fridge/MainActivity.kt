@@ -21,7 +21,7 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         ensureNotificationChannel()
-        launchItemId = intent?.getStringExtra(LocalNotificationContract.extraItemId)
+        launchItemId = normalizedNotificationItemId(intent)
         notificationChannel = MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             LocalNotificationContract.channelName,
@@ -57,14 +57,21 @@ class MainActivity : FlutterActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        val itemId = intent.getStringExtra(LocalNotificationContract.extraItemId)
-        if (!itemId.isNullOrEmpty()) {
+        val itemId = normalizedNotificationItemId(intent)
+        if (itemId != null) {
             launchItemId = itemId
             notificationChannel?.invokeMethod(
                 "notificationTapped",
                 mapOf("itemId" to itemId),
             )
         }
+    }
+
+    private fun normalizedNotificationItemId(intent: Intent?): String? {
+        return intent
+            ?.getStringExtra(LocalNotificationContract.extraItemId)
+            ?.trim()
+            ?.takeIf { itemId -> itemId.isNotEmpty() }
     }
 
     override fun onRequestPermissionsResult(

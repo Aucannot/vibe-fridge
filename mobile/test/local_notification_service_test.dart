@@ -222,6 +222,10 @@ void main() {
     );
     await _sendPlatformCall(
       channel,
+      const MethodCall('notificationTapped', {'itemId': '   '}),
+    );
+    await _sendPlatformCall(
+      channel,
       const MethodCall('notificationTapped', {'itemId': 42}),
     );
     await _sendPlatformCall(
@@ -244,7 +248,7 @@ void main() {
 
   test('get launch item id returns only non-empty platform targets', () async {
     final service = LocalNotificationService(channel: channel);
-    final returnedItemIds = <String?>['item-123', '', null];
+    final returnedItemIds = <String?>[' item-123 ', '   ', '', null];
     final calls = <String>[];
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
@@ -255,7 +259,9 @@ void main() {
     expect(await service.getLaunchItemId(), 'item-123');
     expect(await service.getLaunchItemId(), isNull);
     expect(await service.getLaunchItemId(), isNull);
+    expect(await service.getLaunchItemId(), isNull);
     expect(calls, [
+      'getLaunchItemId',
       'getLaunchItemId',
       'getLaunchItemId',
       'getLaunchItemId',

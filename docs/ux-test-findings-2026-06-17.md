@@ -194,7 +194,9 @@ Platform notification checklist for that gate:
   tests. Passed again after adding coverage that a native scheduling
   `PlatformException` reports `同步失败，请稍后重试` instead of a successful sync,
   15 tests. Passed again after adding coverage that launch notification targets
-  return only non-empty platform item ids, 17 tests.
+  return only non-empty platform item ids, 17 tests. Passed again after
+  normalizing notification tap and launch-target item ids by trimming
+  surrounding whitespace and ignoring blank payloads, 17 tests.
 - `flutter test test/settings_screen_test.dart`: passed after adding widget
   coverage that renders the Settings test-notification action and verifies the
   button calls the notification service path. Historical coverage previously
@@ -239,7 +241,9 @@ Platform notification checklist for that gate:
   adding source-level coverage that Android skips blank reminder item ids and
   non-positive scheduled times before scheduling or showing a notification.
   Passed again after adding scheduled-receiver permission-revocation guards and
-  `SecurityException` handling, 3 tests.
+  `SecurityException` handling, 3 tests. Passed again after covering Android
+  launch intent target normalization before forwarding taps to Flutter, 3
+  tests.
 - `flutter test test/macos_notification_wiring_test.dart`: passed after adding
   macOS source-level checks for method-channel names, native bridge methods,
   notification payload parsing, delegate presentation behavior, and system tap
@@ -248,6 +252,8 @@ Platform notification checklist for that gate:
   verifying scheduled inventory reminders use the native content and trigger
   helpers. Passed again after updating the macOS bridge contract coverage for
   asynchronous native scheduling completion and `schedule_failed` propagation.
+  Passed again after covering macOS bridge item-id trimming before invoking
+  Flutter.
 - `flutter test test/web_bootstrap_test.dart`: passed after adding the custom
   Web bootstrap guard that clears stale service workers without registering a
   replacement Flutter service worker; passed again after extending the guard to
@@ -351,7 +357,9 @@ Platform notification checklist for that gate:
   launch-target cleanup, trigger timing, and permission-status channel mapping.
   Passed again after adding real `UNUserNotificationCenter` status coverage,
   with 13 passed RunnerTests and 1 skipped pending-request smoke because the
-  current test host is not authorized for notifications.
+  current test host is not authorized for notifications. Passed again after
+  adding native tap-handler coverage for whitespace-trimmed and blank
+  launch-target ids, again with 13 passed and 1 skipped.
 - `flutter run -d macos`: launched the current debug macOS target on
   2026-06-19, built `vibe-fridge.app`, started the app process, and exposed a
   Dart VM Service. The shell still reported `Failed to foreground app; open
@@ -1062,6 +1070,10 @@ Platform notification checklist for that gate:
   the broadcast receiver and catches `SecurityException` before posting, so a
   reminder firing after the user revokes notification permission should be
   skipped instead of crashing the receiver.
+- Notification tap and launch-target item ids are now normalized across Dart,
+  Android, and macOS bridges. Blank or whitespace-only platform payloads are
+  ignored, and item ids with accidental surrounding whitespace are trimmed
+  before routing to inventory detail.
 - Bootstrap error page tests now verify startup diagnostics remain copyable
   without exposing technical details on screen by default.
 - AI recipe fallback tests now verify service failures still return rule-based

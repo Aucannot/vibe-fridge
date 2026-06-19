@@ -223,7 +223,7 @@ enum MacLocalNotificationTapHandler {
     userDefaults: UserDefaults = .standard,
     notificationCenter: NotificationCenter = .default
   ) -> String? {
-    guard let itemId = userInfo["itemId"] as? String, !itemId.isEmpty else {
+    guard let itemId = normalizedItemId(userInfo["itemId"]) else {
       return nil
     }
 
@@ -241,9 +241,14 @@ enum MacLocalNotificationTapHandler {
   ) -> String? {
     let itemId = userDefaults.string(forKey: launchItemIdKey)
     userDefaults.removeObject(forKey: launchItemIdKey)
-    guard let itemId, !itemId.isEmpty else {
+    return normalizedItemId(itemId)
+  }
+
+  private static func normalizedItemId(_ rawItemId: Any?) -> String? {
+    guard let itemId = rawItemId as? String else {
       return nil
     }
-    return itemId
+    let normalized = itemId.trimmingCharacters(in: .whitespacesAndNewlines)
+    return normalized.isEmpty ? nil : normalized
   }
 }

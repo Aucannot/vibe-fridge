@@ -165,7 +165,16 @@ final class MacLocalNotificationBridge {
     guard let itemId = notification.userInfo?["itemId"] as? String else {
       return
     }
-    channel.invokeMethod("notificationTapped", arguments: ["itemId": itemId])
+    let normalizedItemId = itemId.trimmingCharacters(
+      in: .whitespacesAndNewlines
+    )
+    guard !normalizedItemId.isEmpty else {
+      return
+    }
+    channel.invokeMethod(
+      "notificationTapped",
+      arguments: ["itemId": normalizedItemId]
+    )
   }
 
 }

@@ -312,7 +312,7 @@ class RunnerTests: XCTestCase {
     }
 
     let itemId = MacLocalNotificationTapHandler.handleTap(
-      userInfo: ["itemId": "item-milk-1"],
+      userInfo: ["itemId": " item-milk-1 "],
       userDefaults: defaults,
       notificationCenter: center
     )
@@ -361,6 +361,13 @@ class RunnerTests: XCTestCase {
     )
     XCTAssertNil(
       MacLocalNotificationTapHandler.handleTap(
+        userInfo: ["itemId": "   "],
+        userDefaults: defaults,
+        notificationCenter: center
+      )
+    )
+    XCTAssertNil(
+      MacLocalNotificationTapHandler.handleTap(
         userInfo: ["itemId": 42],
         userDefaults: defaults,
         notificationCenter: center
@@ -380,7 +387,7 @@ class RunnerTests: XCTestCase {
     }
 
     defaults.set(
-      "",
+      "   ",
       forKey: MacLocalNotificationTapHandler.launchItemIdKey
     )
 
@@ -391,6 +398,18 @@ class RunnerTests: XCTestCase {
     )
     XCTAssertNil(
       defaults.string(forKey: MacLocalNotificationTapHandler.launchItemIdKey)
+    )
+
+    defaults.set(
+      " item-milk-1 ",
+      forKey: MacLocalNotificationTapHandler.launchItemIdKey
+    )
+
+    XCTAssertEqual(
+      MacLocalNotificationTapHandler.consumeLaunchItemId(
+        userDefaults: defaults
+      ),
+      "item-milk-1"
     )
   }
 

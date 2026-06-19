@@ -69,7 +69,8 @@ void main() {
       "'cancelAll'",
       "'notificationTapped'",
       "'notifications'",
-      "arguments['itemId'] as String?",
+      '_normalizeItemId(',
+      "arguments is Map ? arguments['itemId'] : null",
     ]);
     _expectAllContains(contract, [
       'const val channelName = "vibe_fridge/local_notifications"',
@@ -91,7 +92,10 @@ void main() {
       '"sendTestNotification" -> sendTestNotification(result)',
       '"cancelAll" -> {',
       'LocalReminderScheduler.cancelScheduledReminders(this)',
-      'intent.getStringExtra(LocalNotificationContract.extraItemId)',
+      'normalizedNotificationItemId(intent)',
+      '?.getStringExtra(LocalNotificationContract.extraItemId)',
+      '?.trim()',
+      '?.takeIf { itemId -> itemId.isNotEmpty() }',
       '"notificationTapped"',
       'mapOf("itemId" to itemId)',
       'Manifest.permission.POST_NOTIFICATIONS',

@@ -27,8 +27,10 @@ class LocalNotificationService {
         return null;
       }
       final arguments = call.arguments;
-      final itemId = arguments is Map ? arguments['itemId'] as String? : null;
-      if (itemId != null && itemId.isNotEmpty) {
+      final itemId = _normalizeItemId(
+        arguments is Map ? arguments['itemId'] : null,
+      );
+      if (itemId != null) {
         _onNotificationTap?.call(itemId);
       }
       return null;
@@ -93,7 +95,7 @@ class LocalNotificationService {
     }
     try {
       final itemId = await _channel.invokeMethod<String>('getLaunchItemId');
-      return itemId == null || itemId.isEmpty ? null : itemId;
+      return _normalizeItemId(itemId);
     } on MissingPluginException {
       return null;
     } on PlatformException {
@@ -165,6 +167,14 @@ class LocalNotificationService {
         status: error.code,
       );
     }
+  }
+
+  String? _normalizeItemId(Object? rawItemId) {
+    if (rawItemId is! String) {
+      return null;
+    }
+    final itemId = rawItemId.trim();
+    return itemId.isEmpty ? null : itemId;
   }
 }
 

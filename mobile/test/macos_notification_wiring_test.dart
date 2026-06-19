@@ -21,7 +21,8 @@ void main() {
       "'cancelAll'",
       "'notificationTapped'",
       "'notifications'",
-      "arguments['itemId'] as String?",
+      '_normalizeItemId(',
+      "arguments is Map ? arguments['itemId'] : null",
     ]);
     _expectAllContains(mainWindow, [
       'FlutterMethodChannel(',
@@ -43,7 +44,9 @@ void main() {
       'MacDiagnosticNotificationRequestFactory.request()',
       'diagnostic.content()',
       'diagnostic.trigger()',
-      'channel.invokeMethod("notificationTapped", arguments: ["itemId": itemId])',
+      'let normalizedItemId = itemId.trimmingCharacters(',
+      'guard !normalizedItemId.isEmpty else',
+      'arguments: ["itemId": normalizedItemId]',
     ]);
     _expectAllContains(requestFactory, [
       'payload["notifications"] as? [[String: Any]]',
@@ -90,12 +93,15 @@ void main() {
     ]);
     _expectAllContains(requestSupport, [
       'static let launchItemIdKey = "notification_item_id"',
+      'normalizedItemId(userInfo["itemId"])',
       'userDefaults.set(itemId, forKey: launchItemIdKey)',
       'notificationCenter.post(',
       'name: .vibeFridgeNotificationTapped',
       'userInfo: ["itemId": itemId]',
       'consumeLaunchItemId(',
       'userDefaults.removeObject(forKey: launchItemIdKey)',
+      'trimmingCharacters(in: .whitespacesAndNewlines)',
+      'normalized.isEmpty ? nil : normalized',
     ]);
   });
 }
