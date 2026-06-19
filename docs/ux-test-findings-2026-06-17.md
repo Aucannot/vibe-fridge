@@ -763,6 +763,16 @@ Platform notification checklist for that gate:
   correcting quantity to `2`, saving succeeded, the catalog showed the new
   item with quantity `2`, and the temporary inventory/profile were cleaned up
   through the UI with no browser warning or error logs.
+- Mobile Web manual-add round-trip smoke check on port 54412 against the
+  current build/web on 2026-06-20: opened Add in a 390 px mobile viewport,
+  entered `beta-smoke-0620b` with quantity `1` and unit `盒`, saved the item,
+  verified the catalog showed the new profile with `1` active batch, opened
+  the item-profile detail, verified the facts and batch row, deleted the batch
+  through `批量` / `全选` / `批量删除库存`, verified `使用中批次 0` and
+  `暂无库存`, then deleted the empty profile and confirmed searching
+  `beta-smoke` showed `没有匹配物品`. The same pass also cleaned up the prior
+  leftover `beta-smoke-0620` test profile through the same user-visible delete
+  path. No browser warning or error logs appeared.
 - Mobile Web inventory-detail quantity smoke check on port 54336: opened the
   Home priority row for `鲜牛奶`, reached `?route=items%2Fitem%2Fitem-milk-1`,
   increased quantity from `2 盒` to `3 盒`, verified the fact row updated, then
