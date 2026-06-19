@@ -264,6 +264,13 @@ Platform notification checklist for that gate:
   showed `已从 WebDAV 恢复：...`, then verified the configuration still worked
   by running a successful connection test. The smoke endpoint recorded PUT,
   Depth 1 PROPFIND, GET download, and the post-restore Depth 0 PROPFIND.
+- Browser WebDAV clear-configuration smoke on
+  `http://127.0.0.1:54395/?route=settings`: passed after saving a WebDAV
+  configuration with a password. The clear action showed a confirmation dialog
+  explaining that the service address, account, and saved password would be
+  removed; after confirming, Settings returned to `云端备份 未配置`, removed the
+  saved-password status row, cleared all WebDAV input values, and showed
+  `WebDAV 配置已清空`.
 - `flutter test test/recipes_screen_test.dart`: passed after adding coverage
   that applies a recipe's inventory uses through `InventoryController` and
   verifies the real inventory quantities are deducted.
