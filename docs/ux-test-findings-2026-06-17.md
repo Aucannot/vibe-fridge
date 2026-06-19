@@ -112,6 +112,7 @@ Platform notification checklist for that gate:
   persistence and adding clear-confirmation coverage, 76 tests. Passed again
   after adding recipe-preference store and Settings save coverage, 80 tests.
   Passed again after adding Settings demo-data reset confirmation coverage, 81
+  tests. Passed again after adding order-import review widget coverage, 82
   tests.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
@@ -138,7 +139,7 @@ Platform notification checklist for that gate:
   adding Settings order-recognition key privacy coverage, and after fixing
   order-recognition clear persistence, and after adding recipe-preference
   coverage, and after adding Settings demo-data reset confirmation coverage,
-  with no issues.
+  and after adding order-import review widget coverage, with no issues.
 - `flutter test test/local_notification_service_test.dart`: passed after the
   Android reminder scheduler refactor, notification tap controller handoff
   coverage, notification permission-to-sync controller coverage, and Settings
@@ -156,6 +157,10 @@ Platform notification checklist for that gate:
   inputs and reloading the normalized values into the fields. Passed again
   after adding widget coverage that confirms demo-data reset cancellation does
   not run the reset and confirmation reports the cleared-row count.
+- `flutter test test/order_import_review_screen_test.dart`: passed after
+  adding widget coverage that low-confidence rows remain excluded until marked
+  confirmed, the primary import count updates, the batch-confirmation copy is
+  shown, and the controller receives the confirmed items.
 - `flutter test test/recipe_preferences_store_test.dart`: passed after adding
   coverage for default first-run preferences, trimmed text persistence, bounded
   time/serving values, and damaged persisted numeric values.
@@ -900,6 +905,9 @@ Platform notification checklist for that gate:
 - Order-text review supports editing recognized quantities, filling missing
   units, excluding selected rows such as gifts, and confirming low-confidence
   items before batch import.
+- Order-import review now has widget coverage for low-confidence confirmation,
+  primary import-count updates, batch confirmation copy, and the final
+  controller handoff for confirmed items.
 - Pasted order-text parsing now ignores standalone order/reference id lines so
   users do not have to manually exclude an obvious non-inventory row.
 - Order-recognition parser tests now cover standalone reference lines in
