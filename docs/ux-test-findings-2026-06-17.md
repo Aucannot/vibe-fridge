@@ -331,7 +331,10 @@ Platform notification checklist for that gate:
   `flutter_service_worker.js`. Passed again before the browser WebDAV smoke
   that verified password cleanup, retry feedback, and upload. Passed again on
   the current worktree on 2026-06-19 after allowing the pub.dev advisories
-  network check.
+  network check. Passed again after adding the user-facing copy guard; the
+  generated `build/web/_headers` still contains no-cache/no-store policy for
+  entry scripts and service-worker files, and the generated Web entry still
+  uses a cache-busted bootstrap request plus stale service-worker/cache cleanup.
 - `flutter build macos --debug`: passed after the user completed the local
   Xcode installation and license flow. The build produced
   `build/macos/Build/Products/Debug/vibe-fridge.app`; Flutter also generated
