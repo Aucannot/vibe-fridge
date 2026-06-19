@@ -48,13 +48,17 @@ verification that is still not fully proven on this machine:
   Flutter Android artifacts successfully after network approval, then stopped
   with `No Android SDK found`, so Android local notification permission,
   scheduling, and tap-through behavior still need Android SDK/device
-  verification.
+  verification. A 2026-06-19 recheck with `flutter devices` still detected only
+  macOS, and `flutter doctor -v` still reported that no Android SDK could be
+  located.
 - macOS Xcode/CocoaPods setup is no longer the blocking item. On 2026-06-19,
   `flutter build macos --debug`, `flutter run -d macos`,
   `xcodebuild -checkFirstLaunchStatus`, and native RunnerTests passed locally.
-  macOS system notification permission, delivered reminder visibility, and
-  notification-click routing still need targeted runtime validation after the
-  test host/app is authorized for notifications.
+  A running-app VM Service smoke now also proves the live Flutter method
+  channel can read macOS notification permission state from the native bridge.
+  macOS system notification permission approval, delivered reminder visibility,
+  and notification-click routing still need targeted runtime validation after
+  the test host/app is authorized for notifications.
 
 `flutter doctor -v` was rechecked on 2026-06-19 with the bundled Flutter SDK.
 Android SDK is still absent, Chrome is not installed at Flutter's default path,

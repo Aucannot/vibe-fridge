@@ -53,6 +53,16 @@ registered as `UNUserNotificationCenter.current().delegate`, so notification
 responses have an app-side entry point before manual delivered-notification
 validation.
 
+Running-app macOS update on 2026-06-19: a debug-only VM Service extension now
+queries the real `LocalNotificationService.getPermissionStatus()` path from
+inside the launched macOS Flutter app. A fresh `flutter run -d macos` launch
+then returned `supported: true`, `granted: false`, `status: unknown`, and
+`displayText: 未确认` from the extension. This proves the running app's Flutter
+method channel can reach the native macOS notification bridge and read system
+permission state. It still does not prove permission approval, delivered
+notification visibility, or notification-click routing because this machine has
+not authorized notifications for the app.
+
 ## Beta Readiness
 
 Verdict: ready for continued Web beta testing of the core inventory workflow,
@@ -164,6 +174,8 @@ Platform notification checklist for that gate:
   sandboxed first attempt was blocked by the pub.dev advisories DNS check and
   the same command passed after network access was allowed. Passed again after
   adding the source-level user-facing copy guard, now with 107 tests.
+  Passed again after adding the debug-only running-app notification status
+  extension, still with 107 tests.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
@@ -200,7 +212,8 @@ Platform notification checklist for that gate:
   handoff coverage, and after adding macOS inventory-reminder content/trigger
   wiring coverage, and after fixing macOS order-recognition secure key storage,
   with no issues. Passed again on the current worktree on 2026-06-19 after
-  allowing the pub.dev advisories network check.
+  allowing the pub.dev advisories network check. Passed again after adding the
+  debug-only running-app notification status extension.
 - `flutter test test/local_notification_service_test.dart`: passed after the
   Android reminder scheduler refactor, notification tap controller handoff
   coverage, notification permission-to-sync controller coverage, and Settings
@@ -395,7 +408,13 @@ Platform notification checklist for that gate:
   Dart VM Service. The shell still reported `Failed to foreground app; open
   returned 1`, so this remains a launch smoke rather than a manual UI or
   delivered-notification validation. The run session was then terminated and
-  the app exited with `Application finished.`
+  the app exited with `Application finished.` Passed again after adding the
+  debug-only notification-status VM Service extension; calling
+  `ext.vibe_fridge.notificationStatus` against the running app returned
+  `supported: true`, `granted: false`, `status: unknown`, and
+  `displayText: 未确认`, proving the live Flutter-to-macOS notification
+  permission channel is wired while confirming system notification permission
+  remains unapproved on this machine.
 - `flutter build macos --debug`: passed again after removing the invalid
   AppDelegate `super.applicationDidFinishLaunching(notification)` call and
   produced `build/macos/Build/Products/Debug/vibe-fridge.app`.
@@ -1324,22 +1343,28 @@ Platform notification checklist for that gate:
   `UNUserNotificationCenter.current().delegate` is the app delegate, proving
   system notification responses have a registered app-side entry point before
   manual delivery and click validation.
+- Added a debug-only VM Service extension for beta smoke testing of the running
+  macOS app's notification permission channel. It is not visible in the UI and
+  is not release behavior, but it lets local validation prove the live Flutter
+  app can reach the native notification bridge.
 
 ## Remaining Risks
 
 - Android local notification behavior still needs runtime validation on a
-  machine with Android SDK configured. Android source-level
-  manifest/channel/payload wiring and the immediate test-notification channel
-  are now covered by tests, but scheduled reminder delivery, permission prompts,
-  and notification-click routing still need a device or emulator.
+  machine with Android SDK configured. A current `flutter devices` check still
+  detects only macOS, and `flutter doctor -v` still reports no Android SDK.
+  Android source-level manifest/channel/payload wiring and the immediate
+  test-notification channel are now covered by tests, but scheduled reminder
+  delivery, permission prompts, and notification-click routing still need a
+  device or emulator.
 - macOS app build and repaired launch are now proven locally, but macOS
   notification permission, due reminder delivery, and notification-click routing
   still need targeted desktop runtime validation. The native bridge/delegate
-  source wiring, runtime delegate registration, immediate test-notification
-  channel, scheduling payload builder, async scheduling completion/error
-  handling, permission-status mapper, and tap payload handoff are now covered
-  by tests, but system notification behavior is not fully replaceable with unit
-  tests.
+  source wiring, runtime delegate registration, live running-app permission
+  status channel, immediate test-notification channel, scheduling payload
+  builder, async scheduling completion/error handling, permission-status mapper,
+  and tap payload handoff are now covered by tests or smoke hooks, but system
+  notification behavior is not fully replaceable with unit tests.
 - Web app updates can still be masked by older same-origin browser cache or
   previously registered service-worker state. During Settings retesting, port
   54371 still showed older self-check wording after a rebuild, while fresh port

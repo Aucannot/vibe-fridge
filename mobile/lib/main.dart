@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:developer' as developer;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -16,6 +19,7 @@ Future<void> main() async {
     final repository = InventoryRepository(database);
     final controller = InventoryController(repository);
     await controller.initialize();
+    registerDebugServiceExtensions(controller);
 
     runApp(VibeFridgeApp(controller: controller));
   } catch (error, stackTrace) {
@@ -26,6 +30,26 @@ Future<void> main() async {
       ),
     );
   }
+}
+
+@visibleForTesting
+void registerDebugServiceExtensions(InventoryController controller) {
+  if (!kDebugMode) {
+    return;
+  }
+  developer.registerExtension(
+    'ext.vibe_fridge.notificationStatus',
+    (method, parameters) async {
+      final permission =
+          await controller.notificationService.getPermissionStatus();
+      return developer.ServiceExtensionResponse.result(jsonEncode({
+        'supported': permission.supported,
+        'granted': permission.granted,
+        'status': permission.status,
+        'displayText': permission.displayText,
+      }));
+    },
+  );
 }
 
 class VibeFridgeApp extends StatelessWidget {
