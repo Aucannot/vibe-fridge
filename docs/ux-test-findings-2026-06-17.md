@@ -112,7 +112,8 @@ Platform notification checklist for that gate:
   again after adding backup round-trip coverage for inventory tags, reminder
   logs, and shopping-list data, 21 tests. Passed again after extending the
   Settings app self-check to verify backup content includes inventory, tags,
-  reminder logs, and shopping-list data, 21 tests.
+  reminder logs, and shopping-list data, 21 tests. Passed again after adding
+  recipe cooking deduction to app self-check, 21 tests.
 - `flutter analyze`: passed after the latest beta fixes including Web route
   cleanup, direct Web detail URL hash cleanup, the `MaterialApp.router`
   browser-history fix, notification channel coverage, the edit-page Material
@@ -159,7 +160,8 @@ Platform notification checklist for that gate:
   bootstrap; generated `flutter_bootstrap.js` now calls `_flutter.loader.load()`
   without `serviceWorkerSettings` and contains the stale-registration cleanup.
   Passed again after adding no-cache entry hints and a cache-busted bootstrap
-  request to `index.html`.
+  request to `index.html`. Passed again after adding recipe cooking deduction
+  to the app self-check.
 - `flutter build macos --debug`: passed after the user completed the local
   Xcode installation and license flow. The build produced
   `build/macos/Build/Products/Debug/vibe-fridge.app`; Flutter also generated
@@ -227,6 +229,8 @@ Platform notification checklist for that gate:
   latest Web target on port 54390 in about 354ms. After adding the backup
   content check and rebuilding Web, the current Settings self-check passed
   16/16 on port 54390 in about 372ms with no browser warning or error logs.
+  The repository-level self-check test now covers 17 checks including recipe
+  cooking inventory deduction.
 - Fresh Web smoke check on a new local port: no new console warnings or errors
   for the latest build.
 - Mobile Web cold-start visual smoke check on port 54331: the native loading
@@ -770,7 +774,8 @@ Platform notification checklist for that gate:
 - Running a recipe deduction updates priority consumable counts in the live
   mobile Web UI and returns to the recipe list with user feedback.
 - Settings self-check completed and cleaned up its temporary data, and the
-  current Web UI shows the 16/16 result plus readable per-check timings.
+  current Web UI shows readable per-check timings. Automated self-check
+  coverage now verifies 17 checks including recipe cooking deduction.
 - Settings recipe preferences save from the mobile Web UI and reload with the
   edited values still visible.
 - Settings order-recognition configuration saves from the mobile Web UI,

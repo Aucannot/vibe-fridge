@@ -183,6 +183,57 @@ class AcceptanceTestService {
       }
     });
 
+    await check('食谱扣减会更新库存数量', () async {
+      await repository.createItem(
+        name: '$testName-食谱鸡蛋',
+        quantity: 3,
+        unit: '个',
+        expiryDate: startedAt.add(const Duration(days: 1)),
+      );
+      await repository.createItem(
+        name: '$testName-食谱牛奶',
+        quantity: 2,
+        unit: '盒',
+        expiryDate: startedAt.add(const Duration(days: 1)),
+      );
+      await repository.createItem(
+        name: '$testName-食谱面包',
+        quantity: 2,
+        unit: '片',
+        expiryDate: startedAt.add(const Duration(days: 2)),
+      );
+
+      final activeItems = await repository.getActiveItems(limit: 100);
+      final recipeItems = activeItems
+          .where((item) => item.name.startsWith('$testName-食谱'))
+          .toList();
+      final suggestions = RecipeSuggestionService().generate(recipeItems);
+      final recipe = suggestions.firstWhere(
+        (suggestion) => suggestion.id == 'quick-breakfast',
+        orElse: () => throw StateError('没有生成可扣减的早餐食谱'),
+      );
+      final recipeUses = recipe.inventoryUses
+          .where((use) => use.item.name.startsWith('$testName-食谱'))
+          .toList();
+      if (recipeUses.length != 3) {
+        throw StateError('食谱没有使用预期的临时库存');
+      }
+
+      final beforeQuantities = <String, int>{
+        for (final use in recipeUses) use.item.id: use.item.quantity,
+      };
+      for (final use in recipeUses) {
+        await repository.updateItemQuantity(use.item.id, -use.quantity);
+      }
+      for (final use in recipeUses) {
+        final updated = await repository.getItem(use.item.id);
+        final expectedQuantity = beforeQuantities[use.item.id]! - use.quantity;
+        if (updated == null || updated.quantity != expectedQuantity) {
+          throw StateError('食谱扣减后库存数量不正确');
+        }
+      }
+    });
+
     await check('采购清单可添加并转为库存', () async {
       final categories = await repository.getCategories();
       final suggestionName = '$testName-建议';

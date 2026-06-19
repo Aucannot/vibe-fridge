@@ -321,8 +321,15 @@ void main() {
     final report =
         await AcceptanceTestService(repository).runCoreInventoryChecks();
 
-    expect(report.passed, isTrue);
-    expect(report.checks, hasLength(16));
+    expect(
+      report.passed,
+      isTrue,
+      reason: report.checks
+          .where((check) => !check.passed)
+          .map((check) => '${check.name}: ${check.message}')
+          .join('\n'),
+    );
+    expect(report.checks, hasLength(17));
     expect(
       (await repository.getRegisteredItems(keyword: '应用自检测试物品-')),
       isEmpty,
