@@ -13,7 +13,11 @@ class AcceptanceTestService {
 
   final InventoryRepository repository;
 
-  Future<AcceptanceReport> runCoreInventoryChecks() async {
+  Future<AcceptanceReport> runCoreInventoryChecks() {
+    return repository.preserveBackupReminderState(_runCoreInventoryChecks);
+  }
+
+  Future<AcceptanceReport> _runCoreInventoryChecks() async {
     final startedAt = DateTime.now();
     final checks = <AcceptanceCheckResult>[];
     final testName = '应用自检测试物品-${startedAt.microsecondsSinceEpoch}';

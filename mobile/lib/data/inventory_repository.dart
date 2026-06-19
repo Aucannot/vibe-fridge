@@ -2333,13 +2333,7 @@ class InventoryRepository {
   }
 
   Future<BackupReminderState> getBackupReminderState() async {
-    final metadata = await _getAppMetadata([
-      _metadataBackupReminderPending,
-      _metadataBackupReminderReason,
-      _metadataBackupDirtyCount,
-      _metadataBackupReminderUpdatedAt,
-      _metadataLastBackupExportedAt,
-    ]);
+    final metadata = await _getAppMetadata(_backupReminderMetadataKeys);
     final pending = metadata[_metadataBackupReminderPending] == '1';
     final dirtyCount =
         int.tryParse(metadata[_metadataBackupDirtyCount] ?? '0') ?? 0;
@@ -2354,6 +2348,27 @@ class InventoryRepository {
         metadata[_metadataLastBackupExportedAt],
       ),
     );
+  }
+
+  Future<T> preserveBackupReminderState<T>(
+    Future<T> Function() action,
+  ) async {
+    final snapshot = await _getAppMetadata(_backupReminderMetadataKeys);
+    try {
+      return await action();
+    } finally {
+      await _setAppMetadata({
+        _metadataBackupReminderPending:
+            snapshot[_metadataBackupReminderPending] ?? '0',
+        _metadataBackupReminderReason:
+            snapshot[_metadataBackupReminderReason] ?? '',
+        _metadataBackupDirtyCount: snapshot[_metadataBackupDirtyCount] ?? '0',
+        _metadataBackupReminderUpdatedAt:
+            snapshot[_metadataBackupReminderUpdatedAt] ?? '',
+        _metadataLastBackupExportedAt:
+            snapshot[_metadataLastBackupExportedAt] ?? '',
+      });
+    }
   }
 
   Future<void> markBackupExported({DateTime? exportedAt}) async {
@@ -2717,6 +2732,13 @@ const _metadataBackupReminderReason = 'backup_reminder_reason';
 const _metadataBackupDirtyCount = 'backup_dirty_count';
 const _metadataBackupReminderUpdatedAt = 'backup_reminder_updated_at';
 const _metadataLastBackupExportedAt = 'last_backup_exported_at';
+const _backupReminderMetadataKeys = [
+  _metadataBackupReminderPending,
+  _metadataBackupReminderReason,
+  _metadataBackupDirtyCount,
+  _metadataBackupReminderUpdatedAt,
+  _metadataLastBackupExportedAt,
+];
 
 const _demoWikiIds = [
   'wiki-milk',

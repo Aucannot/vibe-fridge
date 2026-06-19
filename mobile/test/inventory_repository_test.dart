@@ -304,6 +304,20 @@ void main() {
   });
 
   test('runs app acceptance checks without leaving temporary data', () async {
+    final categories = await repository.getCategories();
+    for (var index = 0; index < 10; index += 1) {
+      await repository.createItem(
+        name: '用户备份提醒保留-$index',
+        categoryId: categories.first.id,
+        quantity: 1,
+        unit: '个',
+      );
+    }
+    final reminderBefore = await repository.getBackupReminderState();
+    expect(reminderBefore.isPending, isTrue);
+    expect(reminderBefore.reason, '新增库存');
+    expect(reminderBefore.dirtyCount, 10);
+
     final report =
         await AcceptanceTestService(repository).runCoreInventoryChecks();
 
@@ -313,6 +327,17 @@ void main() {
       (await repository.getRegisteredItems(keyword: '应用自检测试物品-')),
       isEmpty,
     );
+    final temporaryShoppingItems =
+        (await repository.getShoppingListItems(includeConverted: true))
+            .where((item) => item.name.startsWith('应用自检测试物品-'));
+    expect(temporaryShoppingItems, isEmpty);
+
+    final reminderAfter = await repository.getBackupReminderState();
+    expect(reminderAfter.isPending, reminderBefore.isPending);
+    expect(reminderAfter.reason, reminderBefore.reason);
+    expect(reminderAfter.dirtyCount, reminderBefore.dirtyCount);
+    expect(reminderAfter.updatedAt, reminderBefore.updatedAt);
+    expect(reminderAfter.lastExportedAt, reminderBefore.lastExportedAt);
   });
 
   test('formats app self-check failures without technical prefixes', () {
