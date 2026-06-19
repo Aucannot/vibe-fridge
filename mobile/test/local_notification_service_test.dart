@@ -251,6 +251,106 @@ void main() {
     expect(calls, ['requestPermission']);
   });
 
+  test('sync inventory reminders sends pending reminder payload to platform',
+      () async {
+    final appDatabase = await openTestDatabase();
+    addTearDown(() async {
+      await appDatabase.database.close();
+    });
+    final repository = InventoryRepository(appDatabase);
+    final service = LocalNotificationService(channel: channel);
+    final now = DateTime(2026, 6, 19, 8, 30);
+
+    await repository.createItem(
+      name: '平台同步测试酸奶',
+      quantity: 3,
+      unit: '盒',
+      purchaseDate: now.subtract(const Duration(days: 1)),
+      expiryDate: DateTime(2026, 6, 21),
+      storageLocation: '冷藏',
+      reminderDaysBefore: 2,
+    );
+
+    final calls = <String>[];
+    Object? scheduleArguments;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+      calls.add(call.method);
+      return switch (call.method) {
+        'getPermissionStatus' => {
+            'supported': true,
+            'granted': true,
+            'status': 'granted',
+          },
+        'scheduleInventoryReminders' => scheduleArguments = call.arguments,
+        _ => null,
+      };
+    });
+
+    final result = await service.syncInventoryReminders(
+      repository,
+      now: now,
+    );
+
+    expect(result.scheduledCount, 1);
+    expect(result.displayText, '已同步 1 条提醒');
+    expect(calls, ['getPermissionStatus', 'scheduleInventoryReminders']);
+
+    final payload = scheduleArguments as Map<Object?, Object?>;
+    final notifications = payload['notifications'] as List<Object?>;
+    final notification = notifications.single as Map<Object?, Object?>;
+    expect(notification['title'], contains('平台同步测试酸奶'));
+    expect(notification['body'], '3盒 · 冷藏 · 打开查看详情');
+    expect(
+      notification['scheduledAtMillis'],
+      DateTime(2026, 6, 19, 9).millisecondsSinceEpoch,
+    );
+  });
+
+  test('sync inventory reminders skips platform schedule when denied',
+      () async {
+    final appDatabase = await openTestDatabase();
+    addTearDown(() async {
+      await appDatabase.database.close();
+    });
+    final repository = InventoryRepository(appDatabase);
+    final service = LocalNotificationService(channel: channel);
+    final now = DateTime(2026, 6, 19, 8, 30);
+
+    await repository.createItem(
+      name: '未授权同步测试酸奶',
+      quantity: 1,
+      unit: '盒',
+      purchaseDate: now.subtract(const Duration(days: 1)),
+      expiryDate: DateTime(2026, 6, 21),
+      reminderDaysBefore: 2,
+    );
+
+    final calls = <String>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+      calls.add(call.method);
+      if (call.method == 'scheduleInventoryReminders') {
+        fail('Denied notification permission must not schedule reminders.');
+      }
+      return {
+        'supported': true,
+        'granted': false,
+        'status': 'denied',
+      };
+    });
+
+    final result = await service.syncInventoryReminders(
+      repository,
+      now: now,
+    );
+
+    expect(result.scheduledCount, 0);
+    expect(result.skippedReason, 'permission');
+    expect(result.displayText, '通知未授权');
+    expect(calls, ['getPermissionStatus']);
+  });
+
   test('inventory controller consumes notification tap target once', () async {
     final appDatabase = await openTestDatabase();
     addTearDown(() async {

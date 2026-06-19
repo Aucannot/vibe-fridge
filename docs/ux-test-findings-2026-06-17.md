@@ -45,10 +45,11 @@ Not proven yet:
 - Android/macOS scheduled local notification runtime behavior. Dart fallback
   behavior, the Settings test-notification action, Android manifest wiring
   tests, macOS bridge wiring source tests, repository notification payload
-  tests, and macOS native scheduling-payload construction, permission-status
-  mapping, and tap payload handoff tests are covered, but real device/desktop
-  scheduled reminder delivery and user-click behavior still need runtime
-  validation on the target platforms.
+  tests, Dart platform-schedule payload handoff tests, and macOS native
+  scheduling-payload construction, permission-status mapping, and tap payload
+  handoff tests are covered, but real device/desktop scheduled reminder
+  delivery and user-click behavior still need runtime validation on the target
+  platforms.
 - Web update experience on an existing origin. The custom bootstrap no longer
   registers Flutter's service worker, clears stale registrations, and deletes
   stale Flutter Cache Storage entries when the current index loads. The entry
@@ -114,7 +115,8 @@ Platform notification checklist for that gate:
   Passed again after adding Settings demo-data reset confirmation coverage, 81
   tests. Passed again after adding order-import review widget coverage, 82
   tests. Passed again after adding shopping conversion confirmation coverage,
-  83 tests.
+  83 tests. Passed again after adding notification sync payload handoff
+  coverage, 85 tests.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
@@ -141,11 +143,15 @@ Platform notification checklist for that gate:
   order-recognition clear persistence, and after adding recipe-preference
   coverage, and after adding Settings demo-data reset confirmation coverage,
   after adding order-import review widget coverage, and after adding shopping
-  conversion confirmation coverage, with no issues.
+  conversion confirmation coverage, and after adding notification sync payload
+  handoff coverage, with no issues.
 - `flutter test test/local_notification_service_test.dart`: passed after the
   Android reminder scheduler refactor, notification tap controller handoff
   coverage, notification permission-to-sync controller coverage, and Settings
-  test-notification flow coverage, 12 tests.
+  test-notification flow coverage, 12 tests. Passed again after adding
+  coverage that granted notification sync sends the real pending-reminder
+  payload to the platform and denied permission skips platform scheduling, 14
+  tests.
 - `flutter test test/settings_screen_test.dart`: passed after adding widget
   coverage that renders the Settings test-notification action and verifies the
   button calls the notification service path. Passed again after adding widget
@@ -880,6 +886,9 @@ Platform notification checklist for that gate:
   and body content, schedule time, and serialized timestamp fields.
 - Local notification sync result tests now cover supported, unauthorized,
   unsupported, missing implementation, and unknown failure copy.
+- Local notification sync service tests now verify granted sync sends the real
+  pending-reminder payload to the platform channel and denied permission skips
+  platform scheduling.
 - Local notification permission channel tests now cover native status parsing
   and platform-exception fallback copy.
 - Local notification permission copy tests now cover the unsupported-platform
