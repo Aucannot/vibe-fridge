@@ -108,7 +108,8 @@ Platform notification checklist for that gate:
   Passed again after adding Web deployment header coverage, 72 tests. Passed
   again after adding Settings backup reminder widget coverage, 73 tests.
   Passed again after adding Settings order-recognition key privacy widget
-  coverage, 74 tests.
+  coverage, 74 tests. Passed again after fixing order-recognition clear
+  persistence and adding clear-confirmation coverage, 76 tests.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
@@ -130,8 +131,9 @@ Platform notification checklist for that gate:
   native notification request builder extraction, and after the Web entry cache
   and loading-screen fixes, and after adding recipe cooking deduction coverage,
   after adding Settings app self-check result coverage, and after adding Web
-  deployment headers, after adding Settings backup reminder coverage, and after
-  adding Settings order-recognition key privacy coverage, with no issues.
+  deployment headers, after adding Settings backup reminder coverage, after
+  adding Settings order-recognition key privacy coverage, and after fixing
+  order-recognition clear persistence, with no issues.
 - `flutter test test/local_notification_service_test.dart`: passed after the
   Android reminder scheduler refactor, notification tap controller handoff
   coverage, notification permission-to-sync controller coverage, and Settings
@@ -143,7 +145,12 @@ Platform notification checklist for that gate:
   `应用自检通过：17/17` result. Passed again after adding widget coverage for
   the pending backup reminder card and its user-facing copy. Passed again after
   adding widget coverage that verifies a stored order-recognition key is shown
-  as configured without exposing the saved secret.
+  as configured without exposing the saved secret. Passed again after adding
+  widget coverage for the order-recognition clear confirmation flow.
+- `flutter test test/vlm_settings_store_test.dart`: passed after verifying
+  fresh settings still load the default endpoint/model while the explicit
+  clear action persists blank endpoint/model values and removes the secure API
+  key.
 - `flutter test test/android_notification_wiring_test.dart`: passed after
   adding Android source-level checks for notification manifest permissions,
   receivers, method-channel names, payload keys, scheduling persistence,
@@ -804,6 +811,9 @@ Platform notification checklist for that gate:
 - Settings order-recognition configuration saves from the mobile Web UI,
   persists after reload without revealing the saved key, and can be cleared
   through the confirmation dialog.
+- Settings order-recognition clear now persists blank service address and model
+  values instead of restoring defaults on the next load, while fresh first-run
+  settings still start from the built-in defaults.
 - Settings order-recognition `测试配置` can validate a reachable local
   OpenAI-compatible endpoint and report `配置可用` without exposing the saved API
   key in the UI.

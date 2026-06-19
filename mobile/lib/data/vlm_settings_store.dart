@@ -116,8 +116,8 @@ class VlmSettingsStore {
   Future<void> clear() async {
     final preferences = await SharedPreferences.getInstance();
     await Future.wait([
-      preferences.remove(_endpointKey),
-      preferences.remove(_modelKey),
+      preferences.setString(_endpointKey, ''),
+      preferences.setString(_modelKey, ''),
       preferences.remove(_legacyApiKeyKey),
       _secretStore.delete(_secureApiKeyKey),
     ]);

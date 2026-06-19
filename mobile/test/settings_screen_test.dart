@@ -248,6 +248,104 @@ void main() {
     expect(find.text('已保存的密钥不会明文显示'), findsOneWidget);
     expect(find.text('stored-secret-key'), findsNothing);
   });
+
+  testWidgets('settings clears order recognition config after confirmation',
+      (tester) async {
+    tester.view.physicalSize = const Size(430, 2200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final secretStore = _MemorySecretStore();
+    final vlmSettingsStore = VlmSettingsStore(secretStore: secretStore);
+    await vlmSettingsStore.save(
+      const VlmSettings(
+        endpoint: 'https://local.test/v1/chat/completions',
+        model: 'local-vlm',
+        apiKey: 'stored-secret-key',
+      ),
+    );
+
+    final controller = InventoryController(
+      InventoryRepository(appDatabase),
+      notificationService: _FakeNotificationService(
+        testResult: const LocalNotificationTestResult(
+          permission: LocalNotificationPermissionSnapshot(
+            supported: true,
+            granted: true,
+            status: 'granted',
+          ),
+          sent: true,
+        ),
+      ),
+    );
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: SettingsScreen(
+            controller: controller,
+            vlmSettingsStore: vlmSettingsStore,
+          ),
+        ),
+      ),
+    );
+
+    final clearButton = find.widgetWithIcon(
+      IconButton,
+      Icons.delete_outline,
+    );
+    await _pumpUntilFound(
+      tester,
+      clearButton,
+      timeout: const Duration(seconds: 5),
+    );
+    await tester.ensureVisible(clearButton);
+    await tester.tap(clearButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('清空订单识别配置'), findsOneWidget);
+    expect(find.text('服务地址、模型名称和已保存的 API 密钥都会被清空。'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(FilledButton, '清空'));
+    await tester.pumpAndSettle();
+
+    final endpointField = tester.widget<TextField>(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is TextField && widget.decoration?.labelText == '服务地址',
+        description: 'endpoint text field',
+      ),
+    );
+    final modelField = tester.widget<TextField>(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is TextField && widget.decoration?.labelText == '模型名称',
+        description: 'model text field',
+      ),
+    );
+    final apiKeyField = tester.widget<TextField>(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is TextField && widget.decoration?.labelText == 'API 密钥',
+        description: 'API key text field',
+      ),
+    );
+    final loaded = await vlmSettingsStore.load();
+
+    expect(endpointField.controller?.text, isEmpty);
+    expect(modelField.controller?.text, isEmpty);
+    expect(apiKeyField.controller?.text, isEmpty);
+    expect(find.text('未配置'), findsOneWidget);
+    expect(find.text('订单识别配置已清空'), findsOneWidget);
+    expect(find.text('stored-secret-key'), findsNothing);
+    expect(loaded.endpoint, isEmpty);
+    expect(loaded.model, isEmpty);
+    expect(loaded.apiKey, isEmpty);
+    expect(loaded.hasStoredApiKey, isFalse);
+  });
 }
 
 Future<void> _pumpUntilFound(

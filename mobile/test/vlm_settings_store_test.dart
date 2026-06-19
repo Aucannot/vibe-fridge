@@ -9,6 +9,17 @@ void main() {
     secretStore = _MemorySecretStore();
   });
 
+  test('fresh settings load default endpoint and model', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = VlmSettingsStore(secretStore: secretStore);
+
+    final loaded = await store.load();
+
+    expect(loaded.endpoint, VlmSettingsStore.defaultEndpoint);
+    expect(loaded.model, VlmSettingsStore.defaultModel);
+    expect(loaded.hasStoredApiKey, isFalse);
+  });
+
   test('migrates legacy plaintext API key into secure storage', () async {
     SharedPreferences.setMockInitialValues({
       'vlm.endpoint': 'https://example.test/v1/chat/completions',
@@ -55,7 +66,8 @@ void main() {
     expect(loaded.apiKey, 'saved-secret');
   });
 
-  test('clear removes shared preferences and secure API key', () async {
+  test('clear keeps endpoint and model blank and removes secure API key',
+      () async {
     SharedPreferences.setMockInitialValues({});
     final store = VlmSettingsStore(secretStore: secretStore);
     await store.save(
@@ -70,11 +82,11 @@ void main() {
     final preferences = await SharedPreferences.getInstance();
     final loaded = await store.load();
 
-    expect(preferences.getString('vlm.endpoint'), isNull);
-    expect(preferences.getString('vlm.model'), isNull);
+    expect(preferences.getString('vlm.endpoint'), isEmpty);
+    expect(preferences.getString('vlm.model'), isEmpty);
     expect(await secretStore.read('vlm.secure_api_key'), isNull);
-    expect(loaded.endpoint, VlmSettingsStore.defaultEndpoint);
-    expect(loaded.model, VlmSettingsStore.defaultModel);
+    expect(loaded.endpoint, isEmpty);
+    expect(loaded.model, isEmpty);
     expect(loaded.hasStoredApiKey, isFalse);
   });
 }
