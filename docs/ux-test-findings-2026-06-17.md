@@ -88,6 +88,12 @@ optional send path is reserved for a manual authorization pass because it may
 open the macOS notification permission prompt or send the diagnostic
 notification if permission has already been granted.
 
+Debug smoke payload update on 2026-06-19: the VM Service notification status
+and test-notification payload builders now live in a small tested module, so
+the app-side JSON contract used by `tools/check_notification_status.mjs` is
+covered without registering duplicate VM extensions or triggering notification
+permission prompts during tests.
+
 ## Beta Readiness
 
 Verdict: ready for continued Web beta testing of the core inventory workflow,
@@ -251,6 +257,12 @@ Platform notification checklist for that gate:
   return only non-empty platform item ids, 17 tests. Passed again after
   normalizing notification tap and launch-target item ids by trimming
   surrounding whitespace and ignoring blank payloads, 17 tests.
+- `flutter test test/debug_service_extensions_test.dart
+  test/local_notification_service_test.dart`: passed after extracting the
+  debug VM Service notification payload builders and covering the exact status
+  and test-notification JSON shapes consumed by the smoke helper, 19 tests.
+  The first sandboxed attempt was blocked by the pub.dev advisories DNS check;
+  the same command passed after network access was allowed.
 - `flutter test test/settings_screen_test.dart`: passed after adding widget
   coverage that renders the Settings test-notification action and verifies the
   button calls the notification service path. Historical coverage previously
@@ -1399,7 +1411,9 @@ Platform notification checklist for that gate:
   is not release behavior, but it lets local validation prove the live Flutter
   app can reach the native notification bridge. Added a second explicit
   debug-only extension for sending a diagnostic test notification when a manual
-  authorization pass intentionally opts into `--send-test`.
+  authorization pass intentionally opts into `--send-test`. Extracted the
+  payload builders behind those extensions so the smoke-contract JSON shapes
+  have durable Flutter test coverage.
 - Added `tools/check_notification_status.mjs`, a reusable local smoke helper
   that calls the debug VM Service extension for a running Flutter app and
   validates the notification status payload shape before printing the result.
