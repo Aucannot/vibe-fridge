@@ -101,7 +101,8 @@ Platform notification checklist for that gate:
   again after adding Settings widget coverage for the test-notification action,
   68 tests. Passed again after adding Web entry cache-busting coverage and
   hardening loading-screen hiding, 69 tests. Passed again after adding recipe
-  cooking inventory-deduction coverage, 70 tests.
+  cooking inventory-deduction coverage, 70 tests. Passed again after adding
+  Settings widget coverage for the app self-check 17/17 result, 71 tests.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
@@ -122,14 +123,16 @@ Platform notification checklist for that gate:
   notification tap and permission-to-sync controller tests, after the macOS
   native notification request builder extraction, and after the Web entry cache
   and loading-screen fixes, and after adding recipe cooking deduction coverage,
-  with no issues.
+  and after adding Settings app self-check result coverage, with no issues.
 - `flutter test test/local_notification_service_test.dart`: passed after the
   Android reminder scheduler refactor, notification tap controller handoff
   coverage, notification permission-to-sync controller coverage, and Settings
   test-notification flow coverage, 12 tests.
 - `flutter test test/settings_screen_test.dart`: passed after adding widget
   coverage that renders the Settings test-notification action and verifies the
-  button calls the notification service path.
+  button calls the notification service path. Passed again after adding widget
+  coverage that taps `运行自检` and verifies the user-visible
+  `应用自检通过：17/17` result.
 - `flutter test test/android_notification_wiring_test.dart`: passed after
   adding Android source-level checks for notification manifest permissions,
   receivers, method-channel names, payload keys, scheduling persistence,
@@ -776,6 +779,8 @@ Platform notification checklist for that gate:
 - Settings self-check completed and cleaned up its temporary data, and the
   current Web UI shows readable per-check timings. Automated self-check
   coverage now verifies 17 checks including recipe cooking deduction.
+- Settings self-check UI now has widget coverage that taps the run action and
+  verifies the user-visible `应用自检通过：17/17` result.
 - Settings recipe preferences save from the mobile Web UI and reload with the
   edited values still visible.
 - Settings order-recognition configuration saves from the mobile Web UI,
