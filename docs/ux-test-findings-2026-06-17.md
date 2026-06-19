@@ -231,6 +231,8 @@ Platform notification checklist for that gate:
   `build/web/_headers` contains no-cache policy for `index.html`,
   `flutter_bootstrap.js`, `flutter.js`, `main.dart.js`, and `sqflite_sw.js`.
   Passed again after removing the user-facing Settings self-check controls.
+  Passed again after adding no-cache policy for Flutter's generated
+  `flutter_service_worker.js`.
 - `flutter build macos --debug`: passed after the user completed the local
   Xcode installation and license flow. The build produced
   `build/macos/Build/Products/Debug/vibe-fridge.app`; Flutter also generated
@@ -297,6 +299,12 @@ Platform notification checklist for that gate:
   contained the cache-deletion calls, and a follow-up Settings smoke check on
   port 54390 loaded `vibe-fridge`, hid the loading screen, captured a non-empty
   page screenshot, and reported no browser warnings or errors.
+- Existing-origin Web update simulation on port 54390: seeded a stale
+  same-origin service worker plus a `flutter-*` Cache Storage entry, then
+  navigated to the current Settings build. The app recovered to the current
+  Flutter view, the stale registration list was empty, the stale Flutter cache
+  was gone, the loading screen was hidden, and browser warning/error logs were
+  empty.
 - Web entry HTML now carries no-cache meta hints and loads
   `flutter_bootstrap.js` through a cache-busted dynamic script request, reducing
   the chance that a current index page reuses stale bootstrap code.
@@ -1063,7 +1071,8 @@ Platform notification checklist for that gate:
   script request so a current index page is less likely to execute stale Web
   startup code.
 - Added Web `_headers` cache policy for common static hosts so entry and
-  startup scripts are served with no-cache/no-store semantics after deployment.
+  startup scripts, including Flutter's generated `flutter_service_worker.js`,
+  are served with no-cache/no-store semantics after deployment.
 - Replaced Web/PWA template metadata so browser tabs and installed app surfaces
   show `vibe-fridge`, the app's actual inventory purpose, and product colors.
 - Reworded macOS camera and photo permission prompts to match the app's Chinese
@@ -1152,6 +1161,7 @@ Platform notification checklist for that gate:
   stale Flutter Cache Storage entries once the current index is loaded, and the
   current entry HTML discourages browser caching plus cache-busts the bootstrap
   request. The generated Web build also includes `_headers` no-cache policy for
-  common static hosts, but deployment hosts that ignore `_headers` still need
-  equivalent HTTP cache headers before same-origin update behavior is fully
-  proven.
+  common static hosts, including `flutter_service_worker.js`, and a same-origin
+  simulation with a stale worker plus stale Flutter cache now recovers cleanly.
+  Deployment hosts that ignore `_headers` still need equivalent HTTP cache
+  headers before hosted update behavior is fully proven.

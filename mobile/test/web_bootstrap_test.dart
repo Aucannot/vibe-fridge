@@ -50,6 +50,7 @@ void main() {
       '/index.html',
       '/flutter_bootstrap.js',
       '/flutter.js',
+      '/flutter_service_worker.js',
       '/main.dart.js',
       '/sqflite_sw.js',
     ]) {
@@ -65,6 +66,13 @@ void main() {
     expect(
       RegExp(
         r'/flutter_bootstrap\.js\s+Cache-Control: no-cache, no-store, must-revalidate',
+        multiLine: true,
+      ).hasMatch(headers),
+      isTrue,
+    );
+    expect(
+      RegExp(
+        r'/flutter_service_worker\.js\s+Cache-Control: no-cache, no-store, must-revalidate',
         multiLine: true,
       ).hasMatch(headers),
       isTrue,

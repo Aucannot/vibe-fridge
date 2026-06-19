@@ -13,6 +13,11 @@
   Pragma: no-cache
   Expires: 0
 
+/flutter_service_worker.js
+  Cache-Control: no-cache, no-store, must-revalidate
+  Pragma: no-cache
+  Expires: 0
+
 /main.dart.js
   Cache-Control: no-cache, no-store, must-revalidate
   Pragma: no-cache
