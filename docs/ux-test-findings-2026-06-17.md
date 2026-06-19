@@ -138,7 +138,8 @@ Platform notification checklist for that gate:
   Web bootstrap guard that clears stale service workers without registering a
   replacement Flutter service worker; passed again after extending the guard to
   delete stale Flutter Cache Storage entries; passed again after adding
-  no-cache entry hints and a cache-busted bootstrap script request.
+  no-cache entry hints, a cache-busted bootstrap script request, and inline
+  loading-screen hide styles.
 - `flutter build web --debug --no-wasm-dry-run`: passed after the latest beta
   fixes including Web route cleanup, direct Web detail URL hash cleanup,
   startup error copy coverage, the edit-page Material fix, and no-date order
@@ -209,6 +210,11 @@ Platform notification checklist for that gate:
 - Web entry HTML now carries no-cache meta hints and loads
   `flutter_bootstrap.js` through a cache-busted dynamic script request, reducing
   the chance that a current index page reuses stale bootstrap code.
+- In-app browser retesting on port 54390 showed the Flutter view was mounted
+  but the loading layer still captured center hit testing after only adding the
+  `is-hidden` class. The hide handler now also applies inline opacity,
+  visibility, and pointer-events styles; after rebuilding and reloading, center
+  hit testing lands on `FLUTTER-VIEW` instead of the loading layer.
 - App self-check from Settings: passed, 15/15; passed again on the restarted
   latest Web target on port 54390 in about 354ms. After adding the backup
   content check and rebuilding Web, the current Settings self-check passed
@@ -921,6 +927,9 @@ Platform notification checklist for that gate:
 - Extended the Web loading screen's first-frame delay after desktop direct-route
   testing showed CanvasKit could briefly expose square Chinese glyphs before
   fonts settled.
+- Hardened the Web loading screen hide handler with inline opacity,
+  visibility, and pointer-events styles after browser retesting showed class
+  toggling alone could leave the layer intercepting clicks.
 - Added a custom Web bootstrap that omits Flutter service-worker registration,
   unregisters stale same-origin service workers, deletes stale Flutter Cache
   Storage entries, and reloads once when the current page is still controlled

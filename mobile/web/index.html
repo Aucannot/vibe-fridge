@@ -173,7 +173,16 @@
   </script>
   <script>
     const loadingScreen = document.getElementById('app-loading');
-    const hideLoadingScreen = () => loadingScreen?.classList.add('is-hidden');
+    const hideLoadingScreen = () => {
+      if (!loadingScreen) {
+        return;
+      }
+
+      loadingScreen.classList.add('is-hidden');
+      loadingScreen.style.opacity = '0';
+      loadingScreen.style.pointerEvents = 'none';
+      loadingScreen.style.visibility = 'hidden';
+    };
 
     window.addEventListener('flutter-first-frame', () => {
       window.setTimeout(hideLoadingScreen, 4200);

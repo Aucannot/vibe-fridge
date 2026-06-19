@@ -19,7 +19,7 @@ void main() {
     expect(script, contains('_flutter.loader.load();'));
   });
 
-  test('web entry discourages stale bootstrap caching', () {
+  test('web entry manages bootstrap caching and loading screen', () {
     final index = File('web/index.html').readAsStringSync();
     const cacheBustedBootstrapSource =
         r'bootstrapScript.src = `flutter_bootstrap.js?v=${Date.now()}`;';
@@ -36,6 +36,10 @@ void main() {
     expect(index, contains('bootstrapScript.async = true'));
     expect(index, contains(cacheBustedBootstrapSource));
     expect(index, contains('document.body.appendChild(bootstrapScript)'));
+    expect(index, contains("loadingScreen.classList.add('is-hidden')"));
+    expect(index, contains("loadingScreen.style.opacity = '0'"));
+    expect(index, contains("loadingScreen.style.pointerEvents = 'none'"));
+    expect(index, contains("loadingScreen.style.visibility = 'hidden'"));
     expect(index, isNot(contains('<script src="flutter_bootstrap.js" async>')));
   });
 }
