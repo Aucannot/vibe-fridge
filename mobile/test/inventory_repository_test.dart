@@ -663,6 +663,94 @@ void main() {
     expect((await repository.checkDataHealth()).passed, isTrue);
   });
 
+  test('backup restore round-trips tags reminders and shopping list', () async {
+    final categories = await repository.getCategories();
+    final foodCategory = categories.firstWhere(
+      (category) => category.name == '食品',
+    );
+
+    await repository.createItem(
+      name: '备份往返复杂苹果',
+      categoryId: foodCategory.id,
+      quantity: 3,
+      unit: '个',
+      purchaseDate: DateTime(2026, 6, 10),
+      expiryDate: DateTime(2026, 6, 20),
+      storageLocation: '冷藏',
+      tags: const ['临期优先', '常用'],
+      reminderDaysBefore: 2,
+    );
+    final registered = (await repository.getRegisteredItems(
+      keyword: '备份往返复杂苹果',
+    ))
+        .single;
+    final item =
+        (await repository.getInventoryByWikiId(registered.wikiId)).single;
+    await repository.ignoreReminderForToday(
+      item.id,
+      now: DateTime(2026, 6, 18, 9),
+    );
+    final shoppingId = await repository.addShoppingListItem(
+      ShoppingListDraft(
+        name: '备份往返采购盐',
+        categoryId: foodCategory.id,
+        quantity: 2,
+        unit: '袋',
+        note: '恢复后仍应保留',
+        source: 'manual',
+      ),
+    );
+
+    final backup = await repository.exportBackup();
+
+    await repository.deleteShoppingListItem(shoppingId);
+    await repository.deleteItem(item.id);
+    await repository.deleteWiki(registered.wikiId, force: true);
+    await appDatabase.database.delete(
+      'reminder_logs',
+      where: 'item_id = ?',
+      whereArgs: [item.id],
+    );
+
+    expect(
+      await repository.getRegisteredItems(keyword: '备份往返复杂苹果'),
+      isEmpty,
+    );
+    expect(
+      (await repository.getShoppingListItems()).map((item) => item.name),
+      isNot(contains('备份往返采购盐')),
+    );
+
+    await repository.restoreBackup(backup, replaceExisting: true);
+
+    final restoredRegistered = (await repository.getRegisteredItems(
+      keyword: '备份往返复杂苹果',
+    ))
+        .single;
+    final restoredItem =
+        (await repository.getInventoryByWikiId(restoredRegistered.wikiId))
+            .singleWhere((item) => item.name == '备份往返复杂苹果');
+    expect(restoredItem.quantity, 3);
+    expect(restoredItem.storageLocation, '冷藏');
+    expect(restoredItem.tags, containsAll(['临期优先', '常用']));
+
+    final restoredShopping = (await repository.getShoppingListItems())
+        .singleWhere((item) => item.name == '备份往返采购盐');
+    expect(restoredShopping.quantity, 2);
+    expect(restoredShopping.unit, '袋');
+    expect(restoredShopping.note, '恢复后仍应保留');
+    expect(restoredShopping.categoryName, '食品');
+
+    final reminderLogs = await appDatabase.database.query(
+      'reminder_logs',
+      where: 'item_id = ? AND reminder_type = ?',
+      whereArgs: [restoredItem.id, 'ignored'],
+    );
+    expect(reminderLogs, hasLength(1));
+    expect(reminderLogs.single['message'], '忽略本次提醒');
+    expect((await repository.checkDataHealth()).passed, isTrue);
+  });
+
   test('escapes special characters in inventory table export', () async {
     final categories = await repository.getCategories();
 

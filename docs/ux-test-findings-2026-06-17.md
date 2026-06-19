@@ -96,7 +96,9 @@ Platform notification checklist for that gate:
 - `flutter test test/inventory_repository_test.dart`: passed after the
   no-date order duplicate fix and backup-reminder copy cleanup, 19 tests.
   Passed again after adding inventory-table export coverage for commas,
-  quotes, and newline characters in user-entered fields, 20 tests.
+  quotes, and newline characters in user-entered fields, 20 tests. Passed
+  again after adding backup round-trip coverage for inventory tags, reminder
+  logs, and shopping-list data, 21 tests.
 - `flutter analyze`: passed after the latest beta fixes including Web route
   cleanup, direct Web detail URL hash cleanup, the `MaterialApp.router`
   browser-history fix, notification channel coverage, the edit-page Material
@@ -749,6 +751,9 @@ Platform notification checklist for that gate:
   assets, so the empty bundled import file no longer causes Web asset warnings.
 - Repository backup/restore tests cover pre-restore snapshots, replacement
   restore, post-restore health checks, and backup reminder clearing.
+- Repository backup/restore tests now verify a backup can round-trip user
+  inventory tags, ignored-reminder records, and pending shopping-list data
+  across a replacement restore.
 - Repository backup/restore tests now also reject incomplete or damaged backup
   files before any current data is replaced or a restore snapshot is created.
 - Repository export tests now verify the user-facing inventory table uses
