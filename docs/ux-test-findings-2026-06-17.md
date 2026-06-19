@@ -256,6 +256,14 @@ Platform notification checklist for that gate:
   a successful connection and upload do not retain the earlier authentication
   error copy, and the smoke endpoint recorded MKCOL, PROPFIND, and PUT
   requests plus two uploaded backup JSON files.
+- Browser WebDAV restore smoke on
+  `http://127.0.0.1:54393/?route=settings`: passed against a temporary
+  CORS-enabled local WebDAV endpoint on `http://127.0.0.1:54394/`. The browser
+  flow saved WebDAV configuration, uploaded a backup, opened the restore
+  confirmation dialog naming the latest cloud backup, confirmed restore,
+  showed `已从 WebDAV 恢复：...`, then verified the configuration still worked
+  by running a successful connection test. The smoke endpoint recorded PUT,
+  Depth 1 PROPFIND, GET download, and the post-restore Depth 0 PROPFIND.
 - `flutter test test/recipes_screen_test.dart`: passed after adding coverage
   that applies a recipe's inventory uses through `InventoryController` and
   verifies the real inventory quantities are deducted.
