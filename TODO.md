@@ -22,7 +22,7 @@ Codex 做新 UI 时，不要直接吃整份 TODO；应把 `docs/codex-goals/warm
 - [x] 本地 SQLite、默认分类、示例 Wiki、首页统计、物品目录、添加物品、Wiki 详情、库存详情、历史记录已接入。
 - [x] 订单截图 VLM 识别入口、识别结果预览、批量入库、VLM 设置页已接入。
 - [x] legacy SQLite -> Flutter JSON 导入通道已接入。
-- [ ] Android SDK、完整 Xcode/xcodebuild、Android/macOS 通知设备验收仍需补齐；Web 页面实现截图已补齐。
+- [ ] Android SDK/设备与 Android/macOS 通知运行时验收仍需补齐；macOS Xcode build/test/launch 已通过，Web 页面实现截图已补齐。
 
 ## UI 工作流约定
 
@@ -85,7 +85,7 @@ Codex 做新 UI 时，不要直接吃整份 TODO；应把 `docs/codex-goals/warm
 - [x] UI 支持为单个物品设置提醒开关和提前天数。
 - [x] 分类/Wiki 默认提醒规则：例如牛奶提前 2 天、药品提前 30 天。
 - [ ] Android 本地通知：权限引导、定时调度、点击跳转详情页（代码已接入，待 Android SDK/设备验证）。
-- [ ] macOS 本地通知：权限引导、调度、点击行为（代码已接入，`flutter build macos --debug` 当前阻塞于缺少 `xcodebuild`）。
+- [ ] macOS 本地通知：权限引导、调度、点击行为（代码已接入，macOS build/native tests/launch 已通过；仍待系统授权后的投递和点击验证）。
 - [x] 首页新增“今天要处理”聚合模块：今日到期、已过期、提醒到期。
 - [x] 通知防重复：同一物品同一提醒类型一天只发一次。
 - [x] 支持稍后提醒/忽略本次提醒。
@@ -223,7 +223,7 @@ Codex 做新 UI 时，不要直接吃整份 TODO；应把 `docs/codex-goals/warm
 ### 6.2 macOS
 
 - [x] 文件选择、图片读取权限确认。
-- [ ] 本地通知权限（代码已接入，待完整 Xcode/xcodebuild 构建验证）。
+- [ ] 本地通知权限（代码已接入，macOS build/native tests/launch 已通过；待系统授权后的投递和点击验证）。
 - [x] macOS 打包与签名流程。
 - [x] 菜单栏/窗口尺寸体验优化。
 
