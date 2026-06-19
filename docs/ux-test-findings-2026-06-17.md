@@ -578,6 +578,14 @@ Platform notification checklist for that gate:
 - Mobile Web cold-start visual smoke check on port 54331: the native loading
   screen handed off to the rendered Home screen at 390 x 844 with no blank
   viewport and no browser warning or error logs.
+- Mobile Web core-tab smoke check on port 54410 against the current
+  `build/web` on 2026-06-20: opened Home at 390 x 844, then used the bottom
+  navigation to open Items, Add, Recipes, and Settings. Each tab rendered the
+  expected first-viewport content and updated the query route
+  (`?route=items`, `?route=add`, `?route=recipes`, `?route=settings`) without
+  browser warning or error logs. Scrolling Settings confirmed WebDAV backup
+  controls and Web-local-notification unavailable/disabled states were visible
+  while the developer-only app self-check remained absent.
 - Desktop Web main-surface smoke check on port 54409 at 1280 x 720: opened
   Home, Items, Add, Recipes, and Settings. Home, Items, Add, and Settings used
   the centered content width and wider card layouts without overlap or console
