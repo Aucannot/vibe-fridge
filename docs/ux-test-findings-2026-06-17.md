@@ -632,13 +632,17 @@ Platform notification checklist for that gate:
   the search restored the `面包` row with no browser warning or error logs.
 - Mobile Web inventory-table export smoke check on port 54339: opened Settings,
   used `导出库存表格`, and saw `库存表格已导出` feedback with no browser
-  warning or error logs. Codex In-app Browser does not support download events,
-  so this proves the live UI trigger and success feedback but not downloaded
-  file persistence.
+  warning or error logs. Rechecked on port 54396 with
+  `waitForEvent('download')`: no download event was emitted, but the page
+  created a blob link with download name
+  `vibe-fridge-inventory-20260619-212643.csv`. This proves the live UI trigger,
+  success path, and intended file name, but not downloaded file persistence.
 - Mobile Web backup export smoke check on port 54365: opened Settings, used
   `导出备份`, and saw `备份已导出` feedback with no browser warning or error
-  logs. Codex In-app Browser does not support download events, so this proves
-  the live UI trigger and success feedback but not downloaded file persistence.
+  logs. Rechecked on port 54396 with `waitForEvent('download')`: no download
+  event was emitted, but the page created a blob link with download name
+  `vibe-fridge-backup-20260619-212616.json`. This proves the live UI trigger,
+  success path, and intended file name, but not downloaded file persistence.
 - Mobile Web legacy-import preview smoke check on ports 54372 and 54373:
   opening Settings and tapping `导入旧版库存` originally produced a Flutter Web
   asset 404 warning while probing the optional ignored
