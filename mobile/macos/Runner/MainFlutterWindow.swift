@@ -139,19 +139,11 @@ final class MacLocalNotificationBridge {
   }
 
   private func sendTestNotification(result: @escaping FlutterResult) {
-    let content = UNMutableNotificationContent()
-    content.title = "库存提醒测试"
-    content.body = "看到这条通知说明本地通知可用"
-    content.sound = .default
-
-    let trigger = UNTimeIntervalNotificationTrigger(
-      timeInterval: 1,
-      repeats: false
-    )
+    let diagnostic = MacDiagnosticNotificationRequestFactory.request()
     let request = UNNotificationRequest(
-      identifier: "diagnostic-\(UUID().uuidString)",
-      content: content,
-      trigger: trigger
+      identifier: diagnostic.identifier,
+      content: diagnostic.content(),
+      trigger: diagnostic.trigger()
     )
     center.add(request) { error in
       DispatchQueue.main.async {

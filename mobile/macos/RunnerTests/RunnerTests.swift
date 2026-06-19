@@ -70,6 +70,23 @@ class RunnerTests: XCTestCase {
     XCTAssertEqual(request.triggerInterval(now: now), 60, accuracy: 0.001)
   }
 
+  func testDiagnosticNotificationRequestBuildsImmediateTestNotification() {
+    let request = MacDiagnosticNotificationRequestFactory.request(
+      id: "test-id"
+    )
+    let content = request.content()
+    let trigger = request.trigger()
+
+    XCTAssertEqual(request.identifier, "diagnostic-test-id")
+    XCTAssertEqual(request.title, "库存提醒测试")
+    XCTAssertEqual(request.body, "看到这条通知说明本地通知可用")
+    XCTAssertEqual(request.triggerInterval, 1, accuracy: 0.001)
+    XCTAssertEqual(content.title, "库存提醒测试")
+    XCTAssertEqual(content.body, "看到这条通知说明本地通知可用")
+    XCTAssertEqual(trigger.timeInterval, 1, accuracy: 0.001)
+    XCTAssertFalse(trigger.repeats)
+  }
+
   func testPermissionSnapshotMapsAuthorizationStatusesForChannel() {
     let authorized = MacLocalNotificationPermissionFactory.snapshot(
       for: .authorized

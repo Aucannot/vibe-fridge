@@ -37,8 +37,9 @@ void main() {
       'case "cancelAll":',
       'center.removeAllPendingNotificationRequests()',
       'MacLocalNotificationRequestFactory.requests',
-      'content.title = "库存提醒测试"',
-      'UNTimeIntervalNotificationTrigger(',
+      'MacDiagnosticNotificationRequestFactory.request()',
+      'diagnostic.content()',
+      'diagnostic.trigger()',
       'channel.invokeMethod("notificationTapped", arguments: ["itemId": itemId])',
     ]);
     _expectAllContains(requestFactory, [
@@ -49,6 +50,11 @@ void main() {
       'row["scheduledAtMillis"] as? NSNumber',
       '["itemId": itemId]',
       'max(scheduledAt.timeIntervalSince(now), 60)',
+      'MacDiagnosticNotificationRequestFactory',
+      'identifier: "diagnostic-\\(id)"',
+      'title: "库存提醒测试"',
+      'body: "看到这条通知说明本地通知可用"',
+      'triggerInterval: 1',
     ]);
   });
 

@@ -130,7 +130,8 @@ Platform notification checklist for that gate:
 - `flutter test test/macos_notification_wiring_test.dart`: passed after adding
   macOS source-level checks for method-channel names, native bridge methods,
   notification payload parsing, delegate presentation behavior, and system tap
-  handoff into the launch target.
+  handoff into the launch target. Passed again after moving test-notification
+  request construction into the native request factory.
 - `flutter test test/web_bootstrap_test.dart`: passed after adding the custom
   Web bootstrap guard that clears stale service workers without registering a
   replacement Flutter service worker; passed again after extending the guard to
@@ -160,8 +161,10 @@ Platform notification checklist for that gate:
   passed after fixing the RunnerTests `TEST_HOST` product path and importing
   the app module as `vibe_fridge`. RunnerTests now covers macOS notification
   request construction, malformed payload skipping, the 60-second minimum
-  notification trigger delay, native permission-status channel mapping, and
-  native tap payload handoff into the launch target plus Flutter event path.
+  notification trigger delay, immediate test-notification request construction,
+  native permission-status channel mapping, and native tap payload handoff into
+  the launch target plus Flutter event path. Passed again with 7 tests after
+  extracting the diagnostic test-notification request factory.
 - `flutter run -d macos`: launched the debug macOS target successfully and
   exposed a Dart VM Service. The app process started, though `open` could not
   automatically foreground the window in this shell session.
@@ -799,8 +802,10 @@ Platform notification checklist for that gate:
   Dart channel payloads to `inventory-<itemId>` request identifiers, preserves
   `itemId` in `userInfo`, skips malformed rows, and enforces the minimum
   trigger delay used before adding `UNNotificationRequest`s. They also verify
-  native notification permission statuses map to the Flutter channel contract
-  and notification tap payloads store/emit the selected inventory item id.
+  the immediate Settings test notification request uses the expected
+  diagnostic identifier prefix, copy, and 1-second trigger; native notification
+  permission statuses map to the Flutter channel contract; and notification
+  tap payloads store/emit the selected inventory item id.
 - Android notification scheduling now persists pending reminder payloads and
   registers boot/package-replaced restoration points; runtime proof still needs
   an Android SDK/device environment.

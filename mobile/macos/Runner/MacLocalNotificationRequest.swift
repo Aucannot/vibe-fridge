@@ -20,6 +20,41 @@ struct MacLocalNotificationRequest {
   }
 }
 
+struct MacDiagnosticNotificationRequest {
+  let identifier: String
+  let title: String
+  let body: String
+  let triggerInterval: TimeInterval
+
+  func content() -> UNMutableNotificationContent {
+    let content = UNMutableNotificationContent()
+    content.title = title
+    content.body = body
+    content.sound = .default
+    return content
+  }
+
+  func trigger() -> UNTimeIntervalNotificationTrigger {
+    UNTimeIntervalNotificationTrigger(
+      timeInterval: triggerInterval,
+      repeats: false
+    )
+  }
+}
+
+enum MacDiagnosticNotificationRequestFactory {
+  static func request(
+    id: String = UUID().uuidString
+  ) -> MacDiagnosticNotificationRequest {
+    MacDiagnosticNotificationRequest(
+      identifier: "diagnostic-\(id)",
+      title: "库存提醒测试",
+      body: "看到这条通知说明本地通知可用",
+      triggerInterval: 1
+    )
+  }
+}
+
 enum MacLocalNotificationRequestFactory {
   static func requests(from arguments: Any?) -> [MacLocalNotificationRequest] {
     guard let payload = arguments as? [String: Any],
