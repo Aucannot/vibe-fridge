@@ -7,7 +7,7 @@ Viewport: mobile-sized browser viewport, 390 x 844.
 
 Focus: whether a user can complete the main app jobs: understand the dashboard,
 add inventory, inspect inventory detail, use the shopping loop, consume via
-recipes, and run the built-in app self-check.
+recipes, and manage settings without developer-only diagnostics exposed.
 
 ## Summary
 
@@ -33,8 +33,8 @@ Proven enough for beta:
 
 - Home dashboard, today actions, reminder snooze/ignore, item catalog, item
   profile, inventory detail, manual add, order-text import, shopping list,
-  recipes, backup/export, restore/import copy, settings, and app self-check all
-  have passing automated or browser-smoke evidence.
+  recipes, backup/export, restore/import copy, settings, and the internal
+  app self-check service all have passing automated or browser-smoke evidence.
 - Web deep links and browser Back/Forward now preserve hash-free query routes
   across catalog search detail, inventory detail, and recipe detail paths.
 - User-facing copy has been scrubbed across the main tested flows to avoid raw
@@ -83,7 +83,7 @@ Platform notification checklist for that gate:
 - On macOS, request notification permission, send a test notification, sync
   reminders, wait for a due reminder, tap the delivered reminder notification,
   and confirm the matching inventory detail opens.
-- Re-run the Settings app self-check after platform notification testing to
+- Re-run the internal app self-check after platform notification testing to
   confirm notification experiments did not leave invalid inventory, shopping,
   recipe, reminder, or history state behind.
 
@@ -117,7 +117,8 @@ Platform notification checklist for that gate:
   tests. Passed again after adding shopping conversion confirmation coverage,
   83 tests. Passed again after adding notification sync payload handoff
   coverage, 85 tests. Passed again after fixing macOS order-recognition secure
-  key storage, 86 tests.
+  key storage, 86 tests. Passed again after removing the user-facing Settings
+  self-check controls while keeping the internal coverage, 86 tests.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
@@ -127,7 +128,7 @@ Platform notification checklist for that gate:
   quotes, and newline characters in user-entered fields, 20 tests. Passed
   again after adding backup round-trip coverage for inventory tags, reminder
   logs, and shopping-list data, 21 tests. Passed again after extending the
-  Settings app self-check to verify backup content includes inventory, tags,
+  internal app self-check to verify backup content includes inventory, tags,
   reminder logs, and shopping-list data, 21 tests. Passed again after adding
   recipe cooking deduction to app self-check, 21 tests.
 - `flutter analyze`: passed after the latest beta fixes including Web route
@@ -138,7 +139,7 @@ Platform notification checklist for that gate:
   notification tap and permission-to-sync controller tests, after the macOS
   native notification request builder extraction, and after the Web entry cache
   and loading-screen fixes, and after adding recipe cooking deduction coverage,
-  after adding Settings app self-check result coverage, and after adding Web
+  after adding former Settings self-check result coverage, and after adding Web
   deployment headers, after adding Settings backup reminder coverage, after
   adding Settings order-recognition key privacy coverage, and after fixing
   order-recognition clear persistence, and after adding recipe-preference
@@ -157,9 +158,10 @@ Platform notification checklist for that gate:
   tests.
 - `flutter test test/settings_screen_test.dart`: passed after adding widget
   coverage that renders the Settings test-notification action and verifies the
-  button calls the notification service path. Passed again after adding widget
-  coverage that taps `运行自检` and verifies the user-visible
-  `应用自检通过：17/17` result. Passed again after adding widget coverage for
+  button calls the notification service path. Historical coverage previously
+  tapped `运行自检` and verified the user-visible `应用自检通过：17/17` result;
+  this was later replaced when the developer-only entry was hidden. Passed
+  again after adding widget coverage for
   the pending backup reminder card and its user-facing copy. Passed again after
   adding widget coverage that verifies a stored order-recognition key is shown
   as configured without exposing the saved secret. Passed again after adding
@@ -167,7 +169,9 @@ Platform notification checklist for that gate:
   again after adding widget coverage for saving recipe preferences from user
   inputs and reloading the normalized values into the fields. Passed again
   after adding widget coverage that confirms demo-data reset cancellation does
-  not run the reset and confirmation reports the cleared-row count.
+  not run the reset and confirmation reports the cleared-row count. Passed
+  again after replacing the Settings self-check action coverage with a
+  regression check that developer-only self-check controls are not rendered.
 - `flutter test test/order_import_review_screen_test.dart`: passed after
   adding widget coverage that low-confidence rows remain excluded until marked
   confirmed, the primary import count updates, the batch-confirmation copy is
@@ -221,6 +225,7 @@ Platform notification checklist for that gate:
   to the app self-check. Passed again after adding `_headers`; the generated
   `build/web/_headers` contains no-cache policy for `index.html`,
   `flutter_bootstrap.js`, `flutter.js`, `main.dart.js`, and `sqflite_sw.js`.
+  Passed again after removing the user-facing Settings self-check controls.
 - `flutter build macos --debug`: passed after the user completed the local
   Xcode installation and license flow. The build produced
   `build/macos/Build/Products/Debug/vibe-fridge.app`; Flutter also generated
@@ -291,9 +296,9 @@ Platform notification checklist for that gate:
   `is-hidden` class. The hide handler now also applies inline opacity,
   visibility, and pointer-events styles; after rebuilding and reloading, center
   hit testing lands on `FLUTTER-VIEW` instead of the loading layer.
-- App self-check from Settings: passed, 15/15; passed again on the restarted
-  latest Web target on port 54390 in about 354ms. After adding the backup
-  content check and rebuilding Web, the current Settings self-check passed
+- Historical app self-check from Settings: passed, 15/15; passed again on the
+  restarted Web target on port 54390 in about 354ms. After adding the backup
+  content check and rebuilding Web, the then-current Settings self-check passed
   16/16 on port 54390 in about 372ms with no browser warning or error logs.
   The repository-level self-check test now covers 17 checks including recipe
   cooking inventory deduction.
@@ -406,24 +411,26 @@ Platform notification checklist for that gate:
   `面包` with quantity `1袋` and source-note copy, then deleted it and verified
   `待采购 0` while `面包` returned to replenishment suggestions, with no browser
   warning or error logs.
-- Mobile Web Settings self-check smoke check on port 54334: opened Settings,
-  ran the app self-check, saw the card switch to `全部通过` with `15/15`, verified
-  the detailed check list rendered readable rows for inventory, reminders,
-  recipes, shopping, batch edits, and history, with no browser warning or error
-  logs.
-- Desktop Web Settings self-check smoke check on fresh port 54372 after a
-  rebuild: opened Settings, verified the current `应用自检` / `运行自检` copy,
-  ran the app self-check, saw `全部通过` with `15/15` in about 397ms, and saw no
-  browser warning or error logs for the fresh origin. A same-port reload on
+- Historical Mobile Web Settings self-check smoke check on port 54334, before
+  the entry was hidden: opened Settings, ran the app self-check, saw the card
+  switch to `全部通过` with `15/15`, verified the detailed check list rendered
+  readable rows for inventory, reminders, recipes, shopping, batch edits, and
+  history, with no browser warning or error logs.
+- Historical Desktop Web Settings self-check smoke check on fresh port 54372
+  after a rebuild, before the entry was hidden: opened Settings, verified the
+  then-current `应用自检` / `运行自检` copy, ran the app self-check, saw
+  `全部通过` with `15/15` in about 397ms, and saw no browser warning or error
+  logs for the fresh origin. A same-port reload on
   port 54371 still showed older self-check copy after rebuilding, indicating
   older same-origin cache or previous registration state can keep stale Web
   assets during validation. The Web bootstrap now avoids registering a
   replacement Flutter service worker and clears stale registrations once the
   current index is loaded.
-- Desktop and mobile Web Settings regression smoke check on fresh port 54384:
-  opened Settings on the current build, verified backup/notification copy,
-  scrolled to recipe preferences and app self-check, ran self-check, and saw
-  `全部通过` with `15/15`. Then switched to 390 x 844, reloaded Settings,
+- Historical desktop and mobile Web Settings regression smoke check on fresh
+  port 54384, before the self-check entry was hidden: opened Settings on that
+  build, verified backup/notification copy, scrolled to recipe preferences and
+  app self-check, ran self-check, and saw `全部通过` with `15/15`. Then switched
+  to 390 x 844, reloaded Settings,
   verified the mobile layout stayed readable, opened Recipes from the bottom
   navigation, and opened `快手蛋奶早餐` at
   `?route=recipes%2Fquick-breakfast` with no browser warning or error logs.
@@ -675,12 +682,12 @@ Platform notification checklist for that gate:
 - The same copy pass found Settings restore/import feedback using
   implementation-flavored terms like `恢复前快照`, `健康检查`, and `日志`.
   Those labels now use user-facing backup/check/detail wording instead.
-- A follow-up Settings copy pass found the built-in check still used
-  acceptance-style wording. The visible card, action, toast, and check-data
-  labels now use `应用自检` language.
+- A follow-up Settings copy pass found the then-visible built-in check still
+  used acceptance-style wording. That user-facing entry was later removed; the
+  internal check-data labels still use `应用自检` language.
 - Inspecting the app self-check failure path found failed check details would
-  display raw Dart prefixes such as `Bad state:` before the useful message.
-  Self-check failures now strip those technical prefixes before rendering.
+  include raw Dart prefixes such as `Bad state:` before the useful message.
+  Internal self-check failures now strip those technical prefixes.
 - `flutter build macos --debug`: initially blocked by local environment.
   Flutter reached Xcode dependency resolution, then failed because the active
   developer directory was Command Line Tools and `xcodebuild` was unavailable
@@ -841,11 +848,14 @@ Platform notification checklist for that gate:
   viewed recipes appear in `最近生成` without stale favorite state.
 - Running a recipe deduction updates priority consumable counts in the live
   mobile Web UI and returns to the recipe list with user feedback.
-- Settings self-check completed and cleaned up its temporary data, and the
-  current Web UI shows readable per-check timings. Automated self-check
-  coverage now verifies 17 checks including recipe cooking deduction.
-- Settings self-check UI now has widget coverage that taps the run action and
-  verifies the user-visible `应用自检通过：17/17` result.
+- Internal app self-check completed and cleaned up its temporary data.
+  Automated self-check coverage now verifies 17 checks including recipe
+  cooking deduction.
+- Settings now has widget coverage verifying developer-only self-check controls
+  are not rendered for users.
+- Rebuilt Web output on port 54390 and reloaded Settings in the in-app
+  browser. The old self-check position now flows directly from `食谱偏好` to
+  `订单识别 AI`, with no `应用自检` card and no browser warning/error logs.
 - Settings backup reminder UI now has widget coverage for the pending reminder
   card, reason copy, accumulated change count, and export action.
 - Settings order-recognition key privacy now has widget coverage that verifies
@@ -1079,11 +1089,12 @@ Platform notification checklist for that gate:
   log terminology to backup, check, detail, and record wording.
 - Reworded Settings built-in check copy from acceptance wording to
   app self-check wording.
-- Cleaned app self-check failure details so users see the actionable reason
-  without raw exception prefixes.
-- Extended the app self-check so the user-visible Settings check also verifies
-  backup content includes inventory rows, tag links, reminder logs, and
-  shopping-list data.
+- Removed the Settings app self-check card and run action so developer-only
+  diagnostics are no longer exposed to users.
+- Cleaned app self-check failure details so internal reports show the
+  actionable reason without raw exception prefixes.
+- Extended the internal app self-check so it also verifies backup content
+  includes inventory rows, tag links, reminder logs, and shopping-list data.
 - Clarified the generic error snackbar action from `复制` to `复制详情`, keeping
   technical diagnostics out of the visible message while making the hidden copy
   action understandable.

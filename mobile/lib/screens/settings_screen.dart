@@ -4,7 +4,6 @@ import 'package:file_selector/file_selector.dart' as file_selector;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import '../data/acceptance_test_service.dart';
 import '../data/inventory_controller.dart';
 import '../data/inventory_repository.dart';
 import '../data/recipe_preferences_store.dart';
@@ -53,13 +52,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _savingRecipePreferences = false;
   bool _savingVlmSettings = false;
   bool _testingVlmSettings = false;
-  bool _runningAcceptance = false;
   bool _resettingDemoData = false;
   bool _syncingNotifications = false;
   bool _hasStoredVlmApiKey = false;
   String? _vlmTestMessage;
   bool? _vlmTestPassed;
-  AcceptanceReport? _lastAcceptanceReport;
   LegacyImportResult? _lastLegacyImportResult;
 
   @override
@@ -376,85 +373,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ),
                       ],
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.fieldGap),
-                SectionCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              '应用自检',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                            ),
-                          ),
-                          if (_lastAcceptanceReport != null)
-                            StatusPill(
-                              label: _lastAcceptanceReport!.passed
-                                  ? '全部通过'
-                                  : '存在失败',
-                              icon: _lastAcceptanceReport!.passed
-                                  ? Icons.check_circle_outline
-                                  : Icons.error_outline,
-                              color: _lastAcceptanceReport!.passed
-                                  ? AppColors.success
-                                  : AppColors.error,
-                              backgroundColor: _lastAcceptanceReport!.passed
-                                  ? AppColors.successContainer
-                                  : AppColors.errorContainer,
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.cardGap),
-                      _SettingRow(
-                        icon: Icons.fact_check_outlined,
-                        label: '核心闭环',
-                        value: _lastAcceptanceReport == null
-                            ? '未运行'
-                            : '${_lastAcceptanceReport!.passedCount}/'
-                                '${_lastAcceptanceReport!.checks.length}',
-                      ),
-                      if (_lastAcceptanceReport != null) ...[
-                        _SettingRow(
-                          icon: Icons.timer_outlined,
-                          label: '耗时',
-                          value: _formatDuration(
-                            _lastAcceptanceReport!.duration,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.compactPadding),
-                        _AcceptanceResults(report: _lastAcceptanceReport!),
-                        const SizedBox(height: AppSpacing.cardGap),
-                      ] else
-                        const SizedBox(height: AppSpacing.cardGap),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed:
-                              _runningAcceptance ? null : _runAcceptanceChecks,
-                          icon: _runningAcceptance
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Icon(Icons.play_arrow_outlined),
-                          label: Text(
-                            _runningAcceptance ? '运行中' : '运行自检',
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -1134,40 +1052,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     }
   }
-
-  Future<void> _runAcceptanceChecks() async {
-    setState(() => _runningAcceptance = true);
-    try {
-      final report = await widget.controller.runAcceptanceChecks();
-      if (!mounted) {
-        return;
-      }
-      setState(() => _lastAcceptanceReport = report);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            report.passed
-                ? '应用自检通过：${report.passedCount}/${report.checks.length}'
-                : '应用自检失败：${report.passedCount}/${report.checks.length}',
-          ),
-        ),
-      );
-    } catch (error, stackTrace) {
-      if (!mounted) {
-        return;
-      }
-      showAppErrorSnackBar(
-        context,
-        message: '应用自检无法运行',
-        error: error,
-        stackTrace: stackTrace,
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _runningAcceptance = false);
-      }
-    }
-  }
 }
 
 class _VlmTestResult extends StatelessWidget {
@@ -1747,85 +1631,6 @@ String _legacyActionLabel(String action) {
 
 String _vlmErrorMessage(OrderRecognitionException error) {
   return error.userMessage;
-}
-
-class _AcceptanceResults extends StatelessWidget {
-  const _AcceptanceResults({required this.report});
-
-  final AcceptanceReport report;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: report.checks
-          .map(
-            (check) => _AcceptanceCheckTile(check: check),
-          )
-          .toList(),
-    );
-  }
-}
-
-class _AcceptanceCheckTile extends StatelessWidget {
-  const _AcceptanceCheckTile({required this.check});
-
-  final AcceptanceCheckResult check;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            check.passed ? Icons.check_circle : Icons.error_outline,
-            color: check.passed ? AppColors.success : AppColors.error,
-            size: 20,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  check.name,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
-                if (check.message != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    check.message!,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.error,
-                        ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            _formatDuration(check.duration),
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: AppColors.textHint,
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-String _formatDuration(Duration duration) {
-  if (duration.inSeconds >= 1) {
-    return '${duration.inSeconds}s';
-  }
-  return '${duration.inMilliseconds}ms';
 }
 
 String _fileTimestamp() {
