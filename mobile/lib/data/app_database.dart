@@ -33,7 +33,7 @@ class AppDatabase {
 
   static DatabaseFactory get _databaseFactory {
     if (kIsWeb) {
-      return databaseFactoryFfiWeb;
+      return databaseFactoryFfiWebBasicWebWorker;
     }
     return databaseFactory;
   }

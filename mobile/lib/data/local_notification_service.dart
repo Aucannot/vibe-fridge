@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import 'inventory_repository.dart';
@@ -7,13 +8,20 @@ class LocalNotificationService {
     MethodChannel channel = const MethodChannel(
       'vibe_fridge/local_notifications',
     ),
-  }) : _channel = channel;
+    bool? supportsPlatformNotifications,
+  })  : _channel = channel,
+        _supportsPlatformNotifications =
+            supportsPlatformNotifications ?? !kIsWeb;
 
   final MethodChannel _channel;
+  final bool _supportsPlatformNotifications;
   void Function(String itemId)? _onNotificationTap;
 
   void setOnNotificationTap(void Function(String itemId)? handler) {
     _onNotificationTap = handler;
+    if (!_supportsPlatformNotifications) {
+      return;
+    }
     _channel.setMethodCallHandler((call) async {
       if (call.method != 'notificationTapped') {
         return null;
@@ -28,14 +36,23 @@ class LocalNotificationService {
   }
 
   Future<LocalNotificationPermissionSnapshot> initialize() async {
+    if (!_supportsPlatformNotifications) {
+      return LocalNotificationPermissionSnapshot.unsupported;
+    }
     return _permissionCall('initialize');
   }
 
   Future<LocalNotificationPermissionSnapshot> getPermissionStatus() async {
+    if (!_supportsPlatformNotifications) {
+      return LocalNotificationPermissionSnapshot.unsupported;
+    }
     return _permissionCall('getPermissionStatus');
   }
 
   Future<LocalNotificationPermissionSnapshot> requestPermission() async {
+    if (!_supportsPlatformNotifications) {
+      return LocalNotificationPermissionSnapshot.unsupported;
+    }
     return _permissionCall('requestPermission');
   }
 
@@ -71,6 +88,9 @@ class LocalNotificationService {
   }
 
   Future<String?> getLaunchItemId() async {
+    if (!_supportsPlatformNotifications) {
+      return null;
+    }
     try {
       final itemId = await _channel.invokeMethod<String>('getLaunchItemId');
       return itemId == null || itemId.isEmpty ? null : itemId;

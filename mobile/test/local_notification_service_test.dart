@@ -160,6 +160,42 @@ void main() {
     expect(status.displayText, '未确认');
   });
 
+  test('unsupported platform skips notification method channel calls',
+      () async {
+    final appDatabase = await openTestDatabase();
+    addTearDown(() async {
+      await appDatabase.database.close();
+    });
+    final repository = InventoryRepository(appDatabase);
+    final calls = <String>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+      calls.add(call.method);
+      fail('Unsupported platforms must not call notification channel.');
+    });
+    final service = LocalNotificationService(
+      channel: channel,
+      supportsPlatformNotifications: false,
+    );
+
+    final initialized = await service.initialize();
+    final status = await service.getPermissionStatus();
+    final requested = await service.requestPermission();
+    final launchItemId = await service.getLaunchItemId();
+    final testResult = await service.sendTestNotification();
+    final syncResult = await service.syncInventoryReminders(repository);
+
+    expect(initialized, LocalNotificationPermissionSnapshot.unsupported);
+    expect(status, LocalNotificationPermissionSnapshot.unsupported);
+    expect(requested, LocalNotificationPermissionSnapshot.unsupported);
+    expect(launchItemId, isNull);
+    expect(testResult.sent, isFalse);
+    expect(testResult.skippedReason, 'unsupported');
+    expect(syncResult.scheduledCount, 0);
+    expect(syncResult.skippedReason, 'unsupported');
+    expect(calls, isEmpty);
+  });
+
   test('notification tap callback receives valid item id from platform',
       () async {
     final service = LocalNotificationService(channel: channel);
