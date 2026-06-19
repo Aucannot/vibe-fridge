@@ -355,7 +355,7 @@ class WebDavBackupException implements Exception {
   String get userMessage {
     return switch (type) {
       WebDavBackupErrorType.configuration => 'WebDAV 配置错误：$message',
-      WebDavBackupErrorType.network => '无法连接 WebDAV：请检查地址或网络',
+      WebDavBackupErrorType.network => '无法连接 WebDAV：请检查地址、网络或云盘的网页访问设置',
       WebDavBackupErrorType.authentication => 'WebDAV 鉴权失败：请检查用户名和密码',
       WebDavBackupErrorType.notFound => '没有找到可恢复的 WebDAV 备份',
       WebDavBackupErrorType.server => 'WebDAV 服务返回错误：请检查目录权限或稍后重试',

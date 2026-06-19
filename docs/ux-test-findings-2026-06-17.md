@@ -33,7 +33,8 @@ Proven enough for beta:
 
 - Home dashboard, today actions, reminder snooze/ignore, item catalog, item
   profile, inventory detail, manual add, order-text import, shopping list,
-  recipes, backup/export, restore/import copy, settings, and the internal
+  recipes, local backup/export, local restore/import copy, WebDAV
+  cloud-backup configuration/upload/restore paths, settings, and the internal
   app self-check service all have passing automated or browser-smoke evidence.
 - Web deep links and browser Back/Forward now preserve hash-free query routes
   across catalog search detail, inventory detail, and recipe detail paths.
@@ -120,7 +121,9 @@ Platform notification checklist for that gate:
   key storage, 86 tests. Passed again after removing the user-facing Settings
   self-check controls while keeping the internal coverage, 86 tests. Passed
   again after making macOS notification scheduling wait for native add
-  completion and report scheduling failures, 87 tests.
+  completion and report scheduling failures, 87 tests. Passed again after
+  adding WebDAV cloud-backup configuration/upload/restore coverage and
+  Web-facing access copy, 97 tests.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
@@ -1138,6 +1141,10 @@ Platform notification checklist for that gate:
   completions and returns `schedule_failed` if the system rejects a request, so
   Settings shows a sync failure instead of `已同步` for a failed platform
   schedule.
+- Added WebDAV cloud backup in Settings, including configuration storage,
+  connection testing, backup upload, latest-backup restore confirmation, and
+  user-facing copy that warns Web users when the cloud service needs to allow
+  browser access.
 
 ## Remaining Risks
 

@@ -179,6 +179,10 @@ void main() {
     expect(find.text('建议导出备份'), findsOneWidget);
     expect(find.text('因为新增库存，建议备份一次'), findsOneWidget);
     expect(find.text('累计 10 次库存资料变更尚未备份'), findsOneWidget);
+    expect(
+      find.textContaining('网页版使用时，云盘服务需要允许网页访问'),
+      findsOneWidget,
+    );
     expect(find.widgetWithText(TextButton, '导出'), findsOneWidget);
   });
 

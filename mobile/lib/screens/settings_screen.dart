@@ -1599,7 +1599,8 @@ class _WebDavBackupPanel extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          '把备份保存到你自己的 WebDAV 空间，可在新设备上恢复。',
+          '把备份保存到你自己的 WebDAV 空间，可在新设备上恢复。'
+          '网页版使用时，云盘服务需要允许网页访问。',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: AppColors.textSecondary,
               ),

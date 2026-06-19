@@ -134,6 +134,36 @@ void main() {
     );
   });
 
+  test('maps network failure to actionable WebDAV copy', () async {
+    final service = WebDavBackupService(
+      client: MockClient((_) async {
+        throw http.ClientException('XMLHttpRequest error.');
+      }),
+    );
+    addTearDown(service.close);
+
+    expect(
+      () => service.validateConfiguration(
+        const WebDavBackupSettings(
+          serverUrl: 'https://dav.example.com/dav',
+        ),
+      ),
+      throwsA(
+        isA<WebDavBackupException>()
+            .having(
+              (error) => error.type,
+              'type',
+              WebDavBackupErrorType.network,
+            )
+            .having(
+              (error) => error.userMessage,
+              'userMessage',
+              contains('云盘的网页访问设置'),
+            ),
+      ),
+    );
+  });
+
   test('rejects invalid backup directory path', () {
     final service = WebDavBackupService(client: MockClient((_) async {
       fail('No request should be sent for invalid configuration');
