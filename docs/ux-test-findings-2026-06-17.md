@@ -132,6 +132,7 @@ Platform notification checklist for that gate:
   adding WebDAV cloud-backup configuration/upload/restore coverage and
   Web-facing access copy, 97 tests. Passed again after adding a local HTTP
   WebDAV round-trip for MKCOL, PUT, PROPFIND, and GET restore flow, 100 tests.
+  Passed again after adding WebDAV restore-cancellation coverage, 101 tests.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
@@ -187,6 +188,8 @@ Platform notification checklist for that gate:
   not run the reset and confirmation reports the cleared-row count. Passed
   again after replacing the Settings self-check action coverage with a
   regression check that developer-only self-check controls are not rendered.
+  Passed again after adding coverage that cancelling a WebDAV restore leaves
+  the current inventory unchanged.
 - `flutter test test/order_import_review_screen_test.dart`: passed after
   adding widget coverage that low-confidence rows remain excluded until marked
   confirmed, the primary import count updates, the batch-confirmation copy is

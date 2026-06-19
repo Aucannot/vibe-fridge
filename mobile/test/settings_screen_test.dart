@@ -405,6 +405,75 @@ void main() {
     );
   });
 
+  testWidgets('settings does not restore WebDAV backup when cancelled',
+      (tester) async {
+    tester.view.physicalSize = const Size(430, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final webDavService = _FakeWebDavBackupService();
+    final controller = _FakeBackupController(
+      InventoryRepository(appDatabase),
+      notificationService: _FakeNotificationService(
+        testResult: const LocalNotificationTestResult(
+          permission: LocalNotificationPermissionSnapshot(
+            supported: true,
+            granted: true,
+            status: 'granted',
+          ),
+          sent: true,
+        ),
+      ),
+    );
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: SettingsScreen(
+            controller: controller,
+            vlmSettingsStore: VlmSettingsStore(
+              secretStore: _MemorySecretStore(),
+            ),
+            webDavBackupSettingsStore: WebDavBackupSettingsStore(
+              secretStore: _MemorySecretStore(),
+            ),
+            webDavBackupService: webDavService,
+          ),
+        ),
+      ),
+    );
+
+    final serverUrlField = _textFieldWithLabel('WebDAV 服务地址');
+    await _pumpUntilFound(
+      tester,
+      serverUrlField,
+      timeout: const Duration(seconds: 5),
+    );
+    await tester.enterText(serverUrlField, 'https://dav.example.com/dav');
+
+    final restoreButton = find.widgetWithText(OutlinedButton, '恢复云备份');
+    await tester.ensureVisible(restoreButton);
+    await tester.tap(restoreButton);
+    await tester.pumpAndSettle();
+
+    expect(webDavService.downloadCalls, 1);
+    expect(find.text('恢复云端备份'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(TextButton, '取消'));
+    await tester.pumpAndSettle();
+
+    expect(controller.restoreBackupCalls, 0);
+    expect(controller.restoredBackup, isNull);
+    expect(find.text('恢复云端备份'), findsNothing);
+    expect(
+      find.text('已从 WebDAV 恢复：vibe-fridge-backup-20260619-120000.json'),
+      findsNothing,
+    );
+  });
+
   testWidgets('settings saves recipe preferences from user inputs',
       (tester) async {
     tester.view.physicalSize = const Size(430, 2300);
