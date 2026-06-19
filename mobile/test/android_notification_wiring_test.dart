@@ -109,9 +109,11 @@ void main() {
       'LocalNotificationContract.scheduledNotificationsKey',
       'row["itemId"] as? String',
       'row["scheduledAtMillis"] as? Number',
+      'itemId.isBlank() || scheduledAtMillis <= 0L',
     ]);
     _expectAllContains(notificationReceiver, [
       'intent.getStringExtra(LocalNotificationContract.extraItemId)',
+      'itemId.isBlank()',
       'Intent(context, MainActivity::class.java)',
       'putExtra(LocalNotificationContract.extraItemId, itemId)',
       'setContentIntent(pendingIntent)',
@@ -123,6 +125,32 @@ void main() {
       'Intent.ACTION_MY_PACKAGE_REPLACED',
       'LocalReminderScheduler.restoreScheduledReminders(context)',
     ]);
+  });
+
+  test('Android native notification code rejects malformed reminder ids', () {
+    final scheduler = _read(
+      'android/app/src/main/kotlin/com/vibefridge/vibe_fridge/'
+      'LocalReminderScheduler.kt',
+    );
+    final notificationReceiver = _read(
+      'android/app/src/main/kotlin/com/vibefridge/vibe_fridge/'
+      'ReminderNotificationReceiver.kt',
+    );
+
+    expect(
+      RegExp(
+        r'if\s*\(\s*itemId\.isBlank\(\)\s*\|\|\s*scheduledAtMillis\s*<=\s*0L\s*\)\s*\{\s*return@mapNotNull null\s*\}',
+        multiLine: true,
+      ).hasMatch(scheduler),
+      isTrue,
+    );
+    expect(
+      RegExp(
+        r'if\s*\(\s*itemId\.isBlank\(\)\s*\)\s*\{\s*return\s*\}',
+        multiLine: true,
+      ).hasMatch(notificationReceiver),
+      isTrue,
+    );
   });
 }
 

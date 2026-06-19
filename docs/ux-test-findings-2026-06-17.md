@@ -136,7 +136,8 @@ Platform notification checklist for that gate:
   Passed again after adding WebDAV restore-cancellation coverage, 101 tests.
   Passed again after adding AppShell notification tap-to-detail route coverage,
   102 tests. Passed again after adding AppShell launch-notification target
-  routing coverage, 103 tests.
+  routing coverage, 103 tests. Passed again after adding Android native
+  malformed-reminder-id guard coverage, 104 tests.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
@@ -220,7 +221,9 @@ Platform notification checklist for that gate:
 - `flutter test test/android_notification_wiring_test.dart`: passed after
   adding Android source-level checks for notification manifest permissions,
   receivers, method-channel names, payload keys, scheduling persistence,
-  boot/package-update restoration, and click handoff wiring.
+  boot/package-update restoration, and click handoff wiring. Passed again after
+  adding source-level coverage that Android skips blank reminder item ids and
+  non-positive scheduled times before scheduling or showing a notification.
 - `flutter test test/macos_notification_wiring_test.dart`: passed after adding
   macOS source-level checks for method-channel names, native bridge methods,
   notification payload parsing, delegate presentation behavior, and system tap

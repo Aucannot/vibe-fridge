@@ -13,6 +13,9 @@ class ReminderNotificationReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val itemId = intent.getStringExtra(LocalNotificationContract.extraItemId)
             ?: return
+        if (itemId.isBlank()) {
+            return
+        }
         val title = intent.getStringExtra(LocalNotificationContract.extraTitle)
             ?: "库存提醒"
         val body = intent.getStringExtra(LocalNotificationContract.extraBody)

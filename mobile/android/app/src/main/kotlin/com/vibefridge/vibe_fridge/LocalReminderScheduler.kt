@@ -146,6 +146,9 @@ object LocalReminderScheduler {
             val scheduledAtMillis =
                 (row["scheduledAtMillis"] as? Number)?.toLong()
                     ?: return@mapNotNull null
+            if (itemId.isBlank() || scheduledAtMillis <= 0L) {
+                return@mapNotNull null
+            }
             ReminderRow(
                 itemId = itemId,
                 title = row["title"] as? String ?: "库存提醒",
