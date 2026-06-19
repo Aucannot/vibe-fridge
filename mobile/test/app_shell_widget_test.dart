@@ -60,23 +60,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    final now = DateTime(2026, 6, 19);
-    final item = InventoryItem(
-      id: 'notification-item-1',
-      wikiId: 'notification-wiki-1',
-      name: '通知跳转测试牛奶',
-      quantity: 3,
-      unit: '盒',
-      purchaseDate: DateTime(2026, 6, 18),
-      expiryDate: DateTime(2026, 6, 25),
-      reminderDate: DateTime(2026, 6, 22),
-      reminderDaysBefore: 3,
-      status: ItemStatus.active,
-      isReminderEnabled: true,
-      storageLocation: '冷藏',
-      createdAt: now,
-      updatedAt: now,
-    );
+    final item = _notificationTargetItem();
     final repository = _FakeItemRepository(appDatabase, item: item);
     final notificationService = _FakeNotificationService();
     final controller = _FakeShellController(
@@ -110,6 +94,63 @@ void main() {
     expect(find.text('3 盒'), findsOneWidget);
     expect(find.text('冷藏'), findsWidgets);
   });
+
+  testWidgets('opens launch notification target after app shell starts',
+      (tester) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final item = _notificationTargetItem();
+    final repository = _FakeItemRepository(appDatabase, item: item);
+    final controller = _FakeShellController(
+      repository,
+      notificationService: _FakeNotificationService(),
+      item: item,
+      initialNotificationItemId: item.id,
+    );
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light(),
+        home: AppShell(controller: controller),
+      ),
+    );
+    await _pumpUntilFound(
+      tester,
+      find.text('数量操作'),
+      timeout: const Duration(seconds: 5),
+    );
+    await tester.pump();
+
+    expect(find.text('通知跳转测试牛奶'), findsWidgets);
+    expect(find.text('库存详情'), findsOneWidget);
+    expect(find.text('数量操作'), findsOneWidget);
+    expect(find.text('3 盒'), findsOneWidget);
+  });
+}
+
+InventoryItem _notificationTargetItem() {
+  final now = DateTime(2026, 6, 19);
+  return InventoryItem(
+    id: 'notification-item-1',
+    wikiId: 'notification-wiki-1',
+    name: '通知跳转测试牛奶',
+    quantity: 3,
+    unit: '盒',
+    purchaseDate: DateTime(2026, 6, 18),
+    expiryDate: DateTime(2026, 6, 25),
+    reminderDate: DateTime(2026, 6, 22),
+    reminderDaysBefore: 3,
+    status: ItemStatus.active,
+    isReminderEnabled: true,
+    storageLocation: '冷藏',
+    createdAt: now,
+    updatedAt: now,
+  );
 }
 
 Future<void> _pumpUntilFound(
@@ -139,11 +180,25 @@ class _FakeShellController extends InventoryController {
     super.repository, {
     required LocalNotificationService notificationService,
     required InventoryItem item,
+    String? initialNotificationItemId,
   }) : super(notificationService: notificationService) {
+    _initialNotificationItemId = initialNotificationItemId;
     isLoading = false;
     activeItems = [item];
     expiringItems = [item];
     todayActionItems = [item];
+  }
+
+  String? _initialNotificationItemId;
+
+  @override
+  String? consumeNotificationTappedItemId() {
+    final itemId = _initialNotificationItemId;
+    if (itemId != null) {
+      _initialNotificationItemId = null;
+      return itemId;
+    }
+    return super.consumeNotificationTappedItemId();
   }
 }
 

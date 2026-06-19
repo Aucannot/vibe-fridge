@@ -135,14 +135,17 @@ Platform notification checklist for that gate:
   WebDAV round-trip for MKCOL, PUT, PROPFIND, and GET restore flow, 100 tests.
   Passed again after adding WebDAV restore-cancellation coverage, 101 tests.
   Passed again after adding AppShell notification tap-to-detail route coverage,
-  102 tests.
+  102 tests. Passed again after adding AppShell launch-notification target
+  routing coverage, 103 tests.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
 - `flutter test test/app_shell_widget_test.dart`: passed after adding widget
   coverage that a local-notification tap callback is consumed by AppShell and
   opens the matching inventory detail route with the expected quantity and
-  storage-location content.
+  storage-location content. Passed again after adding coverage that AppShell
+  opens the matching inventory detail when a launch notification target is
+  already pending as the shell starts.
 - `flutter test test/inventory_repository_test.dart`: passed after the
   no-date order duplicate fix and backup-reminder copy cleanup, 19 tests.
   Passed again after adding inventory-table export coverage for commas,
