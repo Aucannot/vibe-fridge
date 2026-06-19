@@ -14,16 +14,24 @@ import '../theme/app_theme.dart';
 import '../widgets/app_cards.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key, required this.controller});
+  const SettingsScreen({
+    super.key,
+    required this.controller,
+    this.vlmSettingsStore,
+    this.recipePreferencesStore,
+    this.vlmOrderService,
+  });
 
   final InventoryController controller;
+  final VlmSettingsStore? vlmSettingsStore;
+  final RecipePreferencesStore? recipePreferencesStore;
+  final VlmOrderService? vlmOrderService;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final _vlmSettingsStore = VlmSettingsStore();
   final _vlmEndpointController = TextEditingController();
   final _vlmModelController = TextEditingController();
   final _vlmApiKeyController = TextEditingController();
@@ -32,8 +40,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _recipeToolsController = TextEditingController();
   final _recipeMinutesController = TextEditingController();
   final _recipeServingsController = TextEditingController();
-  final _vlmOrderService = VlmOrderService();
-  final _recipePreferencesStore = RecipePreferencesStore();
+  late final _vlmSettingsStore = widget.vlmSettingsStore ?? VlmSettingsStore();
+  late final _vlmOrderService = widget.vlmOrderService ?? VlmOrderService();
+  late final _recipePreferencesStore =
+      widget.recipePreferencesStore ?? RecipePreferencesStore();
   bool _importing = false;
   bool _exportingBackup = false;
   bool _restoringBackup = false;

@@ -95,7 +95,9 @@ Platform notification checklist for that gate:
   adding Android notification wiring source tests, 60 tests. Passed again after
   adding macOS notification wiring source tests, 62 tests. Passed again after
   extending app self-check backup coverage, 64 tests. Passed again after adding
-  the Settings test-notification action and channel coverage, 67 tests.
+  the Settings test-notification action and channel coverage, 67 tests. Passed
+  again after adding Settings widget coverage for the test-notification action,
+  68 tests.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
@@ -118,6 +120,9 @@ Platform notification checklist for that gate:
   Android reminder scheduler refactor, notification tap controller handoff
   coverage, notification permission-to-sync controller coverage, and Settings
   test-notification flow coverage, 12 tests.
+- `flutter test test/settings_screen_test.dart`: passed after adding widget
+  coverage that renders the Settings test-notification action and verifies the
+  button calls the notification service path.
 - `flutter test test/android_notification_wiring_test.dart`: passed after
   adding Android source-level checks for notification manifest permissions,
   receivers, method-channel names, payload keys, scheduling persistence,
