@@ -8,6 +8,8 @@ import 'package:vibe_fridge/data/inventory_repository.dart';
 import 'package:vibe_fridge/data/local_notification_service.dart';
 import 'package:vibe_fridge/data/recipe_preferences_store.dart';
 import 'package:vibe_fridge/data/vlm_settings_store.dart';
+import 'package:vibe_fridge/data/webdav_backup_service.dart';
+import 'package:vibe_fridge/data/webdav_backup_store.dart';
 import 'package:vibe_fridge/screens/settings_screen.dart';
 import 'package:vibe_fridge/theme/app_theme.dart';
 
@@ -29,7 +31,7 @@ void main() {
 
   testWidgets('settings test notification action calls notification service',
       (tester) async {
-    tester.view.physicalSize = const Size(430, 1200);
+    tester.view.physicalSize = const Size(430, 1700);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -59,6 +61,9 @@ void main() {
             vlmSettingsStore: VlmSettingsStore(
               secretStore: _MemorySecretStore(),
             ),
+            webDavBackupSettingsStore: WebDavBackupSettingsStore(
+              secretStore: _MemorySecretStore(),
+            ),
           ),
         ),
       ),
@@ -69,6 +74,7 @@ void main() {
     final button = find.widgetWithText(OutlinedButton, '测试通知');
     expect(button, findsOneWidget);
 
+    await tester.ensureVisible(button);
     await tester.tap(button);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
@@ -106,6 +112,9 @@ void main() {
           body: SettingsScreen(
             controller: controller,
             vlmSettingsStore: VlmSettingsStore(
+              secretStore: _MemorySecretStore(),
+            ),
+            webDavBackupSettingsStore: WebDavBackupSettingsStore(
               secretStore: _MemorySecretStore(),
             ),
           ),
@@ -157,6 +166,9 @@ void main() {
             vlmSettingsStore: VlmSettingsStore(
               secretStore: _MemorySecretStore(),
             ),
+            webDavBackupSettingsStore: WebDavBackupSettingsStore(
+              secretStore: _MemorySecretStore(),
+            ),
           ),
         ),
       ),
@@ -170,9 +182,228 @@ void main() {
     expect(find.widgetWithText(TextButton, '导出'), findsOneWidget);
   });
 
+  testWidgets('settings saves WebDAV config without showing stored password',
+      (tester) async {
+    tester.view.physicalSize = const Size(430, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final webDavSettingsStore = WebDavBackupSettingsStore(
+      secretStore: _MemorySecretStore(),
+    );
+    final controller = InventoryController(
+      InventoryRepository(appDatabase),
+      notificationService: _FakeNotificationService(
+        testResult: const LocalNotificationTestResult(
+          permission: LocalNotificationPermissionSnapshot(
+            supported: true,
+            granted: true,
+            status: 'granted',
+          ),
+          sent: true,
+        ),
+      ),
+    );
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: SettingsScreen(
+            controller: controller,
+            vlmSettingsStore: VlmSettingsStore(
+              secretStore: _MemorySecretStore(),
+            ),
+            webDavBackupSettingsStore: webDavSettingsStore,
+          ),
+        ),
+      ),
+    );
+
+    final serverUrlField = _textFieldWithLabel('WebDAV 服务地址');
+    await _pumpUntilFound(
+      tester,
+      serverUrlField,
+      timeout: const Duration(seconds: 5),
+    );
+    await tester.enterText(serverUrlField, ' https://dav.example.com/dav ');
+    await tester.enterText(_textFieldWithLabel('备份目录'), ' /fridge/backups/ ');
+    await tester.enterText(_textFieldWithLabel('用户名'), ' alice ');
+    await tester.enterText(_textFieldWithLabel('密码或应用密码'), ' secret ');
+
+    final saveButton = find.widgetWithText(OutlinedButton, '保存配置');
+    await tester.ensureVisible(saveButton);
+    await tester.tap(saveButton);
+    await tester.pumpAndSettle();
+
+    final loaded = await webDavSettingsStore.load();
+    final passwordField = tester.widget<TextField>(
+      _textFieldWithLabel('密码或应用密码'),
+    );
+
+    expect(find.text('WebDAV 配置已保存'), findsOneWidget);
+    expect(find.text('本机安全保存'), findsWidgets);
+    expect(find.text('secret'), findsNothing);
+    expect(passwordField.controller?.text, isEmpty);
+    expect(loaded.serverUrl, 'https://dav.example.com/dav');
+    expect(loaded.remoteDirectory, 'fridge/backups');
+    expect(loaded.username, 'alice');
+    expect(loaded.password, 'secret');
+  });
+
+  testWidgets('settings uploads backup to WebDAV and marks backup exported',
+      (tester) async {
+    tester.view.physicalSize = const Size(430, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final webDavService = _FakeWebDavBackupService();
+    final controller = _FakeBackupController(
+      InventoryRepository(appDatabase),
+      notificationService: _FakeNotificationService(
+        testResult: const LocalNotificationTestResult(
+          permission: LocalNotificationPermissionSnapshot(
+            supported: true,
+            granted: true,
+            status: 'granted',
+          ),
+          sent: true,
+        ),
+      ),
+    );
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: SettingsScreen(
+            controller: controller,
+            vlmSettingsStore: VlmSettingsStore(
+              secretStore: _MemorySecretStore(),
+            ),
+            webDavBackupSettingsStore: WebDavBackupSettingsStore(
+              secretStore: _MemorySecretStore(),
+            ),
+            webDavBackupService: webDavService,
+          ),
+        ),
+      ),
+    );
+
+    final serverUrlField = _textFieldWithLabel('WebDAV 服务地址');
+    await _pumpUntilFound(
+      tester,
+      serverUrlField,
+      timeout: const Duration(seconds: 5),
+    );
+    await tester.enterText(serverUrlField, 'https://dav.example.com/dav');
+    await tester.enterText(_textFieldWithLabel('备份目录'), 'fridge/backups');
+    await tester.enterText(_textFieldWithLabel('用户名'), 'alice');
+    await tester.enterText(_textFieldWithLabel('密码或应用密码'), 'secret');
+
+    final uploadButton = find.widgetWithText(FilledButton, '上传备份');
+    await tester.ensureVisible(uploadButton);
+    await tester.tap(uploadButton);
+    await tester.pumpAndSettle();
+
+    expect(webDavService.uploadCalls, 1);
+    expect(controller.exportBackupCalls, 1);
+    expect(controller.markBackupExportedCalls, 1);
+    expect(webDavService.lastUploadSettings?.serverUrl,
+        'https://dav.example.com/dav');
+    expect(webDavService.lastUploadSettings?.password, 'secret');
+    expect(webDavService.lastBackupJson, contains('"items"'));
+    expect(find.text('备份已上传到 WebDAV'), findsOneWidget);
+    expect(find.textContaining('最近上传：vibe-fridge-backup-'), findsOneWidget);
+  });
+
+  testWidgets('settings restores latest WebDAV backup after confirmation',
+      (tester) async {
+    tester.view.physicalSize = const Size(430, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final webDavService = _FakeWebDavBackupService(
+      downloadResult: WebDavBackupDownloadResult(
+        fileName: 'vibe-fridge-backup-20260619-120000.json',
+        uri: Uri.parse(
+          'https://dav.example.com/dav/fridge/backups/vibe-fridge-backup-20260619-120000.json',
+        ),
+        backupJson: '{"metadata":{"format":"vibe-fridge"},"data":{}}',
+      ),
+    );
+    final controller = _FakeBackupController(
+      InventoryRepository(appDatabase),
+      notificationService: _FakeNotificationService(
+        testResult: const LocalNotificationTestResult(
+          permission: LocalNotificationPermissionSnapshot(
+            supported: true,
+            granted: true,
+            status: 'granted',
+          ),
+          sent: true,
+        ),
+      ),
+    );
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: SettingsScreen(
+            controller: controller,
+            vlmSettingsStore: VlmSettingsStore(
+              secretStore: _MemorySecretStore(),
+            ),
+            webDavBackupSettingsStore: WebDavBackupSettingsStore(
+              secretStore: _MemorySecretStore(),
+            ),
+            webDavBackupService: webDavService,
+          ),
+        ),
+      ),
+    );
+
+    final serverUrlField = _textFieldWithLabel('WebDAV 服务地址');
+    await _pumpUntilFound(
+      tester,
+      serverUrlField,
+      timeout: const Duration(seconds: 5),
+    );
+    await tester.enterText(serverUrlField, 'https://dav.example.com/dav');
+
+    final restoreButton = find.widgetWithText(OutlinedButton, '恢复云备份');
+    await tester.ensureVisible(restoreButton);
+    await tester.tap(restoreButton);
+    await tester.pumpAndSettle();
+
+    expect(webDavService.downloadCalls, 1);
+    expect(find.text('恢复云端备份'), findsOneWidget);
+    expect(
+      find.textContaining('vibe-fridge-backup-20260619-120000.json'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.widgetWithText(FilledButton, '恢复'));
+    await tester.pumpAndSettle();
+
+    expect(controller.restoreBackupCalls, 1);
+    expect(controller.restoredBackup?['metadata'], isA<Map>());
+    expect(
+      find.text('已从 WebDAV 恢复：vibe-fridge-backup-20260619-120000.json'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('settings saves recipe preferences from user inputs',
       (tester) async {
-    tester.view.physicalSize = const Size(430, 1700);
+    tester.view.physicalSize = const Size(430, 2300);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -203,6 +434,9 @@ void main() {
             vlmSettingsStore: VlmSettingsStore(
               secretStore: _MemorySecretStore(),
             ),
+            webDavBackupSettingsStore: WebDavBackupSettingsStore(
+              secretStore: _MemorySecretStore(),
+            ),
           ),
         ),
       ),
@@ -224,7 +458,9 @@ void main() {
     await tester.enterText(toolsField, ' 电饭煲 ');
     await tester.enterText(minutesField, '25');
     await tester.enterText(servingsField, '3');
-    await tester.tap(find.widgetWithText(OutlinedButton, '保存食谱偏好'));
+    final saveButton = find.widgetWithText(OutlinedButton, '保存食谱偏好');
+    await tester.ensureVisible(saveButton);
+    await tester.tap(saveButton);
     await tester.pumpAndSettle();
 
     final loaded = await recipePreferencesStore.load();
@@ -276,6 +512,9 @@ void main() {
           body: SettingsScreen(
             controller: controller,
             vlmSettingsStore: VlmSettingsStore(
+              secretStore: _MemorySecretStore(),
+            ),
+            webDavBackupSettingsStore: WebDavBackupSettingsStore(
               secretStore: _MemorySecretStore(),
             ),
           ),
@@ -348,6 +587,9 @@ void main() {
           body: SettingsScreen(
             controller: controller,
             vlmSettingsStore: vlmSettingsStore,
+            webDavBackupSettingsStore: WebDavBackupSettingsStore(
+              secretStore: _MemorySecretStore(),
+            ),
           ),
         ),
       ),
@@ -378,7 +620,7 @@ void main() {
 
   testWidgets('settings clears order recognition config after confirmation',
       (tester) async {
-    tester.view.physicalSize = const Size(430, 2200);
+    tester.view.physicalSize = const Size(430, 2800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -415,14 +657,17 @@ void main() {
           body: SettingsScreen(
             controller: controller,
             vlmSettingsStore: vlmSettingsStore,
+            webDavBackupSettingsStore: WebDavBackupSettingsStore(
+              secretStore: _MemorySecretStore(),
+            ),
           ),
         ),
       ),
     );
 
-    final clearButton = find.widgetWithIcon(
-      IconButton,
-      Icons.delete_outline,
+    final clearButton = find.byWidgetPredicate(
+      (widget) => widget is IconButton && widget.tooltip == '清空配置',
+      description: 'order recognition clear button',
     );
     await _pumpUntilFound(
       tester,
@@ -465,7 +710,7 @@ void main() {
     expect(endpointField.controller?.text, isEmpty);
     expect(modelField.controller?.text, isEmpty);
     expect(apiKeyField.controller?.text, isEmpty);
-    expect(find.text('未配置'), findsOneWidget);
+    expect(find.text('未配置'), findsWidgets);
     expect(find.text('订单识别配置已清空'), findsOneWidget);
     expect(find.text('stored-secret-key'), findsNothing);
     expect(loaded.endpoint, isEmpty);
@@ -508,6 +753,100 @@ class _FakeResetDemoController extends InventoryController {
     resetDemoCalls += 1;
     return clearedRows;
   }
+}
+
+class _FakeBackupController extends InventoryController {
+  _FakeBackupController(
+    super.repository, {
+    required LocalNotificationService notificationService,
+  }) : super(notificationService: notificationService);
+
+  int exportBackupCalls = 0;
+  int markBackupExportedCalls = 0;
+  int restoreBackupCalls = 0;
+  Map<String, dynamic>? restoredBackup;
+
+  @override
+  Future<Map<String, dynamic>> exportBackup() async {
+    exportBackupCalls += 1;
+    return {
+      'metadata': {'format': 'vibe-fridge'},
+      'data': {
+        'items': [
+          {'name': 'WebDAV 测试牛奶'},
+        ],
+      },
+    };
+  }
+
+  @override
+  Future<void> markBackupExported() async {
+    markBackupExportedCalls += 1;
+  }
+
+  @override
+  Future<BackupRestoreResult> restoreBackup(
+    Map<String, dynamic> backup, {
+    bool replaceExisting = true,
+  }) async {
+    restoreBackupCalls += 1;
+    restoredBackup = backup;
+    return const BackupRestoreResult(
+      restoredRows: 1,
+      preRestoreSnapshotId: 'snapshot-before-webdav-restore',
+    );
+  }
+}
+
+class _FakeWebDavBackupService extends WebDavBackupService {
+  _FakeWebDavBackupService({
+    WebDavBackupDownloadResult? downloadResult,
+  }) : downloadResult = downloadResult ??
+            WebDavBackupDownloadResult(
+              fileName: 'vibe-fridge-backup-20260619-120000.json',
+              uri: Uri.parse(
+                'https://dav.example.com/dav/fridge/backups/vibe-fridge-backup-20260619-120000.json',
+              ),
+              backupJson: '{"metadata":{"format":"vibe-fridge"},"data":{}}',
+            );
+
+  final WebDavBackupDownloadResult downloadResult;
+  int validateCalls = 0;
+  int uploadCalls = 0;
+  int downloadCalls = 0;
+  WebDavBackupSettings? lastUploadSettings;
+  String? lastBackupJson;
+
+  @override
+  Future<void> validateConfiguration(WebDavBackupSettings settings) async {
+    validateCalls += 1;
+  }
+
+  @override
+  Future<WebDavBackupUploadResult> uploadBackup({
+    required WebDavBackupSettings settings,
+    required String fileName,
+    required String backupJson,
+  }) async {
+    uploadCalls += 1;
+    lastUploadSettings = settings;
+    lastBackupJson = backupJson;
+    return WebDavBackupUploadResult(
+      fileName: fileName,
+      uri: Uri.parse('https://dav.example.com/dav/$fileName'),
+    );
+  }
+
+  @override
+  Future<WebDavBackupDownloadResult> downloadLatestBackup(
+    WebDavBackupSettings settings,
+  ) async {
+    downloadCalls += 1;
+    return downloadResult;
+  }
+
+  @override
+  void close() {}
 }
 
 class _FakeNotificationService extends LocalNotificationService {

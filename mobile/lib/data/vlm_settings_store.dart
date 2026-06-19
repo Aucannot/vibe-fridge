@@ -42,8 +42,8 @@ abstract class VlmSecretStore {
   Future<void> delete(String key);
 }
 
-class FlutterSecureVlmSecretStore implements VlmSecretStore {
-  FlutterSecureVlmSecretStore({
+class FlutterSecureSecretStore implements VlmSecretStore {
+  FlutterSecureSecretStore({
     FlutterSecureStorage storage = const FlutterSecureStorage(),
   }) : _storage = storage;
 
@@ -66,6 +66,12 @@ class FlutterSecureVlmSecretStore implements VlmSecretStore {
   Future<void> delete(String key) {
     return _storage.delete(key: key, mOptions: _macOsOptions);
   }
+}
+
+class FlutterSecureVlmSecretStore extends FlutterSecureSecretStore {
+  FlutterSecureVlmSecretStore({
+    super.storage,
+  });
 }
 
 class VlmSettingsStore {

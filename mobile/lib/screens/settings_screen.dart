@@ -9,6 +9,8 @@ import '../data/inventory_repository.dart';
 import '../data/recipe_preferences_store.dart';
 import '../data/vlm_order_service.dart';
 import '../data/vlm_settings_store.dart';
+import '../data/webdav_backup_service.dart';
+import '../data/webdav_backup_store.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_cards.dart';
 
@@ -19,12 +21,16 @@ class SettingsScreen extends StatefulWidget {
     this.vlmSettingsStore,
     this.recipePreferencesStore,
     this.vlmOrderService,
+    this.webDavBackupSettingsStore,
+    this.webDavBackupService,
   });
 
   final InventoryController controller;
   final VlmSettingsStore? vlmSettingsStore;
   final RecipePreferencesStore? recipePreferencesStore;
   final VlmOrderService? vlmOrderService;
+  final WebDavBackupSettingsStore? webDavBackupSettingsStore;
+  final WebDavBackupService? webDavBackupService;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -39,24 +45,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _recipeToolsController = TextEditingController();
   final _recipeMinutesController = TextEditingController();
   final _recipeServingsController = TextEditingController();
+  final _webDavServerUrlController = TextEditingController();
+  final _webDavRemoteDirectoryController = TextEditingController();
+  final _webDavUsernameController = TextEditingController();
+  final _webDavPasswordController = TextEditingController();
   late final _vlmSettingsStore = widget.vlmSettingsStore ?? VlmSettingsStore();
   late final _vlmOrderService = widget.vlmOrderService ?? VlmOrderService();
   late final _recipePreferencesStore =
       widget.recipePreferencesStore ?? RecipePreferencesStore();
+  late final _webDavBackupSettingsStore =
+      widget.webDavBackupSettingsStore ?? WebDavBackupSettingsStore();
+  late final _webDavBackupService =
+      widget.webDavBackupService ?? WebDavBackupService();
   bool _importing = false;
   bool _exportingBackup = false;
   bool _restoringBackup = false;
   bool _exportingCsv = false;
   bool _loadingVlmSettings = true;
   bool _loadingRecipePreferences = true;
+  bool _loadingWebDavSettings = true;
   bool _savingRecipePreferences = false;
   bool _savingVlmSettings = false;
   bool _testingVlmSettings = false;
+  bool _savingWebDavSettings = false;
+  bool _testingWebDavConnection = false;
+  bool _uploadingWebDavBackup = false;
+  bool _restoringWebDavBackup = false;
   bool _resettingDemoData = false;
   bool _syncingNotifications = false;
   bool _hasStoredVlmApiKey = false;
+  bool _hasStoredWebDavPassword = false;
   String? _vlmTestMessage;
   bool? _vlmTestPassed;
+  String? _webDavStatusMessage;
+  bool? _webDavStatusPassed;
   LegacyImportResult? _lastLegacyImportResult;
 
   @override
@@ -64,6 +86,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _loadVlmSettings();
     _loadRecipePreferences();
+    _loadWebDavSettings();
   }
 
   @override
@@ -76,7 +99,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _recipeToolsController.dispose();
     _recipeMinutesController.dispose();
     _recipeServingsController.dispose();
+    _webDavServerUrlController.dispose();
+    _webDavRemoteDirectoryController.dispose();
+    _webDavUsernameController.dispose();
+    _webDavPasswordController.dispose();
     _vlmOrderService.close();
+    _webDavBackupService.close();
     super.dispose();
   }
 
@@ -164,6 +192,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         onExportBackup: _exportBackupJson,
                         onRestoreBackup: _restoreBackupJson,
                         onExportCsv: _exportInventoryCsv,
+                      ),
+                      const SizedBox(height: AppSpacing.cardGap),
+                      _WebDavBackupPanel(
+                        loading: _loadingWebDavSettings,
+                        serverUrlController: _webDavServerUrlController,
+                        remoteDirectoryController:
+                            _webDavRemoteDirectoryController,
+                        usernameController: _webDavUsernameController,
+                        passwordController: _webDavPasswordController,
+                        hasStoredPassword: _hasStoredWebDavPassword,
+                        statusMessage: _webDavStatusMessage,
+                        statusPassed: _webDavStatusPassed,
+                        saving: _savingWebDavSettings,
+                        testing: _testingWebDavConnection,
+                        uploading: _uploadingWebDavBackup,
+                        restoring: _restoringWebDavBackup,
+                        onSave: _saveWebDavSettings,
+                        onTest: _testWebDavConnection,
+                        onUpload: _uploadBackupToWebDav,
+                        onRestore: _restoreBackupFromWebDav,
+                        onClear: _clearWebDavSettings,
+                        onPasswordChanged: () => setState(() {}),
                       ),
                       if (kDebugMode) ...[
                         const SizedBox(height: AppSpacing.cardGap),
@@ -438,7 +488,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         const SizedBox(height: AppSpacing.cardGap),
                         if (_vlmTestMessage != null) ...[
-                          _VlmTestResult(
+                          _InlineStatusMessage(
                             message: _vlmTestMessage!,
                             passed: _vlmTestPassed == true,
                           ),
@@ -492,6 +542,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _recipeMinutesController.text = '${preferences.cookMinutes}';
     _recipeServingsController.text = '${preferences.servings}';
     setState(() => _loadingRecipePreferences = false);
+  }
+
+  Future<void> _loadWebDavSettings() async {
+    final settings = await _webDavBackupSettingsStore.load(
+      revealPassword: false,
+    );
+    if (!mounted) {
+      return;
+    }
+    _webDavServerUrlController.text = settings.serverUrl;
+    _webDavRemoteDirectoryController.text = settings.remoteDirectory;
+    _webDavUsernameController.text = settings.username;
+    _webDavPasswordController.clear();
+    setState(() {
+      _hasStoredWebDavPassword = settings.hasStoredPassword;
+      _loadingWebDavSettings = false;
+    });
   }
 
   Future<void> _requestNotificationPermission() async {
@@ -899,6 +966,299 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<WebDavBackupSettings> _currentWebDavSettings() async {
+    final saved = await _webDavBackupSettingsStore.load();
+    final password = _webDavPasswordController.text.trim().isEmpty
+        ? saved.password
+        : _webDavPasswordController.text.trim();
+    return WebDavBackupSettings(
+      serverUrl: _webDavServerUrlController.text,
+      remoteDirectory: _webDavRemoteDirectoryController.text,
+      username: _webDavUsernameController.text,
+      password: password,
+      hasStoredPassword: password.isNotEmpty,
+    );
+  }
+
+  Future<void> _saveWebDavSettings() async {
+    setState(() => _savingWebDavSettings = true);
+    try {
+      await _webDavBackupSettingsStore.save(
+        WebDavBackupSettings(
+          serverUrl: _webDavServerUrlController.text,
+          remoteDirectory: _webDavRemoteDirectoryController.text,
+          username: _webDavUsernameController.text,
+          password: _webDavPasswordController.text,
+          hasStoredPassword: _hasStoredWebDavPassword,
+        ),
+        preserveExistingPasswordIfBlank: true,
+      );
+      if (!mounted) {
+        return;
+      }
+      final saved = await _webDavBackupSettingsStore.load(
+        revealPassword: false,
+      );
+      if (!mounted) {
+        return;
+      }
+      _webDavServerUrlController.text = saved.serverUrl;
+      _webDavRemoteDirectoryController.text = saved.remoteDirectory;
+      _webDavUsernameController.text = saved.username;
+      _webDavPasswordController.clear();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('WebDAV 配置已保存')),
+      );
+      setState(() {
+        _hasStoredWebDavPassword = saved.hasStoredPassword;
+        _webDavStatusMessage = null;
+        _webDavStatusPassed = null;
+      });
+    } catch (error, stackTrace) {
+      if (!mounted) {
+        return;
+      }
+      showAppErrorSnackBar(
+        context,
+        message: _webDavErrorMessage(error, fallback: '保存 WebDAV 配置失败'),
+        error: error,
+        stackTrace: stackTrace,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _savingWebDavSettings = false);
+      }
+    }
+  }
+
+  Future<void> _testWebDavConnection() async {
+    setState(() {
+      _testingWebDavConnection = true;
+      _webDavStatusMessage = null;
+      _webDavStatusPassed = null;
+    });
+    try {
+      await _webDavBackupService.validateConfiguration(
+        await _currentWebDavSettings(),
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _webDavStatusPassed = true;
+        _webDavStatusMessage = 'WebDAV 连接可用';
+      });
+    } catch (error, stackTrace) {
+      if (!mounted) {
+        return;
+      }
+      final message = _webDavErrorMessage(error, fallback: 'WebDAV 连接失败');
+      setState(() {
+        _webDavStatusPassed = false;
+        _webDavStatusMessage = message;
+      });
+      showAppErrorSnackBar(
+        context,
+        message: message,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _testingWebDavConnection = false);
+      }
+    }
+  }
+
+  Future<void> _uploadBackupToWebDav() async {
+    setState(() {
+      _uploadingWebDavBackup = true;
+      _webDavStatusMessage = null;
+      _webDavStatusPassed = null;
+    });
+    try {
+      final fileName = 'vibe-fridge-backup-${_fileTimestamp()}.json';
+      final backup = await widget.controller.exportBackup();
+      final text = const JsonEncoder.withIndent('  ').convert(backup);
+      final result = await _webDavBackupService.uploadBackup(
+        settings: await _currentWebDavSettings(),
+        fileName: fileName,
+        backupJson: text,
+      );
+      await widget.controller.markBackupExported();
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('备份已上传到 WebDAV')),
+      );
+      setState(() {
+        _webDavStatusPassed = true;
+        _webDavStatusMessage = '最近上传：${result.fileName}';
+      });
+    } catch (error, stackTrace) {
+      if (!mounted) {
+        return;
+      }
+      final message = _webDavErrorMessage(error, fallback: '上传 WebDAV 备份失败');
+      setState(() {
+        _webDavStatusPassed = false;
+        _webDavStatusMessage = message;
+      });
+      showAppErrorSnackBar(
+        context,
+        message: message,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _uploadingWebDavBackup = false);
+      }
+    }
+  }
+
+  Future<void> _restoreBackupFromWebDav() async {
+    setState(() {
+      _restoringWebDavBackup = true;
+      _webDavStatusMessage = null;
+      _webDavStatusPassed = null;
+    });
+    WebDavBackupDownloadResult downloaded;
+    try {
+      downloaded = await _webDavBackupService.downloadLatestBackup(
+        await _currentWebDavSettings(),
+      );
+    } catch (error, stackTrace) {
+      if (!mounted) {
+        return;
+      }
+      final message = _webDavErrorMessage(error, fallback: '下载 WebDAV 备份失败');
+      setState(() {
+        _restoringWebDavBackup = false;
+        _webDavStatusPassed = false;
+        _webDavStatusMessage = message;
+      });
+      showAppErrorSnackBar(
+        context,
+        message: message,
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return;
+    }
+
+    if (!mounted) {
+      return;
+    }
+    setState(() => _restoringWebDavBackup = false);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('恢复云端备份'),
+        content: Text(
+          '将用云端备份「${downloaded.fileName}」替换当前库存数据。'
+          '恢复前会自动保留一份当前备份。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('恢复'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    setState(() => _restoringWebDavBackup = true);
+    try {
+      final decoded = jsonDecode(downloaded.backupJson);
+      if (decoded is! Map) {
+        throw const FormatException('备份文件格式不正确');
+      }
+      await widget.controller.restoreBackup(
+        Map<String, dynamic>.from(decoded),
+      );
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('已从 WebDAV 恢复：${downloaded.fileName}')),
+      );
+      setState(() {
+        _webDavStatusPassed = true;
+        _webDavStatusMessage = '最近恢复：${downloaded.fileName}';
+      });
+    } catch (error, stackTrace) {
+      if (!mounted) {
+        return;
+      }
+      showAppErrorSnackBar(
+        context,
+        message: '恢复 WebDAV 备份失败',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _restoringWebDavBackup = false);
+      }
+    }
+  }
+
+  Future<void> _clearWebDavSettings() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('清空 WebDAV 配置'),
+        content: const Text('服务地址、账号和已保存的密码都会被清空。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('清空'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) {
+      return;
+    }
+
+    setState(() => _savingWebDavSettings = true);
+    try {
+      await _webDavBackupSettingsStore.clear();
+      if (!mounted) {
+        return;
+      }
+      await _loadWebDavSettings();
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _hasStoredWebDavPassword = false;
+        _webDavStatusMessage = null;
+        _webDavStatusPassed = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('WebDAV 配置已清空')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _savingWebDavSettings = false);
+      }
+    }
+  }
+
   Future<void> _exportInventoryCsv() async {
     setState(() => _exportingCsv = true);
     try {
@@ -1054,8 +1414,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 }
 
-class _VlmTestResult extends StatelessWidget {
-  const _VlmTestResult({
+class _InlineStatusMessage extends StatelessWidget {
+  const _InlineStatusMessage({
     required this.message,
     required this.passed,
   });
@@ -1161,6 +1521,239 @@ class _VlmSettingsActions extends StatelessWidget {
               tooltip: '清空配置',
               onPressed: saving ? null : onClear,
               icon: const Icon(Icons.delete_outline),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _WebDavBackupPanel extends StatelessWidget {
+  const _WebDavBackupPanel({
+    required this.loading,
+    required this.serverUrlController,
+    required this.remoteDirectoryController,
+    required this.usernameController,
+    required this.passwordController,
+    required this.hasStoredPassword,
+    required this.statusMessage,
+    required this.statusPassed,
+    required this.saving,
+    required this.testing,
+    required this.uploading,
+    required this.restoring,
+    required this.onSave,
+    required this.onTest,
+    required this.onUpload,
+    required this.onRestore,
+    required this.onClear,
+    required this.onPasswordChanged,
+  });
+
+  final bool loading;
+  final TextEditingController serverUrlController;
+  final TextEditingController remoteDirectoryController;
+  final TextEditingController usernameController;
+  final TextEditingController passwordController;
+  final bool hasStoredPassword;
+  final String? statusMessage;
+  final bool? statusPassed;
+  final bool saving;
+  final bool testing;
+  final bool uploading;
+  final bool restoring;
+  final VoidCallback onSave;
+  final VoidCallback onTest;
+  final VoidCallback onUpload;
+  final VoidCallback onRestore;
+  final VoidCallback onClear;
+  final VoidCallback onPasswordChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final busy = saving || testing || uploading || restoring;
+    final hasConfig = serverUrlController.text.trim().isNotEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Divider(height: 1),
+        const SizedBox(height: AppSpacing.cardGap),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'WebDAV 云备份',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w900,
+                    ),
+              ),
+            ),
+            IconButton.outlined(
+              tooltip: '清空 WebDAV 配置',
+              onPressed: busy ? null : onClear,
+              icon: const Icon(Icons.delete_outline),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          '把备份保存到你自己的 WebDAV 空间，可在新设备上恢复。',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppColors.textSecondary,
+              ),
+        ),
+        const SizedBox(height: AppSpacing.cardGap),
+        if (loading)
+          const Center(child: CircularProgressIndicator())
+        else ...[
+          _SettingRow(
+            icon: Icons.cloud_outlined,
+            label: '云端备份',
+            value: hasConfig ? '已配置' : '未配置',
+          ),
+          if (hasStoredPassword)
+            const _SettingRow(
+              icon: Icons.security_outlined,
+              label: '密码状态',
+              value: '本机安全保存',
+            ),
+          const SizedBox(height: AppSpacing.cardGap),
+          TextField(
+            controller: serverUrlController,
+            textInputAction: TextInputAction.next,
+            decoration: const InputDecoration(
+              labelText: 'WebDAV 服务地址',
+              hintText: 'https://example.com/remote.php/dav/files/me/',
+              prefixIcon: Icon(Icons.link_outlined),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.cardGap),
+          TextField(
+            controller: remoteDirectoryController,
+            textInputAction: TextInputAction.next,
+            decoration: const InputDecoration(
+              labelText: '备份目录',
+              hintText: WebDavBackupSettingsStore.defaultRemoteDirectory,
+              prefixIcon: Icon(Icons.folder_outlined),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.cardGap),
+          TextField(
+            controller: usernameController,
+            textInputAction: TextInputAction.next,
+            decoration: const InputDecoration(
+              labelText: '用户名',
+              prefixIcon: Icon(Icons.person_outline),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.cardGap),
+          TextField(
+            controller: passwordController,
+            obscureText: true,
+            onChanged: (_) => onPasswordChanged(),
+            decoration: InputDecoration(
+              labelText: '密码或应用密码',
+              hintText: hasStoredPassword ? '已安全保存，留空保持不变' : '可留空',
+              helperText: hasStoredPassword ? '已保存的密码不会明文显示' : '仅保存在本机安全区域',
+              prefixIcon: const Icon(Icons.key_outlined),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.cardGap),
+          if (statusMessage != null) ...[
+            _InlineStatusMessage(
+              message: statusMessage!,
+              passed: statusPassed == true,
+            ),
+            const SizedBox(height: AppSpacing.cardGap),
+          ],
+          _WebDavBackupActions(
+            saving: saving,
+            testing: testing,
+            uploading: uploading,
+            restoring: restoring,
+            onSave: onSave,
+            onTest: onTest,
+            onUpload: onUpload,
+            onRestore: onRestore,
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _WebDavBackupActions extends StatelessWidget {
+  const _WebDavBackupActions({
+    required this.saving,
+    required this.testing,
+    required this.uploading,
+    required this.restoring,
+    required this.onSave,
+    required this.onTest,
+    required this.onUpload,
+    required this.onRestore,
+  });
+
+  final bool saving;
+  final bool testing;
+  final bool uploading;
+  final bool restoring;
+  final VoidCallback onSave;
+  final VoidCallback onTest;
+  final VoidCallback onUpload;
+  final VoidCallback onRestore;
+
+  @override
+  Widget build(BuildContext context) {
+    final busy = saving || testing || uploading || restoring;
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: busy ? null : onSave,
+                icon: saving
+                    ? const _TinyProgress()
+                    : const Icon(Icons.save_outlined),
+                label: Text(saving ? '保存中' : '保存配置'),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: busy ? null : onTest,
+                icon: testing
+                    ? const _TinyProgress()
+                    : const Icon(Icons.cloud_sync_outlined),
+                label: Text(testing ? '测试中' : '测试连接'),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: busy ? null : onUpload,
+                icon: uploading
+                    ? const _TinyProgress()
+                    : const Icon(Icons.cloud_upload_outlined),
+                label: Text(uploading ? '上传中' : '上传备份'),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: busy ? null : onRestore,
+                icon: restoring
+                    ? const _TinyProgress()
+                    : const Icon(Icons.cloud_download_outlined),
+                label: Text(restoring ? '恢复中' : '恢复云备份'),
+              ),
             ),
           ],
         ),
@@ -1631,6 +2224,13 @@ String _legacyActionLabel(String action) {
 
 String _vlmErrorMessage(OrderRecognitionException error) {
   return error.userMessage;
+}
+
+String _webDavErrorMessage(Object error, {required String fallback}) {
+  if (error is WebDavBackupException) {
+    return error.userMessage;
+  }
+  return fallback;
 }
 
 String _fileTimestamp() {
