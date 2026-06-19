@@ -85,7 +85,8 @@ Platform notification checklist for that gate:
   order-recognition error-copy coverage, plus the generic error snackbar
   detail-copy coverage, notification tap controller handoff coverage, and
   notification permission-to-sync controller coverage, 57 tests; passed again
-  after the macOS native notification request builder extraction.
+  after the macOS native notification request builder extraction. Passed again
+  after adding the custom Web bootstrap guard, 58 tests.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
