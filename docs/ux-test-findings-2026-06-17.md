@@ -100,7 +100,8 @@ Platform notification checklist for that gate:
   the Settings test-notification action and channel coverage, 67 tests. Passed
   again after adding Settings widget coverage for the test-notification action,
   68 tests. Passed again after adding Web entry cache-busting coverage and
-  hardening loading-screen hiding, 69 tests.
+  hardening loading-screen hiding, 69 tests. Passed again after adding recipe
+  cooking inventory-deduction coverage, 70 tests.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
@@ -119,7 +120,8 @@ Platform notification checklist for that gate:
   code review, after the final Settings copy cleanup, and after adding the
   notification tap and permission-to-sync controller tests, after the macOS
   native notification request builder extraction, and after the Web entry cache
-  and loading-screen fixes, with no issues.
+  and loading-screen fixes, and after adding recipe cooking deduction coverage,
+  with no issues.
 - `flutter test test/local_notification_service_test.dart`: passed after the
   Android reminder scheduler refactor, notification tap controller handoff
   coverage, notification permission-to-sync controller coverage, and Settings
@@ -142,6 +144,9 @@ Platform notification checklist for that gate:
   delete stale Flutter Cache Storage entries; passed again after adding
   no-cache entry hints, a cache-busted bootstrap script request, and inline
   loading-screen hide styles.
+- `flutter test test/recipes_screen_test.dart`: passed after adding coverage
+  that applies a recipe's inventory uses through `InventoryController` and
+  verifies the real inventory quantities are deducted.
 - `flutter build web --debug --no-wasm-dry-run`: passed after the latest beta
   fixes including Web route cleanup, direct Web detail URL hash cleanup,
   startup error copy coverage, the edit-page Material fix, and no-date order
@@ -757,6 +762,9 @@ Platform notification checklist for that gate:
   route in the address bar.
 - Recipe detail shows consumed inventory, missing ingredients, steps, and the
   inventory deduction action.
+- Recipe cooking now has controller-level coverage that applies the detail
+  action's inventory-use quantities and verifies the deducted inventory values
+  are persisted.
 - Recipe favorites update from both the list and detail surfaces, and recently
   viewed recipes appear in `最近生成` without stale favorite state.
 - Running a recipe deduction updates priority consumable counts in the live
