@@ -242,6 +242,26 @@ void main() {
     expect(await service.getLaunchItemId(), isNull);
   });
 
+  test('get launch item id returns only non-empty platform targets', () async {
+    final service = LocalNotificationService(channel: channel);
+    final returnedItemIds = <String?>['item-123', '', null];
+    final calls = <String>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+      calls.add(call.method);
+      return returnedItemIds.removeAt(0);
+    });
+
+    expect(await service.getLaunchItemId(), 'item-123');
+    expect(await service.getLaunchItemId(), isNull);
+    expect(await service.getLaunchItemId(), isNull);
+    expect(calls, [
+      'getLaunchItemId',
+      'getLaunchItemId',
+      'getLaunchItemId',
+    ]);
+  });
+
   test('send test notification requests permission before platform call',
       () async {
     final service = LocalNotificationService(channel: channel);

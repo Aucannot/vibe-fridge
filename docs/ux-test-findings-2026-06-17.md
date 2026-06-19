@@ -137,7 +137,8 @@ Platform notification checklist for that gate:
   Passed again after adding AppShell notification tap-to-detail route coverage,
   102 tests. Passed again after adding AppShell launch-notification target
   routing coverage, 103 tests. Passed again after adding Android native
-  malformed-reminder-id guard coverage, 104 tests.
+  malformed-reminder-id guard coverage, 104 tests. Passed again after adding
+  launch notification target filtering coverage, 105 tests.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
@@ -182,7 +183,8 @@ Platform notification checklist for that gate:
   payload to the platform and denied permission skips platform scheduling, 14
   tests. Passed again after adding coverage that a native scheduling
   `PlatformException` reports `同步失败，请稍后重试` instead of a successful sync,
-  15 tests.
+  15 tests. Passed again after adding coverage that launch notification targets
+  return only non-empty platform item ids, 17 tests.
 - `flutter test test/settings_screen_test.dart`: passed after adding widget
   coverage that renders the Settings test-notification action and verifies the
   button calls the notification service path. Historical coverage previously
