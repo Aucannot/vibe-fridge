@@ -181,6 +181,73 @@ void main() {
     expect(find.text('累计 10 次库存资料变更尚未备份'), findsOneWidget);
     expect(find.widgetWithText(TextButton, '导出'), findsOneWidget);
   });
+
+  testWidgets('settings keeps stored order recognition key hidden',
+      (tester) async {
+    tester.view.physicalSize = const Size(430, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final secretStore = _MemorySecretStore();
+    final vlmSettingsStore = VlmSettingsStore(secretStore: secretStore);
+    await vlmSettingsStore.save(
+      const VlmSettings(
+        endpoint: 'https://local.test/v1/chat/completions',
+        model: 'local-vlm',
+        apiKey: 'stored-secret-key',
+      ),
+    );
+
+    final controller = InventoryController(
+      InventoryRepository(appDatabase),
+      notificationService: _FakeNotificationService(
+        testResult: const LocalNotificationTestResult(
+          permission: LocalNotificationPermissionSnapshot(
+            supported: true,
+            granted: true,
+            status: 'granted',
+          ),
+          sent: true,
+        ),
+      ),
+    );
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: SettingsScreen(
+            controller: controller,
+            vlmSettingsStore: vlmSettingsStore,
+          ),
+        ),
+      ),
+    );
+
+    final apiKeyFieldFinder = find.byWidgetPredicate(
+      (widget) =>
+          widget is TextField && widget.decoration?.labelText == 'API 密钥',
+      description: 'API key text field',
+    );
+    await _pumpUntilFound(
+      tester,
+      apiKeyFieldFinder,
+      timeout: const Duration(seconds: 5),
+    );
+    await tester.pump();
+
+    final apiKeyField = tester.widget<TextField>(apiKeyFieldFinder);
+    expect(apiKeyField.controller?.text, isEmpty);
+
+    expect(find.text('订单识别 AI'), findsOneWidget);
+    expect(find.text('已配置'), findsOneWidget);
+    expect(find.text('本机安全保存'), findsOneWidget);
+    expect(find.text('已安全保存，留空保持不变'), findsOneWidget);
+    expect(find.text('已保存的密钥不会明文显示'), findsOneWidget);
+    expect(find.text('stored-secret-key'), findsNothing);
+  });
 }
 
 Future<void> _pumpUntilFound(
