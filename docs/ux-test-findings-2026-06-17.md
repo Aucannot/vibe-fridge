@@ -116,7 +116,8 @@ Platform notification checklist for that gate:
   tests. Passed again after adding order-import review widget coverage, 82
   tests. Passed again after adding shopping conversion confirmation coverage,
   83 tests. Passed again after adding notification sync payload handoff
-  coverage, 85 tests.
+  coverage, 85 tests. Passed again after fixing macOS order-recognition secure
+  key storage, 86 tests.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
@@ -145,7 +146,8 @@ Platform notification checklist for that gate:
   after adding order-import review widget coverage, and after adding shopping
   conversion confirmation coverage, and after adding notification sync payload
   handoff coverage, and after adding macOS inventory-reminder content/trigger
-  wiring coverage, with no issues.
+  wiring coverage, and after fixing macOS order-recognition secure key storage,
+  with no issues.
 - `flutter test test/local_notification_service_test.dart`: passed after the
   Android reminder scheduler refactor, notification tap controller handoff
   coverage, notification permission-to-sync controller coverage, and Settings
@@ -180,7 +182,9 @@ Platform notification checklist for that gate:
 - `flutter test test/vlm_settings_store_test.dart`: passed after verifying
   fresh settings still load the default endpoint/model while the explicit
   clear action persists blank endpoint/model values and removes the secure API
-  key.
+  key. Passed again after verifying VLM API key storage disables the macOS
+  Data Protection Keychain path that caused local debug saves to fail with
+  security result `-34018`, 5 tests.
 - `flutter test test/android_notification_wiring_test.dart`: passed after
   adding Android source-level checks for notification manifest permissions,
   receivers, method-channel names, payload keys, scheduling persistence,
@@ -226,7 +230,8 @@ Platform notification checklist for that gate:
   status mapper, again after adding the native tap payload handoff helper,
   again after the Web entry cache and loading-screen fixes, and again after
   extracting inventory-reminder content/trigger construction into tested
-  helpers.
+  helpers. Passed again after fixing macOS order-recognition secure key
+  storage without requiring a development-certificate keychain entitlement.
 - `xcodebuild test -workspace Runner.xcworkspace -scheme Runner -configuration
   Debug -destination 'platform=macOS' -derivedDataPath
   /private/tmp/vibe-fridge-xcode-derived-tap -clonedSourcePackagesDirPath
@@ -239,7 +244,9 @@ Platform notification checklist for that gate:
   the launch target plus Flutter event path. Passed again with 7 tests after
   extracting the diagnostic test-notification request factory. Passed again
   with 8 tests after adding direct inventory-reminder content construction and
-  future trigger coverage.
+  future trigger coverage. Passed again with 9 tests after adding a native
+  Keychain write/read/delete smoke for VLM API secret storage without the Data
+  Protection Keychain entitlement path.
 - `flutter run -d macos`: launched the debug macOS target successfully and
   exposed a Dart VM Service. The app process started, though `open` could not
   automatically foreground the window in this shell session.
@@ -1092,6 +1099,11 @@ Platform notification checklist for that gate:
 - Reworded the order-recognition key copy from storage terminology to
   `密钥状态` / `本机安全保存` / `本机安全区域`, so Settings describes the outcome
   rather than the implementation.
+- Fixed macOS order-recognition configuration saves failing with
+  `PlatformException(Unexpected security result code, Code: -34018)` by
+  storing the VLM API key through the regular macOS Keychain path instead of
+  the Data Protection Keychain path that requires an entitlement not present in
+  local debug builds.
 
 ## Remaining Risks
 

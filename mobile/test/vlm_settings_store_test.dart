@@ -1,3 +1,4 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vibe_fridge/data/vlm_settings_store.dart';
@@ -89,6 +90,23 @@ void main() {
     expect(loaded.model, isEmpty);
     expect(loaded.hasStoredApiKey, isFalse);
   });
+
+  test('secure API key storage disables macOS data protection keychain',
+      () async {
+    final storage = _CapturingSecureStorage();
+    final secretStore = FlutterSecureVlmSecretStore(storage: storage);
+
+    await secretStore.write('vlm.secure_api_key', 'saved-secret');
+    await secretStore.read('vlm.secure_api_key');
+    await secretStore.delete('vlm.secure_api_key');
+
+    expect(
+      storage.macOsOptions,
+      everyElement(
+        containsPair('useDataProtectionKeyChain', 'false'),
+      ),
+    );
+  });
 }
 
 class _MemorySecretStore implements VlmSecretStore {
@@ -107,5 +125,50 @@ class _MemorySecretStore implements VlmSecretStore {
   @override
   Future<void> delete(String key) async {
     _values.remove(key);
+  }
+}
+
+class _CapturingSecureStorage extends FlutterSecureStorage {
+  final macOsOptions = <Map<String, String>>[];
+
+  @override
+  Future<void> write({
+    required String key,
+    required String? value,
+    IOSOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    MacOsOptions? mOptions,
+    WindowsOptions? wOptions,
+  }) async {
+    macOsOptions.add(mOptions?.toMap() ?? const {});
+  }
+
+  @override
+  Future<String?> read({
+    required String key,
+    IOSOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    MacOsOptions? mOptions,
+    WindowsOptions? wOptions,
+  }) async {
+    macOsOptions.add(mOptions?.toMap() ?? const {});
+    return null;
+  }
+
+  @override
+  Future<void> delete({
+    required String key,
+    IOSOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    MacOsOptions? mOptions,
+    WindowsOptions? wOptions,
+  }) async {
+    macOsOptions.add(mOptions?.toMap() ?? const {});
   }
 }

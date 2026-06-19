@@ -1,5 +1,6 @@
 import Cocoa
 import FlutterMacOS
+import Security
 import XCTest
 @testable import vibe_fridge
 
@@ -212,6 +213,35 @@ class RunnerTests: XCTestCase {
       defaults.string(forKey: MacLocalNotificationTapHandler.launchItemIdKey)
     )
     XCTAssertEqual(eventCount, 0)
+  }
+
+  func testKeychainCanStoreApiSecretWithoutDataProtectionEntitlement() {
+    let account = "vlm-api-key-\(UUID().uuidString)"
+    var query: [CFString: Any] = [
+      kSecClass: kSecClassGenericPassword,
+      kSecAttrAccount: account,
+      kSecAttrService: "vibe-fridge-tests",
+      kSecAttrAccessible: kSecAttrAccessibleWhenUnlocked,
+      kSecValueData: Data("secret".utf8),
+    ]
+    if #available(macOS 10.15, *) {
+      query[kSecUseDataProtectionKeychain] = false
+    }
+    defer {
+      SecItemDelete(query as CFDictionary)
+    }
+
+    XCTAssertEqual(SecItemAdd(query as CFDictionary, nil), errSecSuccess)
+
+    query.removeValue(forKey: kSecValueData)
+    query[kSecReturnData] = true
+    var result: AnyObject?
+    XCTAssertEqual(
+      SecItemCopyMatching(query as CFDictionary, &result),
+      errSecSuccess
+    )
+    XCTAssertEqual(result as? Data, Data("secret".utf8))
+    XCTAssertEqual(SecItemDelete(query as CFDictionary), errSecSuccess)
   }
 
 }

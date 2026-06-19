@@ -48,20 +48,23 @@ class FlutterSecureVlmSecretStore implements VlmSecretStore {
   }) : _storage = storage;
 
   final FlutterSecureStorage _storage;
+  static const _macOsOptions = MacOsOptions(
+    useDataProtectionKeyChain: false,
+  );
 
   @override
   Future<String?> read(String key) {
-    return _storage.read(key: key);
+    return _storage.read(key: key, mOptions: _macOsOptions);
   }
 
   @override
   Future<void> write(String key, String value) {
-    return _storage.write(key: key, value: value);
+    return _storage.write(key: key, value: value, mOptions: _macOsOptions);
   }
 
   @override
   Future<void> delete(String key) {
-    return _storage.delete(key: key);
+    return _storage.delete(key: key, mOptions: _macOsOptions);
   }
 }
 
