@@ -528,7 +528,13 @@ Platform notification checklist for that gate:
   dependency resolution completed: Flutter still stops with `[!] No Android SDK
   found. Try setting the ANDROID_HOME environment variable.` `flutter emulators`
   also reports no emulator sources, and `android/local.properties` only points
-  at the bundled Flutter SDK.
+  at the bundled Flutter SDK. Rechecked again on 2026-06-20 after the full
+  Flutter regression recheck: `flutter devices` still detected only macOS,
+  `flutter emulators` still reported no emulator sources, `flutter doctor -v`
+  still reported `Unable to locate Android SDK`, and `flutter build apk
+  --debug` again stopped before Android compilation with `[!] No Android SDK
+  found. Try setting the ANDROID_HOME environment variable.` Network resources
+  were available during this pass.
 - Native notification bridge static review: Android and macOS implementations
   use the same `vibe_fridge/local_notifications` method channel as Dart,
   preserve `itemId` in scheduled notification payloads, expose launch/tap
@@ -1495,7 +1501,10 @@ Platform notification checklist for that gate:
   detects only macOS, and `flutter doctor -v` still reports no Android SDK.
   A 2026-06-20 `flutter build apk --debug` recheck still stops before Android
   compilation with no Android SDK, and `flutter emulators` reports no emulator
-  sources.
+  sources. A later 2026-06-20 recheck after the full Flutter regression recheck
+  produced the same result: only macOS was detected, no emulator sources were
+  available, `flutter doctor -v` reported `Unable to locate Android SDK`, and
+  `flutter build apk --debug` stopped with `[!] No Android SDK found`.
   Android source-level manifest/channel/payload wiring and the immediate
   test-notification channel are now covered by tests, but scheduled reminder
   delivery, permission prompts, and notification-click routing still need a

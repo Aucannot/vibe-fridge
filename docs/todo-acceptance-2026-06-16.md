@@ -53,7 +53,12 @@ verification that is still not fully proven on this machine:
   macOS, and `flutter doctor -v` still reported that no Android SDK could be
   located. A 2026-06-20 recheck still detects only macOS and still reports no
   Android SDK; `flutter build apk --debug` still stops with no Android SDK, and
-  `flutter emulators` reports no emulator sources.
+  `flutter emulators` reports no emulator sources. A later 2026-06-20 recheck
+  after the full Flutter regression recheck produced the same Android blocker:
+  `flutter devices` detected only macOS, `flutter emulators` reported no
+  emulator sources, `flutter doctor -v` reported `Unable to locate Android
+  SDK`, and `flutter build apk --debug` stopped before Android compilation with
+  `[!] No Android SDK found`.
 - macOS Xcode/CocoaPods setup is no longer the blocking item. On 2026-06-19,
   `flutter build macos --debug`, `flutter run -d macos`,
   `xcodebuild -checkFirstLaunchStatus`, and native RunnerTests passed locally.
