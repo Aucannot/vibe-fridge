@@ -452,6 +452,17 @@ Platform notification checklist for that gate:
   quantity `1`, unit `袋`, and one active batch, then the created batch and empty
   item profile were deleted. Browser logs showed no warnings or errors
   throughout the flow.
+- Current mobile Web order-recognition settings smoke on
+  `http://127.0.0.1:54397/?route=settings`: passed on 2026-06-20 at 390 x 844.
+  The Settings page loaded the `订单识别 AI` card with status `未配置` and key
+  status `本机安全保存`. Entering a fake local API secret and saving showed
+  `订单识别配置已保存`, updated the status to `已配置`, and kept the secret field
+  blank with the helper text that saved secrets are not shown. Reloading
+  Settings preserved `已配置` without exposing the secret. The clear action
+  showed a confirmation dialog explaining that service address, model name, and
+  saved API secret would be removed; after confirming, the status returned to
+  `未配置`, all order-recognition fields were blank, and a second reload kept
+  them blank. Browser logs showed no warnings or errors throughout the flow.
 - `flutter test test/recipes_screen_test.dart`: passed after adding coverage
   that applies a recipe's inventory uses through `InventoryController` and
   verifies the real inventory quantities are deducted.
