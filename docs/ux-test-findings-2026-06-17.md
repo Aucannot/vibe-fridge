@@ -233,7 +233,9 @@ Platform notification checklist for that gate:
   extension, still with 107 tests. Passed again on 2026-06-20 on the current
   worktree with 109 tests after the WebDAV, debug smoke payload, and platform
   validation record work. Passed again on 2026-06-20 after the macOS
-  notification smoke recheck, with 109 tests and `All tests passed!`.
+  notification smoke recheck, with 109 tests and `All tests passed!`. Passed
+  again on 2026-06-20 after adding the Android environment gate, with 112 tests
+  and `All tests passed!`.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
