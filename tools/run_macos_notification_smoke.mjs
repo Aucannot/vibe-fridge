@@ -39,7 +39,13 @@ async function main() {
 
   try {
     const vmServiceUrl = await waitForVmServiceUrl(run, options.timeoutMs);
-    const checkArgs = [checkScript, ...expectationArgs(options), vmServiceUrl];
+    const checkArgs = [
+      checkScript,
+      '--wait-extension-ms',
+      String(options.extensionWaitMs),
+      ...expectationArgs(options),
+      vmServiceUrl,
+    ];
     const status = await runNode(checkArgs);
     process.stdout.write(status);
   } finally {
@@ -56,6 +62,7 @@ function parseArgs(args) {
     expectSkippedReason: undefined,
     sendTest: false,
     flutterBin: undefined,
+    extensionWaitMs: 30000,
     timeoutMs: 120000,
   };
 
@@ -87,6 +94,10 @@ function parseArgs(args) {
     }
     if (arg === '--flutter-bin') {
       options.flutterBin = requireValue(arg, args[++index]);
+      continue;
+    }
+    if (arg === '--wait-extension-ms') {
+      options.extensionWaitMs = parseNonNegativeInteger(arg, args[++index]);
       continue;
     }
     if (arg === '--timeout-ms') {
@@ -253,6 +264,15 @@ function parsePositiveInteger(name, value) {
   const parsed = Number.parseInt(raw, 10);
   if (!Number.isInteger(parsed) || parsed <= 0) {
     throw new Error(`${name} must be a positive integer.`);
+  }
+  return parsed;
+}
+
+function parseNonNegativeInteger(name, value) {
+  const raw = requireValue(name, value);
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new Error(`${name} must be a non-negative integer.`);
   }
   return parsed;
 }

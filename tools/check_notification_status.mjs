@@ -28,9 +28,13 @@ async function main() {
   const extensionName = options.sendTest
     ? 'ext.vibe_fridge.notificationTest'
     : 'ext.vibe_fridge.notificationStatus';
-  const status = await getJson(
+  const status = await getJsonWithRetry(
     baseUrl,
     `${extensionName}?isolateId=${encodeURIComponent(isolateId)}`,
+    {
+      retryMs: options.waitExtensionMs,
+      shouldRetry: isMethodNotFoundError,
+    },
   );
   const result = status.result;
   const permission = options.sendTest ? result?.permission : result;
@@ -60,6 +64,7 @@ function usage() {
     '  --expect-supported true|false\n' +
     '  --expect-granted true|false\n' +
     '  --expect-status <status>\n' +
+    '  --wait-extension-ms <milliseconds>\n' +
     '  --send-test\n' +
     '  --expect-sent true|false\n' +
     '  --expect-skipped-reason <reason>'
@@ -74,6 +79,7 @@ function parseArgs(args) {
     expectSent: undefined,
     expectSkippedReason: undefined,
     sendTest: false,
+    waitExtensionMs: 0,
     vmServiceUrl: undefined,
   };
 
@@ -89,6 +95,10 @@ function parseArgs(args) {
     }
     if (arg === '--expect-status') {
       options.expectStatus = requireValue(arg, args[++index]);
+      continue;
+    }
+    if (arg === '--wait-extension-ms') {
+      options.waitExtensionMs = parseNonNegativeInteger(arg, args[++index]);
       continue;
     }
     if (arg === '--send-test') {
@@ -182,6 +192,15 @@ function requireValue(name, value) {
   return value;
 }
 
+function parseNonNegativeInteger(name, value) {
+  const raw = requireValue(name, value);
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new Error(`${name} must be a non-negative integer.`);
+  }
+  return parsed;
+}
+
 function normalizeBaseUrl(value) {
   const url = new URL(value);
   if (!url.pathname.endsWith('/')) {
@@ -201,4 +220,33 @@ async function getJson(baseUrl, methodPath) {
     throw new Error(payload.error.message ?? JSON.stringify(payload.error));
   }
   return payload;
+}
+
+async function getJsonWithRetry(baseUrl, methodPath, options) {
+  const deadline = Date.now() + options.retryMs;
+  let lastError;
+
+  do {
+    try {
+      return await getJson(baseUrl, methodPath);
+    } catch (error) {
+      lastError = error;
+      if (!options.shouldRetry(error) || Date.now() >= deadline) {
+        throw error;
+      }
+      await delay(500);
+    }
+  } while (Date.now() <= deadline);
+
+  throw lastError;
+}
+
+function isMethodNotFoundError(error) {
+  return /Method not found/i.test(error.message);
+}
+
+function delay(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }

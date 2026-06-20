@@ -72,6 +72,15 @@ tools/run_macos_notification_smoke.mjs --expect-supported true --timeout-ms
 the running-app macOS notification-channel evidence current while still
 avoiding permission prompts and diagnostic notification delivery.
 
+Running-app macOS smoke hardening on 2026-06-20: a later re-run showed the VM
+Service URL can be emitted before the debug notification extension has finished
+registering, which produced a transient `Method not found` failure. The smoke
+helper now waits for extension registration before reading notification state.
+After that change, the same read-only command rebuilt and launched the macOS
+debug app, reached `http://127.0.0.1:57168/...`, returned `supported: true`,
+`granted: false`, `status: unknown`, and `displayText: 未确认`, then exited
+cleanly without requesting permission or sending a notification.
+
 Reusable macOS smoke update on 2026-06-19: `tools/check_notification_status.mjs`
 now wraps the VM Service extension call so future beta passes can reproduce the
 running-app notification status check without ad hoc scripting. Against a fresh
@@ -121,7 +130,10 @@ usable: `flutter build macos --debug` passed and native RunnerTests passed with
 14 passed tests and 1 authorization-gated notification request test skipped.
 The Android readiness check is now also reproducible through
 `tools/check_android_environment.mjs`, which exits non-zero until Flutter has
-an Android SDK plus an Android device or emulator.
+an Android SDK plus an Android device or emulator. A current run returned
+`ready: false`, `androidToolchainReady: false`, `androidDeviceReady: false`,
+`emulatorAvailable: false`, `sdkPath: null`, and blockers for missing Android
+SDK plus missing Android device/emulator.
 
 ## Beta Readiness
 
@@ -758,6 +770,8 @@ Platform notification checklist for that gate:
   current notification permission state rather than only printing it.
 - `node --check tools/check_notification_status.mjs`: passed after adding the
   reusable VM Service smoke helper and again after adding expectation options.
+  Passed again after adding `--wait-extension-ms` support so the helper can
+  tolerate the app isolate appearing before debug extensions are registered.
 - `HOME=/private/tmp/vibe-fridge-flutter-home node
   tools/run_macos_notification_smoke.mjs --expect-supported true
   --expect-granted false --expect-status unknown`: passed. The runner built and
@@ -778,9 +792,13 @@ Platform notification checklist for that gate:
   `Application finished.`. Rechecked again after the Web startup-bootstrap
   change with the same read-only command: the app exposed
   `http://127.0.0.1:58130/...`, returned the same status payload, and exited
-  cleanly.
+  cleanly. Rechecked again after adding extension-registration waiting: the
+  app exposed `http://127.0.0.1:57168/...`, returned `supported: true`,
+  `granted: false`, `status: unknown`, and `displayText: 未确认`, then exited
+  cleanly without sending a notification.
 - `node --check tools/run_macos_notification_smoke.mjs`: passed after adding
-  the automated macOS smoke runner.
+  the automated macOS smoke runner and again after wiring its default
+  extension-registration wait into `tools/check_notification_status.mjs`.
 - `node --check tools/check_secure_storage_smoke.mjs
   tools/run_macos_secure_storage_smoke.mjs`: passed after adding the reusable
   secure-storage VM Service helpers.
@@ -1783,13 +1801,14 @@ Platform notification checklist for that gate:
   that calls the debug VM Service extension for a running Flutter app and
   validates the notification status payload shape before printing the result.
   It can optionally assert expected `supported`, `granted`, and `status`
-  values for repeatable beta validation, and it can call the diagnostic
+  values for repeatable beta validation, can wait for debug extension
+  registration with `--wait-extension-ms`, and can call the diagnostic
   test-notification extension only when `--send-test` is supplied.
 - Added `tools/run_macos_notification_smoke.mjs`, an automated local runner
   that launches the macOS Flutter target, waits for the VM Service URL, runs
-  the notification status helper, and exits the app. This makes the current
-  macOS notification-channel smoke reproducible without manual URL copying, and
-  keeps the send-test path opt-in.
+  the notification status helper after a short extension-registration wait, and
+  exits the app. This makes the current macOS notification-channel smoke
+  reproducible without manual URL copying, and keeps the send-test path opt-in.
 - Added `tools/check_android_environment.mjs`, a read-only Android runtime
   gate that runs Flutter's devices, emulators, and doctor checks, prints a
   compact JSON report, and fails until an Android SDK and Android runtime target
