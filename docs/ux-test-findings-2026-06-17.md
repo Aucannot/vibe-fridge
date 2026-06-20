@@ -566,6 +566,17 @@ Platform notification checklist for that gate:
   Depth 0 and Depth 1 PROPFIND, PUT upload, GET restore download, and a
   post-restore Depth 0 PROPFIND; the uploaded backup file was 7755 bytes.
   Browser logs showed no warnings or errors throughout the flow.
+- Current mobile Web local-export smoke on
+  `http://127.0.0.1:54414/?route=settings`: passed on 2026-06-20 at 390 x 844.
+  Settings loaded after the startup inventory screen, showed the Data and
+  Backup card, and triggered both local export actions from the first screen.
+  `导出备份` showed `备份已导出`, and `导出库存表格` showed `库存表格已导出`; browser
+  logs showed no warnings or errors. The in-app browser did not emit a
+  Playwright `download` event for either programmatic save within the 8-second
+  observation window, so this pass verifies the current UI flow and success
+  feedback. The implementation path still reaches `XFile.saveTo` before
+  showing either success snackbar, which keeps the smoke aligned with the
+  actual save operation rather than a purely cosmetic button tap.
 - `flutter test test/recipes_screen_test.dart`: passed after adding coverage
   that applies a recipe's inventory uses through `InventoryController` and
   verifies the real inventory quantities are deducted.
