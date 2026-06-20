@@ -533,6 +533,21 @@ Platform notification checklist for that gate:
   available below the card, and exposed the reset icon action. Using the reset
   action returned the card to the initial `生成食谱` state without leaving the
   Recipes route. Browser logs showed no warnings or errors throughout the flow.
+- Current mobile Web WebDAV backup smoke on
+  `http://127.0.0.1:54410/?route=settings`: passed on 2026-06-20 at 390 x 844
+  against a temporary CORS-enabled local WebDAV endpoint on
+  `http://127.0.0.1:54411/dav`. Settings saved `codex/codex` credentials,
+  changed `云端备份` to `已配置`, showed `密码状态 本机安全保存`, and cleared the
+  active password field with helper copy saying the saved password is not shown.
+  `测试连接` showed `WebDAV 连接可用`; `上传备份` showed
+  `备份已上传到 WebDAV` plus latest-upload filename
+  `vibe-fridge-backup-20260620-154621.json`. The smoke endpoint recorded MKCOL
+  for `/dav/vibe-fridge/` and `/dav/vibe-fridge/backups/`, Depth 0 PROPFIND for
+  the backup directory, and PUT for the uploaded backup file. The clear action
+  showed `清空 WebDAV 配置` confirmation copy for service address, account, and
+  saved password, then returned Settings to `云端备份 未配置` with blank service
+  address, account, and password fields. Browser logs showed no warnings or
+  errors throughout the flow.
 - `flutter test test/recipes_screen_test.dart`: passed after adding coverage
   that applies a recipe's inventory uses through `InventoryController` and
   verifies the real inventory quantities are deducted.
