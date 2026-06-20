@@ -653,6 +653,25 @@ Platform notification checklist for that gate:
   controls, returned History to `暂无历史记录`, and returned the catalog to
   `面包` with `1` batch. Browser logs showed no warnings or errors throughout
   the flow.
+- Current mobile Web full-field manual-add smoke on
+  `http://127.0.0.1:54420/?route=add`: passed on 2026-06-20 at 390 x 844
+  against a freshly rebuilt Web debug build. Saving with a blank name kept the
+  user on the Add page and highlighted `物品名称` with `请输入物品名称`. Filling a
+  unique item `完整添加1620燕麦`, selecting tags `临期优先` and `囤货`, changing
+  category to `日用品`, storage location to `冷藏`, description to
+  `完整字段验证描述1620`, quantity to `3`, and unit to `袋` saved successfully and
+  returned to the catalog. The catalog row showed quantity `3`, category
+  `日用品`, location `冷藏`, unit `袋`, and one active batch. The item-profile
+  detail showed description, default unit, category, default reminder, storage
+  location, and `使用中批次 1`; the inventory row showed `3袋` and tag summary.
+  The inventory detail facts card showed quantity `3袋`, category `日用品`,
+  purchase date `2026-06-20`, unset expiry/reminder date, enabled reminder,
+  storage location `冷藏`, and the saved description; the tags card showed
+  `囤货` and `临期优先`. The created batch was deleted through its named
+  destructive confirmation, the empty item profile was deleted through its
+  named destructive confirmation, and catalog search for the unique name then
+  showed `没有匹配物品`. Browser logs showed no warnings or errors throughout the
+  flow.
 - `flutter test test/recipes_screen_test.dart`: passed after adding coverage
   that applies a recipe's inventory uses through `InventoryController` and
   verifies the real inventory quantities are deducted.
