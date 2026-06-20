@@ -524,6 +524,15 @@ Platform notification checklist for that gate:
   state, and the Recipes page returned to `面包 1袋`, `鲜牛奶 2盒`, `鸡蛋 12个`,
   and `消耗 3 项`. Browser logs showed no warnings or errors throughout the
   flow.
+- Current mobile Web AI-recipe fallback smoke on
+  `http://127.0.0.1:54409/?route=recipes`: passed on 2026-06-20 at 390 x 844.
+  With no AI service configured, the Recipes page showed the `AI 食谱` card with
+  the primary `生成食谱` action and the rule-based recipe list still visible.
+  Tapping `生成食谱` changed the card status to `规则兜底`, showed the
+  user-facing message `AI 食谱未配置，已使用规则建议`, kept the same rule suggestions
+  available below the card, and exposed the reset icon action. Using the reset
+  action returned the card to the initial `生成食谱` state without leaving the
+  Recipes route. Browser logs showed no warnings or errors throughout the flow.
 - `flutter test test/recipes_screen_test.dart`: passed after adding coverage
   that applies a recipe's inventory uses through `InventoryController` and
   verifies the real inventory quantities are deducted.
