@@ -432,6 +432,16 @@ Platform notification checklist for that gate:
   WebDAV backup, local notification fallback, recipe preferences, and order
   recognition settings remain visible while `应用自检` / `运行自检` controls did
   not reappear.
+- Current mobile Web add/delete smoke on `http://127.0.0.1:54396/?route=add`:
+  passed on 2026-06-20 at 390 x 844. The Add flow accepted a unique item name
+  and unit, saved the item, navigated back to the item catalog, and showed the
+  new item with quantity `1` and unit copy. Opening the saved item showed the
+  item profile plus one active inventory batch. Attempting to delete the
+  profile before deleting its active batch correctly showed a user-facing
+  blocker message. Deleting the inventory batch required confirmation, returned
+  to the profile with `暂无库存`, then deleting the empty profile required
+  confirmation and returned to the catalog with the test item removed. Browser
+  logs showed no warnings or errors throughout the flow.
 - `flutter test test/recipes_screen_test.dart`: passed after adding coverage
   that applies a recipe's inventory uses through `InventoryController` and
   verifies the real inventory quantities are deducted.
