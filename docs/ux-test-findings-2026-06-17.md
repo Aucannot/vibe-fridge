@@ -577,6 +577,21 @@ Platform notification checklist for that gate:
   feedback. The implementation path still reaches `XFile.saveTo` before
   showing either success snackbar, which keeps the smoke aligned with the
   actual save operation rather than a purely cosmetic button tap.
+- Current mobile Web item-profile edit smoke on
+  `http://127.0.0.1:54415/?route=items%2Fwiki%2Fwiki-milk`: passed on
+  2026-06-20 at 390 x 844. The direct `鲜牛奶` item-profile route loaded with
+  category, default unit, suggested shelf life, default reminder, storage
+  location, active-batch count, and its active batch. Using the edit icon
+  opened `编辑物品资料` with editable name, category, icon, description, default
+  unit, shelf-life, reminder, storage-location, and notes fields. Adding
+  `内测资料编辑1605` to the description and `内测备注1605` to notes, then using
+  `保存资料`, returned to the item-profile detail without leaving the route;
+  the header immediately showed the updated description and the facts card
+  showed the new notes row. Settings `重置示例数据` then showed clear
+  confirmation copy, reset 9 sample rows, and a return to the direct
+  `鲜牛奶` profile proved the default description was restored and the notes
+  row disappeared. Browser logs showed no warnings or errors throughout the
+  flow.
 - `flutter test test/recipes_screen_test.dart`: passed after adding coverage
   that applies a recipe's inventory uses through `InventoryController` and
   verifies the real inventory quantities are deducted.
