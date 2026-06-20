@@ -475,6 +475,17 @@ Platform notification checklist for that gate:
   present with quantity `1` and one active batch. The test item and its empty
   profile were then deleted through the UI. Browser logs showed no warnings or
   errors throughout the flow.
+- Current mobile Web inventory-edit smoke on
+  `http://127.0.0.1:54405/?route=add`: passed on 2026-06-20 at 390 x 844. A
+  unique inventory item was created with an initial description and unit, then
+  opened through item profile and inventory detail. The edit screen preserved
+  the existing quantity, unit, location, and description values. Updating the
+  quantity to `3`, unit to `盒`, storage location to `冷藏`, and description to
+  `编辑后描述` saved successfully and returned to inventory detail. The detail
+  summary showed `3盒`, the storage suggestion updated to `冷藏`, and the facts
+  card showed quantity `3盒`, location `冷藏`, and description `编辑后描述`. The
+  edited batch and empty item profile were then deleted through the UI. Browser
+  logs showed no warnings or errors throughout the flow.
 - `flutter test test/recipes_screen_test.dart`: passed after adding coverage
   that applies a recipe's inventory uses through `InventoryController` and
   verifies the real inventory quantities are deducted.
