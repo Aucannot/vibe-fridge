@@ -463,6 +463,18 @@ Platform notification checklist for that gate:
   saved API secret would be removed; after confirming, the status returned to
   `未配置`, all order-recognition fields were blank, and a second reload kept
   them blank. Browser logs showed no warnings or errors throughout the flow.
+- Current mobile Web demo-data reset smoke on
+  `http://127.0.0.1:54404/?route=settings`: passed on 2026-06-20 at 390 x 844.
+  A unique user-created inventory item was added first, then the built-in
+  no-inventory sample profile `牙膏` was deleted through its confirmation
+  dialog and verified absent from catalog search. Settings then opened the
+  `重置示例数据` confirmation dialog with copy explaining that only built-in
+  sample profiles/inventory are rebuilt and user-created data is not deleted.
+  After confirming, the app showed `示例数据已重置，清理 8 条旧示例数据`, catalog
+  search showed `牙膏` restored, and the user-created test item was still
+  present with quantity `1` and one active batch. The test item and its empty
+  profile were then deleted through the UI. Browser logs showed no warnings or
+  errors throughout the flow.
 - `flutter test test/recipes_screen_test.dart`: passed after adding coverage
   that applies a recipe's inventory uses through `InventoryController` and
   verifies the real inventory quantities are deducted.
