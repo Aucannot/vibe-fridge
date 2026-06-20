@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import 'inventory_controller.dart';
 import 'local_notification_service.dart';
+import 'vlm_settings_store.dart';
 
 @visibleForTesting
 Map<String, Object?> debugNotificationPermissionPayload(
@@ -30,6 +31,36 @@ Map<String, Object?> debugNotificationTestPayload(
   };
 }
 
+@visibleForTesting
+Future<Map<String, Object?>> runDebugSecureStorageSmoke({
+  VlmSecretStore? secretStore,
+  DateTime? now,
+}) async {
+  final store = secretStore ?? FlutterSecureSecretStore();
+  final timestamp = (now ?? DateTime.now()).microsecondsSinceEpoch;
+  final key = 'debug.secure_storage_smoke.$timestamp';
+  final value = 'vibe-fridge-smoke-$timestamp';
+  var wrote = false;
+  var readBackMatches = false;
+  var deleted = false;
+
+  try {
+    await store.write(key, value);
+    wrote = true;
+    readBackMatches = await store.read(key) == value;
+  } finally {
+    await store.delete(key);
+    final afterDelete = await store.read(key);
+    deleted = afterDelete == null || afterDelete.isEmpty;
+  }
+  return {
+    'wrote': wrote,
+    'readBackMatches': readBackMatches,
+    'deleted': deleted,
+    'keyPrefix': 'debug.secure_storage_smoke',
+  };
+}
+
 void registerDebugServiceExtensions(InventoryController controller) {
   if (!kDebugMode) {
     return;
@@ -51,6 +82,14 @@ void registerDebugServiceExtensions(InventoryController controller) {
           await controller.notificationService.sendTestNotification();
       return developer.ServiceExtensionResponse.result(jsonEncode(
         debugNotificationTestPayload(result),
+      ));
+    },
+  );
+  developer.registerExtension(
+    'ext.vibe_fridge.secureStorageSmoke',
+    (method, parameters) async {
+      return developer.ServiceExtensionResponse.result(jsonEncode(
+        await runDebugSecureStorageSmoke(),
       ));
     },
   );

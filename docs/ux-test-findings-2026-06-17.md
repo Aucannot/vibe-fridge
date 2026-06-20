@@ -103,6 +103,15 @@ the app-side JSON contract used by `tools/check_notification_status.mjs` is
 covered without registering duplicate VM extensions or triggering notification
 permission prompts during tests.
 
+macOS secure-storage runtime update on 2026-06-20:
+`HOME=/private/tmp/vibe-fridge-flutter-home node
+tools/run_macos_secure_storage_smoke.mjs --timeout-ms 180000` rebuilt and
+launched the macOS debug app, reached the VM Service at
+`http://127.0.0.1:61416/...`, wrote a temporary secure-storage key, read it
+back, deleted it, and exited cleanly. This directly verifies the running app's
+Keychain path used by order-recognition and WebDAV secrets no longer hits the
+previous macOS `-34018` entitlement failure path.
+
 Environment recheck on 2026-06-20: Android SDK and Android devices are still
 absent. `xcodebuild -runFirstLaunch`, `xcodebuild -checkFirstLaunchStatus`,
 and `xcodebuild -license check` all return success, while `flutter doctor -v`
@@ -235,7 +244,9 @@ Platform notification checklist for that gate:
   validation record work. Passed again on 2026-06-20 after the macOS
   notification smoke recheck, with 109 tests and `All tests passed!`. Passed
   again on 2026-06-20 after adding the Android environment gate, with 112 tests
-  and `All tests passed!`.
+  and `All tests passed!`. Passed again on 2026-06-20 after adding the macOS
+  secure-storage runtime smoke extension, with 113 tests and
+  `All tests passed!`.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
@@ -294,7 +305,8 @@ Platform notification checklist for that gate:
   debug VM Service notification payload builders and covering the exact status
   and test-notification JSON shapes consumed by the smoke helper, 19 tests.
   The first sandboxed attempt was blocked by the pub.dev advisories DNS check;
-  the same command passed after network access was allowed.
+  the same command passed after network access was allowed. Passed again after
+  adding the secure-storage smoke payload and temporary-key cleanup coverage.
 - `flutter test test/settings_screen_test.dart`: passed after adding widget
   coverage that renders the Settings test-notification action and verifies the
   button calls the notification service path. Historical coverage previously
@@ -562,6 +574,15 @@ Platform notification checklist for that gate:
   cleanly.
 - `node --check tools/run_macos_notification_smoke.mjs`: passed after adding
   the automated macOS smoke runner.
+- `node --check tools/check_secure_storage_smoke.mjs
+  tools/run_macos_secure_storage_smoke.mjs`: passed after adding the reusable
+  secure-storage VM Service helpers.
+- `HOME=/private/tmp/vibe-fridge-flutter-home node
+  tools/run_macos_secure_storage_smoke.mjs --timeout-ms 180000`: passed on
+  2026-06-20. The runner built and launched the macOS debug app, parsed the VM
+  Service URL, called `ext.vibe_fridge.secureStorageSmoke`, and got
+  `wrote: true`, `readBackMatches: true`, and `deleted: true` for a temporary
+  `debug.secure_storage_smoke` key, then exited `flutter run` cleanly.
 - Tool argument guards: `node tools/check_notification_status.mjs
   --expect-sent false ...` and `node tools/run_macos_notification_smoke.mjs
   --expect-sent false` both fail before any runtime call unless `--send-test`
@@ -1566,6 +1587,11 @@ Platform notification checklist for that gate:
   gate that runs Flutter's devices, emulators, and doctor checks, prints a
   compact JSON report, and fails until an Android SDK and Android runtime target
   are available.
+- Added `ext.vibe_fridge.secureStorageSmoke` plus
+  `tools/check_secure_storage_smoke.mjs` and
+  `tools/run_macos_secure_storage_smoke.mjs`, giving beta validation a
+  repeatable way to prove the running macOS app can write, read, and delete a
+  temporary secure-storage value without using real user secrets.
 
 ## Remaining Risks
 
