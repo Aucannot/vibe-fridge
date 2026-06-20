@@ -641,6 +641,18 @@ Platform notification checklist for that gate:
   destructive `删除采购项` confirmation named the edited item; confirming delete
   returned both shopping sections to `0`. Browser logs showed no warnings or
   errors throughout the flow.
+- Current mobile Web consume/restore smoke on `http://127.0.0.1:54419/`:
+  passed on 2026-06-20 at 390 x 844 against a freshly rebuilt Web debug build.
+  Directly opening `?route=items%2Fitem%2Fitem-bread-1` showed the `面包`
+  inventory detail as `使用中`, quantity `1袋`, and quantity controls enabled.
+  The bottom `标记已消耗` action showed a confirmation dialog with clear
+  destructive copy; confirming returned to the catalog where `面包` had
+  `0` batches. Opening the `历史` tab showed `面包` as `已消耗`; opening that
+  history record showed disabled quantity controls and the consumed state.
+  Using `恢复为使用中` restored the detail state to `使用中`, re-enabled quantity
+  controls, returned History to `暂无历史记录`, and returned the catalog to
+  `面包` with `1` batch. Browser logs showed no warnings or errors throughout
+  the flow.
 - `flutter test test/recipes_screen_test.dart`: passed after adding coverage
   that applies a recipe's inventory uses through `InventoryController` and
   verifies the real inventory quantities are deducted.
