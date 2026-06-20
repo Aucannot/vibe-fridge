@@ -81,6 +81,18 @@ debug app, reached `http://127.0.0.1:57168/...`, returned `supported: true`,
 `granted: false`, `status: unknown`, and `displayText: 未确认`, then exited
 cleanly without requesting permission or sending a notification.
 
+Running-app macOS notification recheck on 2026-06-20: reran
+`HOME=/private/tmp/vibe-fridge-flutter-home node
+tools/run_macos_notification_smoke.mjs --expect-supported true --timeout-ms
+180000` from the current worktree. The command rebuilt and launched the macOS
+debug app, reached the VM Service at `http://127.0.0.1:62175/...`, returned
+`supported: true`, `granted: false`, `status: unknown`, and
+`displayText: 未确认`, then exited with `Application finished.` This confirms
+the current build still exposes the macOS notification bridge and permission
+status path. It remains a non-delivery check: no permission prompt was accepted,
+no diagnostic notification was sent, and notification-click routing still needs
+manual platform validation.
+
 Reusable macOS smoke update on 2026-06-19: `tools/check_notification_status.mjs`
 now wraps the VM Service extension call so future beta passes can reproduce the
 running-app notification status check without ad hoc scripting. Against a fresh
