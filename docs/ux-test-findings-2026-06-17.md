@@ -486,6 +486,19 @@ Platform notification checklist for that gate:
   card showed quantity `3盒`, location `冷藏`, and description `编辑后描述`. The
   edited batch and empty item profile were then deleted through the UI. Browser
   logs showed no warnings or errors throughout the flow.
+- Current mobile Web order-text import smoke on
+  `http://127.0.0.1:54406/?route=add`: passed on 2026-06-20 at 390 x 844. The
+  Add screen opened the `粘贴订单文本` dialog, accepted a unique pasted order
+  containing two inventory lines and a standalone order id, then showed the
+  review screen with `2/2 已选` and `2 可入库`. The first parsed item showed
+  quantity `4` and unit `个`; the second showed quantity `2` and unit `盒`.
+  Confirming `添加 2 个物品` opened the batch confirmation with `新增 2`,
+  `重复跳过 0`, and `仍需确认 0`, then the result dialog showed `导入完成`,
+  `新增 2`, `跳过 0`, and `需要手动处理 0`. Catalog search verified the imported
+  apple item as quantity `4` with one active batch and the yogurt item as
+  quantity `2` with one active batch. Both imported batches and their empty
+  item profiles were then deleted through the UI. Browser logs showed no
+  warnings or errors throughout the flow.
 - `flutter test test/recipes_screen_test.dart`: passed after adding coverage
   that applies a recipe's inventory uses through `InventoryController` and
   verifies the real inventory quantities are deducted.
