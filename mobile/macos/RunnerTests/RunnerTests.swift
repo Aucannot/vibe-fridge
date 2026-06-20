@@ -245,6 +245,40 @@ class RunnerTests: XCTestCase {
     )
   }
 
+  func testAppDelegateRoutesNotificationResponsePayloadToTapHandler() {
+    let appDelegate = AppDelegate()
+    let event = expectation(description: "delegate notification tap event")
+    var postedItemId: String?
+    let observer = NotificationCenter.default.addObserver(
+      forName: .vibeFridgeNotificationTapped,
+      object: nil,
+      queue: nil
+    ) { notification in
+      postedItemId = notification.userInfo?["itemId"] as? String
+      event.fulfill()
+    }
+    defer {
+      NotificationCenter.default.removeObserver(observer)
+      UserDefaults.standard.removeObject(
+        forKey: MacLocalNotificationTapHandler.launchItemIdKey
+      )
+    }
+
+    let itemId = appDelegate.handleNotificationResponseUserInfo([
+      "itemId": " item-from-delegate "
+    ])
+
+    XCTAssertEqual(itemId, "item-from-delegate")
+    XCTAssertEqual(
+      UserDefaults.standard.string(
+        forKey: MacLocalNotificationTapHandler.launchItemIdKey
+      ),
+      "item-from-delegate"
+    )
+    wait(for: [event], timeout: 1)
+    XCTAssertEqual(postedItemId, "item-from-delegate")
+  }
+
   func testSystemNotificationCenterAcceptsPendingRequestWhenAuthorized()
     throws
   {

@@ -498,6 +498,17 @@ Platform notification checklist for that gate:
   'platform=macOS' -derivedDataPath /private/tmp/vibe-fridge-macos-derived`:
   `TEST SUCCEEDED`, 14 RunnerTests passed, and the same authorization-gated
   pending-request smoke was skipped.
+- `xcodebuild test -workspace Runner.xcworkspace -scheme Runner
+  -configuration Debug -destination 'platform=macOS' -derivedDataPath
+  /private/tmp/vibe-fridge-macos-derived`: passed on 2026-06-20 after adding
+  direct AppDelegate notification-response payload routing coverage:
+  `TEST SUCCEEDED`, 15 RunnerTests passed, and the same authorization-gated
+  pending-request smoke was skipped.
+- `flutter test --no-pub test/local_notification_service_test.dart
+  test/app_shell_widget_test.dart test/macos_notification_wiring_test.dart`:
+  passed on 2026-06-20 after the AppDelegate payload-routing change, proving
+  the Dart-side notification channel, AppShell notification tap-to-detail route,
+  launch notification target route, and macOS static wiring tests still agree.
 - `flutter run -d macos`: launched the current debug macOS target on
   2026-06-19, built `vibe-fridge.app`, started the app process, and exposed a
   Dart VM Service. The shell still reported `Failed to foreground app; open
@@ -1512,6 +1523,10 @@ Platform notification checklist for that gate:
   `UNUserNotificationCenter.current().delegate` is the app delegate, proving
   system notification responses have a registered app-side entry point before
   manual delivery and click validation.
+- Added direct macOS AppDelegate payload-routing coverage so the delegate layer
+  now proves notification response userInfo is handed to the shared tap handler,
+  stores the launch target, and posts the in-process tap event without needing
+  a real delivered notification.
 - Added a debug-only VM Service extension for beta smoke testing of the running
   macOS app's notification permission channel. It is not visible in the UI and
   is not release behavior, but it lets local validation prove the live Flutter

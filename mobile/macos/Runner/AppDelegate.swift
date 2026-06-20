@@ -34,10 +34,17 @@ class AppDelegate: FlutterAppDelegate, UNUserNotificationCenterDelegate {
     didReceive response: UNNotificationResponse,
     withCompletionHandler completionHandler: @escaping () -> Void
   ) {
-    MacLocalNotificationTapHandler.handleTap(
-      userInfo: response.notification.request.content.userInfo
+    handleNotificationResponseUserInfo(
+      response.notification.request.content.userInfo
     )
     completionHandler()
+  }
+
+  @discardableResult
+  func handleNotificationResponseUserInfo(
+    _ userInfo: [AnyHashable: Any]
+  ) -> String? {
+    MacLocalNotificationTapHandler.handleTap(userInfo: userInfo)
   }
 }
 
