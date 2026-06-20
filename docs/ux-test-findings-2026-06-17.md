@@ -442,6 +442,16 @@ Platform notification checklist for that gate:
   to the profile with `暂无库存`, then deleting the empty profile required
   confirmation and returned to the catalog with the test item removed. Browser
   logs showed no warnings or errors throughout the flow.
+- Current mobile Web shopping-list smoke on
+  `http://127.0.0.1:54396/?route=items&view=shopping`: passed on 2026-06-20 at
+  390 x 844. The shopping view loaded with the `view=shopping` route parameter
+  and showed replenishment suggestions plus empty pending/purchased sections.
+  A unique manual shopping item was added with unit `袋`, checked into the
+  purchased section, and converted through the `采购项入库` confirmation. The app
+  showed `已入库 1 项`, the item appeared in the catalog search as inventory with
+  quantity `1`, unit `袋`, and one active batch, then the created batch and empty
+  item profile were deleted. Browser logs showed no warnings or errors
+  throughout the flow.
 - `flutter test test/recipes_screen_test.dart`: passed after adding coverage
   that applies a recipe's inventory uses through `InventoryController` and
   verifies the real inventory quantities are deducted.
