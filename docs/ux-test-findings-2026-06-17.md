@@ -19,10 +19,12 @@ inventory, open recipe suggestions, and deduct inventory after cooking.
 The strongest remaining product gap is platform-specific notification runtime
 validation. Settings now has an immediate test-notification action to make
 permission and delivery checks faster on Android/macOS, but scheduled reminder
-delivery and notification-click routing still require target-platform manual
-validation. Flutter Web cold-start text now has a native HTML loading screen to
-cover the short CanvasKit font fallback window, and the latest mobile Web smoke
-check confirmed it hands off cleanly to the rendered Home screen.
+delivery and click behavior from a real delivered Android/macOS notification
+still require target-platform manual validation. The app-side notification tap
+handoff, launch target handling, and macOS payload bridge are covered by current
+automated tests. Flutter Web cold-start text now has a native HTML loading
+screen to cover the short CanvasKit font fallback window, and the latest mobile
+Web smoke check confirmed it hands off cleanly to the rendered Home screen.
 
 Update on 2026-06-19: current-worktree macOS debug build, native RunnerTests,
 and a `flutter run -d macos` launch smoke all pass. `xcodebuild
@@ -820,6 +822,13 @@ Platform notification checklist for that gate:
   passed on 2026-06-20 after the AppDelegate payload-routing change, proving
   the Dart-side notification channel, AppShell notification tap-to-detail route,
   launch notification target route, and macOS static wiring tests still agree.
+  Rechecked on 2026-06-20 from the current worktree: `flutter test --no-pub
+  test/local_notification_service_test.dart test/app_shell_widget_test.dart`
+  passed with 20 tests after downloading the SQLite native test asset, and
+  `flutter test --no-pub test/macos_notification_wiring_test.dart` passed with
+  2 tests. This keeps the automated notification tap/launch/payload-routing
+  evidence current while still not replacing real delivered-notification manual
+  validation.
 - `flutter run -d macos`: launched the current debug macOS target on
   2026-06-19, built `vibe-fridge.app`, started the app process, and exposed a
   Dart VM Service. The shell still reported `Failed to foreground app; open
