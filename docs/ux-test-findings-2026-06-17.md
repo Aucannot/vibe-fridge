@@ -510,6 +510,20 @@ Platform notification checklist for that gate:
   `今天不再提醒：鲜牛奶`. Settings `重置示例数据` then restored the sample state,
   and Home returned to `今天要处理 2 件` / `提醒到期 2`. Browser logs showed no
   warnings or errors throughout the flow.
+- Current mobile Web recipe-cooking smoke on
+  `http://127.0.0.1:54408/?route=recipes`: passed on 2026-06-20 at 390 x 844.
+  The Recipes page initially listed priority consumables `面包 1袋`,
+  `鲜牛奶 2盒`, and `鸡蛋 12个`, and `快手蛋奶早餐` showed `消耗 3 项`.
+  Opening the recipe detail preserved the hash-free route
+  `?route=recipes%2Fquick-breakfast`, showed the exact inventory deductions
+  `鸡蛋 1个`, `鲜牛奶 1盒`, and `面包 1袋`, plus possible missing seasonings.
+  Using `做这道菜并扣减库存` returned to `?route=recipes`, showed the rule list
+  with priority consumables reduced to `鲜牛奶 1盒` and `鸡蛋 11个`, and the
+  recipe card changed to `消耗 2 项`. Catalog search for `面包` then showed the
+  profile with `0` active batches. Settings `重置示例数据` restored the sample
+  state, and the Recipes page returned to `面包 1袋`, `鲜牛奶 2盒`, `鸡蛋 12个`,
+  and `消耗 3 项`. Browser logs showed no warnings or errors throughout the
+  flow.
 - `flutter test test/recipes_screen_test.dart`: passed after adding coverage
   that applies a recipe's inventory uses through `InventoryController` and
   verifies the real inventory quantities are deducted.
