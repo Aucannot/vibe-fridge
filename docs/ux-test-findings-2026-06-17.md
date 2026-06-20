@@ -116,6 +116,10 @@ Proven enough for beta:
   app self-check service all have passing automated or browser-smoke evidence.
 - Web deep links and browser Back/Forward now preserve hash-free query routes
   across catalog search detail, inventory detail, and recipe detail paths.
+- Web startup now paints a Flutter-owned loading state before local inventory
+  initialization starts, and falls back to a user-safe copy-details error page
+  if initialization stalls or fails instead of leaving users on the static
+  native loading screen.
 - User-facing copy has been scrubbed across the main tested flows to avoid raw
   database, migration, legacy implementation, and diagnostic details.
 
@@ -342,6 +346,23 @@ Platform notification checklist for that gate:
   delete stale Flutter Cache Storage entries; passed again after adding
   no-cache entry hints, a cache-busted bootstrap script request, inline
   loading-screen hide styles, and HTTP header policy coverage.
+- `flutter test test/bootstrap_error_app_test.dart
+  test/app_database_web_wiring_test.dart test/web_bootstrap_test.dart`: passed
+  on 2026-06-20 after moving Flutter Web startup to a Flutter-owned bootstrap
+  app. The test coverage now proves the loading UI is rendered before
+  inventory initialization finishes, failed initialization routes to a
+  user-safe copy-details page without exposing paths or SQLite details, and
+  the Web database factory avoids both the shared-worker path and the
+  main-thread no-worker path.
+- `flutter build web --debug --no-pub --no-wasm-dry-run`: passed on
+  2026-06-20 after the bootstrap app change. A local static server on
+  `http://127.0.0.1:54424/` served the rebuilt `main.dart.js`; direct HTTP
+  checks confirmed that the served runtime contains
+  `VibeFridgeBootstrapLoadingApp` and the Settings WebDAV copy. A full
+  Playwright visual smoke could not be completed in this environment because
+  the bundled Playwright browser was not installed and system Microsoft Edge
+  aborted in headless automation, so this entry proves build and served
+  runtime content, not a fresh visual browser pass.
 - `flutter test test/webdav_backup_service_test.dart`: passed after adding a
   `dart:io` local WebDAV server that requires Basic Auth and exercises the
   real service through MKCOL directory creation, PUT backup upload, PROPFIND
