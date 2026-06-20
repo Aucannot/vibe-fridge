@@ -380,7 +380,9 @@ Platform notification checklist for that gate:
   `SecurityException` handling, 3 tests. Passed again after covering Android
   launch intent target normalization before forwarding taps to Flutter, 3
   tests. Passed again on 2026-06-20 after adding the reusable Android
-  environment checker, still with 3 tests.
+  environment checker, still with 3 tests. Rechecked from the current worktree
+  with `flutter test --no-pub test/android_notification_wiring_test.dart`:
+  passed with the same 3 source-level Android notification wiring tests.
 - `flutter test test/macos_notification_wiring_test.dart`: passed after adding
   macOS source-level checks for method-channel names, native bridge methods,
   notification payload parsing, delegate presentation behavior, and system tap
@@ -918,7 +920,12 @@ Platform notification checklist for that gate:
   still reported `Unable to locate Android SDK`, and `flutter build apk
   --debug` again stopped before Android compilation with `[!] No Android SDK
   found. Try setting the ANDROID_HOME environment variable.` Network resources
-  were available during this pass.
+  were available during this pass. Rechecked again from the current worktree
+  with `HOME=/private/tmp/vibe-fridge-flutter-home
+  ../.tools/flutter/bin/flutter build apk --debug --no-pub`: Flutter still
+  stopped immediately with `[!] No Android SDK found. Try setting the
+  ANDROID_HOME environment variable.`, so Android compile/runtime validation
+  remains blocked by host setup rather than a new app compile error.
 - `node --check tools/check_android_environment.mjs`: passed after adding the
   reusable Android runtime-gate helper.
 - `node tools/check_android_environment.mjs`: currently exits non-zero, as
@@ -926,9 +933,12 @@ Platform notification checklist for that gate:
   `ready: false`, `androidToolchainReady: false`,
   `androidDeviceReady: false`, `emulatorAvailable: false`, `sdkPath: null`,
   and blockers `Android SDK is not configured for Flutter` plus
-  `No Android device or emulator is available`. This makes the Android runtime
-  validation blocker explicit and reproducible without attempting to install or
-  launch anything.
+  `No Android device or emulator is available`. Rechecked from the current
+  worktree on 2026-06-20 with the same result; the report saw only the macOS
+  desktop device, no emulator sources, and `flutter doctor -v` still reported
+  `Unable to locate Android SDK`. This makes the Android runtime validation
+  blocker explicit and reproducible without attempting to install or launch
+  anything.
 - Native notification bridge static review: Android and macOS implementations
   use the same `vibe_fridge/local_notifications` method channel as Dart,
   preserve `itemId` in scheduled notification payloads, expose launch/tap
