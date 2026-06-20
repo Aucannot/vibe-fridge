@@ -499,6 +499,17 @@ Platform notification checklist for that gate:
   quantity `2` with one active batch. Both imported batches and their empty
   item profiles were then deleted through the UI. Browser logs showed no
   warnings or errors throughout the flow.
+- Current mobile Web today-action reminder smoke on
+  `http://127.0.0.1:54407/`: passed on 2026-06-20 at 390 x 844. Home loaded
+  with `今天要处理 2 件` and `提醒到期 2`; tapping the `提醒到期 2` summary opened
+  `?route=items&focus=reminderDue` with `面包` and `鲜牛奶` in the focused list.
+  Returning to Home and using `稍后` on `面包` changed the list from 2 items to
+  1 and showed `今天稍后再提醒：面包`. Using `忽略` on `鲜牛奶` changed the section
+  to `0 项`, showed `今天没有待处理`, and the summary card updated to `0 件`,
+  `已过期 0`, `今日到期 0`, and `提醒到期 0`, with feedback
+  `今天不再提醒：鲜牛奶`. Settings `重置示例数据` then restored the sample state,
+  and Home returned to `今天要处理 2 件` / `提醒到期 2`. Browser logs showed no
+  warnings or errors throughout the flow.
 - `flutter test test/recipes_screen_test.dart`: passed after adding coverage
   that applies a recipe's inventory uses through `InventoryController` and
   verifies the real inventory quantities are deducted.
