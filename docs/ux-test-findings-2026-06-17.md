@@ -615,6 +615,20 @@ Platform notification checklist for that gate:
   returned to Settings with the same inventory/profile counts and no import
   result summary or snackbar. Browser logs showed no warnings or errors
   throughout the flow.
+- Current mobile Web shopping-management smoke on
+  `http://127.0.0.1:54418/?route=items&view=shopping`: passed on 2026-06-20
+  at 390 x 844. The Shopping view loaded with replenishment suggestions and
+  empty `待采购` / `已买到` sections. The top `添加` action opened the
+  `添加采购项` sheet; saving `购物管理1609番茄` with quantity `2`, unit `袋`, and
+  note `初始备注1609` created one pending item with the expected quantity and
+  note summary. The row overflow menu opened `编辑采购项`; changing the item to
+  `购物管理1609番茄编辑`, quantity `5`, unit `盒`, and note `编辑备注1609` saved back
+  to the pending list and refreshed the visible row. Checking the item moved it
+  from `待采购 1` to `已买到 1` and revealed the `入库` action; unchecking it
+  moved it back to `待采购 1` and returned `已买到` to `0`. The row menu's
+  destructive `删除采购项` confirmation named the edited item; confirming delete
+  returned both shopping sections to `0`. Browser logs showed no warnings or
+  errors throughout the flow.
 - `flutter test test/recipes_screen_test.dart`: passed after adding coverage
   that applies a recipe's inventory uses through `InventoryController` and
   verifies the real inventory quantities are deducted.
