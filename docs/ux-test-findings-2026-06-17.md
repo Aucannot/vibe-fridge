@@ -603,6 +603,18 @@ Platform notification checklist for that gate:
   again, and saw the same success feedback so later tests start from the
   default preference state. Browser logs showed no warnings or errors
   throughout the flow.
+- Current mobile Web legacy-import preview smoke on
+  `http://127.0.0.1:54417/?route=settings`: passed on 2026-06-20 at 390 x 844.
+  Settings opened with `库存批次 4`, `物品资料 5`, and a visible
+  `导入旧版库存` action. Tapping it opened `预览旧版库存导入` without a Flutter Web
+  asset error. The bundled empty legacy payload produced readable zero-count
+  rows for `待导入`, `将新增`, `将更新`, and `将跳过`, showed the
+  `导入前清空示例资料/库存` checkbox with copy that only built-in examples would
+  be cleared while categories and user data are retained, and kept
+  `确认导入` disabled because there were no importable rows. Using `取消`
+  returned to Settings with the same inventory/profile counts and no import
+  result summary or snackbar. Browser logs showed no warnings or errors
+  throughout the flow.
 - `flutter test test/recipes_screen_test.dart`: passed after adding coverage
   that applies a recipe's inventory uses through `InventoryController` and
   verifies the real inventory quantities are deducted.
