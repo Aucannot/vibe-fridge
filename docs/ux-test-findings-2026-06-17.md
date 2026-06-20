@@ -63,6 +63,15 @@ permission state. It still does not prove permission approval, delivered
 notification visibility, or notification-click routing because this machine has
 not authorized notifications for the app.
 
+Running-app macOS recheck on 2026-06-20: after the Web startup-bootstrap
+change, `HOME=/private/tmp/vibe-fridge-flutter-home node
+tools/run_macos_notification_smoke.mjs --expect-supported true --timeout-ms
+180000` rebuilt and launched the macOS debug app, reached the VM Service at
+`http://127.0.0.1:58130/...`, returned `supported: true`, `granted: false`,
+`status: unknown`, and `displayText: 未确认`, then exited cleanly. This keeps
+the running-app macOS notification-channel evidence current while still
+avoiding permission prompts and diagnostic notification delivery.
+
 Reusable macOS smoke update on 2026-06-19: `tools/check_notification_status.mjs`
 now wraps the VM Service extension call so future beta passes can reproduce the
 running-app notification status check without ad hoc scripting. Against a fresh
@@ -483,7 +492,12 @@ Platform notification checklist for that gate:
   adding runtime notification-center delegate registration coverage, with 14
   passed and 1 skipped. Passed again on 2026-06-20 with 14 passed RunnerTests
   and 1 skipped pending-request smoke because notification authorization has
-  not been granted for the test host.
+  not been granted for the test host. Passed again on 2026-06-20 after the
+  Web startup-bootstrap change using `xcodebuild test -workspace
+  Runner.xcworkspace -scheme Runner -configuration Debug -destination
+  'platform=macOS' -derivedDataPath /private/tmp/vibe-fridge-macos-derived`:
+  `TEST SUCCEEDED`, 14 RunnerTests passed, and the same authorization-gated
+  pending-request smoke was skipped.
 - `flutter run -d macos`: launched the current debug macOS target on
   2026-06-19, built `vibe-fridge.app`, started the app process, and exposed a
   Dart VM Service. The shell still reported `Failed to foreground app; open
@@ -525,7 +539,10 @@ Platform notification checklist for that gate:
   --timeout-ms 180000`: the app built, launched, exposed
   `http://127.0.0.1:64161/...`, returned `supported: true`, `granted: false`,
   `status: unknown`, and `displayText: 未确认`, then exited cleanly with
-  `Application finished.`.
+  `Application finished.`. Rechecked again after the Web startup-bootstrap
+  change with the same read-only command: the app exposed
+  `http://127.0.0.1:58130/...`, returned the same status payload, and exited
+  cleanly.
 - `node --check tools/run_macos_notification_smoke.mjs`: passed after adding
   the automated macOS smoke runner.
 - Tool argument guards: `node tools/check_notification_status.mjs
