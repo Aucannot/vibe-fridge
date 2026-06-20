@@ -592,6 +592,17 @@ Platform notification checklist for that gate:
   `鲜牛奶` profile proved the default description was restored and the notes
   row disappeared. Browser logs showed no warnings or errors throughout the
   flow.
+- Current mobile Web recipe-preference smoke on
+  `http://127.0.0.1:54416/?route=settings`: passed on 2026-06-20 at 390 x 844.
+  Settings scrolled to `食谱偏好` with default blank preference fields plus
+  `30` minutes and `2` people. Entering `清淡内测1608`, `不吃辣1608`,
+  `电饭煲1608`, `28` minutes, and `4` people, then using `保存食谱偏好`, showed
+  `食谱偏好已保存`. Reloading the Settings route and scrolling back to the same
+  card showed all five values persisted from local storage. The smoke then
+  cleared the three text fields, restored `30` minutes and `2` people, saved
+  again, and saw the same success feedback so later tests start from the
+  default preference state. Browser logs showed no warnings or errors
+  throughout the flow.
 - `flutter test test/recipes_screen_test.dart`: passed after adding coverage
   that applies a recipe's inventory uses through `InventoryController` and
   verifies the real inventory quantities are deducted.
