@@ -672,6 +672,20 @@ Platform notification checklist for that gate:
   named destructive confirmation, and catalog search for the unique name then
   showed `没有匹配物品`. Browser logs showed no warnings or errors throughout the
   flow.
+- Current mobile Web item-profile batch-delete smoke on
+  `http://127.0.0.1:54421/`: passed on 2026-06-20 at 390 x 844 against a
+  freshly rebuilt Web debug build. Adding `批量删除1621麦片` twice created a
+  single item profile with total quantity `3`, unit `袋`, and `2` active
+  batches. Opening the item profile showed `使用中批次 2` and two inventory rows
+  (`1` and `2袋`). Entering `批量` mode showed `已选择 0 项`, `全选`, `消耗`,
+  `改分类`, `改位置`, and `删除`; using `全选` changed the header to
+  `已选择 2 项` and visually selected both rows. `删除` opened a
+  `批量删除库存` confirmation that named the selected count; confirming returned
+  to the profile with `使用中批次 0`, the `暂无库存` empty state, and feedback
+  `已删除 2 条库存记录`. Deleting the now-empty item profile showed a named
+  destructive confirmation, returned to the catalog, and searching the unique
+  name showed `没有匹配物品`. Browser logs showed no warnings or errors
+  throughout the flow.
 - `flutter test test/recipes_screen_test.dart`: passed after adding coverage
   that applies a recipe's inventory uses through `InventoryController` and
   verifies the real inventory quantities are deducted.
