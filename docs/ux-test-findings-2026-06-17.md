@@ -686,6 +686,23 @@ Platform notification checklist for that gate:
   destructive confirmation, returned to the catalog, and searching the unique
   name showed `没有匹配物品`. Browser logs showed no warnings or errors
   throughout the flow.
+- Current mobile Web shopping-note conversion smoke on
+  `http://127.0.0.1:54422/?route=items&view=shopping`: passed on 2026-06-20 at
+  390 x 844 against a freshly rebuilt Web debug build. The Shopping view loaded
+  with empty `待采购` and `已买到` sections. Adding `采购转库存1622酸奶` with
+  quantity `4`, unit `盒`, and note `采购备注应保留1622` created a pending row
+  showing `4盒` plus the note summary. Checking the row moved it to `已买到 1`
+  and revealed `入库`; the `采购项入库` confirmation clearly said one purchased
+  item would be converted into an inventory record. Confirming conversion
+  returned both shopping sections to `0` and showed `已入库 1 项`. Catalog
+  search found the converted inventory as quantity `4`, unit `盒`, `未分类`,
+  and one active batch. The item-profile detail remained `暂无描述`, proving the
+  shopping note did not pollute the profile description; the inventory detail
+  facts card showed `描述 采购备注应保留1622`, proving the shopping note was
+  preserved on the inventory batch. The converted batch and empty item profile
+  were then deleted through their named destructive confirmations, and searching
+  the unique name showed `没有匹配物品`. Browser logs showed no warnings or errors
+  throughout the flow.
 - `flutter test test/recipes_screen_test.dart`: passed after adding coverage
   that applies a recipe's inventory uses through `InventoryController` and
   verifies the real inventory quantities are deducted.
