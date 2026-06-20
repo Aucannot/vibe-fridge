@@ -110,6 +110,9 @@ still reports Xcode additional-component setup because no Simulator runtimes or
 Simulator devices are installed. The macOS desktop target itself remains
 usable: `flutter build macos --debug` passed and native RunnerTests passed with
 14 passed tests and 1 authorization-gated notification request test skipped.
+The Android readiness check is now also reproducible through
+`tools/check_android_environment.mjs`, which exits non-zero until Flutter has
+an Android SDK plus an Android device or emulator.
 
 ## Beta Readiness
 
@@ -336,7 +339,8 @@ Platform notification checklist for that gate:
   Passed again after adding scheduled-receiver permission-revocation guards and
   `SecurityException` handling, 3 tests. Passed again after covering Android
   launch intent target normalization before forwarding taps to Flutter, 3
-  tests.
+  tests. Passed again on 2026-06-20 after adding the reusable Android
+  environment checker, still with 3 tests.
 - `flutter test test/macos_notification_wiring_test.dart`: passed after adding
   macOS source-level checks for method-channel names, native bridge methods,
   notification payload parsing, delegate presentation behavior, and system tap
@@ -584,6 +588,16 @@ Platform notification checklist for that gate:
   --debug` again stopped before Android compilation with `[!] No Android SDK
   found. Try setting the ANDROID_HOME environment variable.` Network resources
   were available during this pass.
+- `node --check tools/check_android_environment.mjs`: passed after adding the
+  reusable Android runtime-gate helper.
+- `node tools/check_android_environment.mjs`: currently exits non-zero, as
+  expected for this host, and returns a JSON report with
+  `ready: false`, `androidToolchainReady: false`,
+  `androidDeviceReady: false`, `emulatorAvailable: false`, `sdkPath: null`,
+  and blockers `Android SDK is not configured for Flutter` plus
+  `No Android device or emulator is available`. This makes the Android runtime
+  validation blocker explicit and reproducible without attempting to install or
+  launch anything.
 - Native notification bridge static review: Android and macOS implementations
   use the same `vibe_fridge/local_notifications` method channel as Dart,
   preserve `itemId` in scheduled notification payloads, expose launch/tap
@@ -1546,6 +1560,10 @@ Platform notification checklist for that gate:
   the notification status helper, and exits the app. This makes the current
   macOS notification-channel smoke reproducible without manual URL copying, and
   keeps the send-test path opt-in.
+- Added `tools/check_android_environment.mjs`, a read-only Android runtime
+  gate that runs Flutter's devices, emulators, and doctor checks, prints a
+  compact JSON report, and fails until an Android SDK and Android runtime target
+  are available.
 
 ## Remaining Risks
 
