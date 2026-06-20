@@ -548,6 +548,24 @@ Platform notification checklist for that gate:
   saved password, then returned Settings to `云端备份 未配置` with blank service
   address, account, and password fields. Browser logs showed no warnings or
   errors throughout the flow.
+- Current WebDAV restore smoke on
+  `http://127.0.0.1:54412/?route=settings`: passed on 2026-06-20 against a
+  temporary CORS-enabled local WebDAV endpoint on
+  `http://127.0.0.1:54413/dav`. The in-app browser rendered this pass at its
+  default wide viewport after reconnect, so this validates the current build's
+  cloud-restore behavior rather than a mobile breakpoint. Settings saved
+  `codex/codex` credentials with remote directory `codex`, showed
+  `WebDAV 连接可用`, uploaded
+  `vibe-fridge-backup-20260620-155516.json`, opened a restore confirmation
+  dialog naming that backup and explaining that current data would be replaced
+  after keeping a current backup, then restored successfully with
+  `已从 WebDAV 恢复：vibe-fridge-backup-20260620-155516.json` and
+  `最近恢复：vibe-fridge-backup-20260620-155516.json`. A post-restore
+  `测试连接` still showed `WebDAV 连接可用`, proving the saved configuration and
+  password remained usable after restore. The smoke endpoint recorded MKCOL,
+  Depth 0 and Depth 1 PROPFIND, PUT upload, GET restore download, and a
+  post-restore Depth 0 PROPFIND; the uploaded backup file was 7755 bytes.
+  Browser logs showed no warnings or errors throughout the flow.
 - `flutter test test/recipes_screen_test.dart`: passed after adding coverage
   that applies a recipe's inventory uses through `InventoryController` and
   verifies the real inventory quantities are deducted.
