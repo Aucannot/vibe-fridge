@@ -422,6 +422,16 @@ Platform notification checklist for that gate:
   removed; after confirming, Settings returned to `云端备份 未配置`, removed the
   saved-password status row, cleared all WebDAV input values, and showed
   `WebDAV 配置已清空`.
+- Current mobile Web route smoke on `http://127.0.0.1:54396/`: passed on
+  2026-06-20 at 390 x 844. Home rendered the dashboard with today actions,
+  expiring inventory, and category distribution. Direct routes for
+  `?route=items`, `?route=recipes`, and `?route=settings` initially showed the
+  Flutter-owned loading state, then settled to the item catalog, recipe
+  suggestions, and Settings content within the smoke wait. Browser logs showed
+  no warnings or errors on the checked routes. Settings scrolling confirmed
+  WebDAV backup, local notification fallback, recipe preferences, and order
+  recognition settings remain visible while `应用自检` / `运行自检` controls did
+  not reappear.
 - `flutter test test/recipes_screen_test.dart`: passed after adding coverage
   that applies a recipe's inventory uses through `InventoryController` and
   verifies the real inventory quantities are deducted.
