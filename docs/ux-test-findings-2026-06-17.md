@@ -374,7 +374,12 @@ Platform notification checklist for that gate:
   Passed again after adding coverage that cancelling a WebDAV restore leaves
   the current inventory unchanged. Passed again after covering that a failed
   WebDAV connection retry clears the stale authentication error once the retry
-  succeeds, 12 Settings tests.
+  succeeds, 12 Settings tests. Current targeted recheck on 2026-06-21 with
+  `flutter test --no-pub test/settings_screen_test.dart
+  test/user_facing_copy_test.dart test/webdav_backup_store_test.dart
+  test/webdav_backup_service_test.dart` passed with 21 tests. The first
+  sandboxed attempt was blocked by the SQLite native asset download DNS check;
+  the same command passed after allowing network access.
 - `flutter test test/order_import_review_screen_test.dart`: passed after
   adding widget coverage that low-confidence rows remain excluded until marked
   confirmed, the primary import count updates, the batch-confirmation copy is
