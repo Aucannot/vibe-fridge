@@ -95,6 +95,19 @@ status path. It remains a non-delivery check: no permission prompt was accepted,
 no diagnostic notification was sent, and notification-click routing still needs
 manual platform validation.
 
+macOS send-test smoke attempt on 2026-06-21: after the user explicitly
+authorized the notification-send path, `HOME=/private/tmp/vibe-fridge-sendtest-home
+node tools/run_macos_notification_smoke.mjs --send-test --expect-supported true
+--timeout-ms 180000` rebuilt and launched the macOS debug app from a clean
+temporary Flutter home, reached the VM Service at
+`http://127.0.0.1:59927/...`, and called the debug notification test extension.
+The extension returned `supported: true`, `granted: false`, `status: denied`,
+`displayText: 未授权`, `sent: false`, and `skippedReason: permission`, then the
+app exited with `Application finished.` This proves the send-test route reaches
+the real macOS permission gate in the launched app. It still does not prove
+delivered notification visibility or click-through behavior because the system
+did not grant notification permission, so no diagnostic notification was sent.
+
 Reusable macOS smoke update on 2026-06-19: `tools/check_notification_status.mjs`
 now wraps the VM Service extension call so future beta passes can reproduce the
 running-app notification status check without ad hoc scripting. Against a fresh
