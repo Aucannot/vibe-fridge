@@ -294,6 +294,14 @@ Platform notification checklist for that gate:
   the first sandboxed attempt was blocked by Flutter tester's local
   server-socket bind, and the same command passed after allowing local port
   binding, with 113 tests and `All tests passed!`.
+- Current core workflow targeted recheck on 2026-06-21 with `flutter test
+  --no-pub test/inventory_repository_test.dart test/items_screen_test.dart
+  test/order_import_review_screen_test.dart test/recipes_screen_test.dart
+  test/recipe_suggestion_service_test.dart test/app_shell_widget_test.dart
+  test/app_error_snackbar_test.dart`: passed with 31 tests and `All tests
+  passed!`. The first sandboxed attempt was blocked by Flutter tester's local
+  server-socket bind; the same command passed after allowing local port
+  binding.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
