@@ -198,6 +198,10 @@ Not proven yet:
   stale service-worker and stale Flutter Cache Storage recovery is now proven
   with browser smokes. A deployment host that ignores `_headers` still needs
   equivalent HTTP cache headers before hosted update behavior is fully proven.
+  Current repository audit found only the Flutter CI workflow and
+  `mobile/web/_headers`; no Netlify, Vercel, Firebase, Cloudflare, or Pages
+  deployment configuration was present to identify or verify a final hosted
+  origin from the worktree alone.
 
 Recommended next beta gate:
 
@@ -413,7 +417,10 @@ Platform notification checklist for that gate:
   replacement Flutter service worker; passed again after extending the guard to
   delete stale Flutter Cache Storage entries; passed again after adding
   no-cache entry hints, a cache-busted bootstrap script request, inline
-  loading-screen hide styles, and HTTP header policy coverage.
+  loading-screen hide styles, and HTTP header policy coverage. Rechecked from
+  the current worktree on 2026-06-21 with
+  `flutter test --no-pub test/web_bootstrap_test.dart`: passed with 3 tests
+  after downloading the SQLite native test asset.
 - `flutter test test/bootstrap_error_app_test.dart
   test/app_database_web_wiring_test.dart test/web_bootstrap_test.dart`: passed
   on 2026-06-20 after moving Flutter Web startup to a Flutter-owned bootstrap
@@ -763,7 +770,12 @@ Platform notification checklist for that gate:
   Passed again on 2026-06-20 with the bundled Flutter SDK; `build/web` was
   generated and `build/web/_headers` still includes no-cache/no-store policy
   for `index.html`, `flutter_bootstrap.js`, `flutter.js`,
-  `flutter_service_worker.js`, `main.dart.js`, and `sqflite_sw.js`.
+  `flutter_service_worker.js`, `main.dart.js`, and `sqflite_sw.js`. Passed
+  again on 2026-06-21 with `flutter build web --debug --no-pub
+  --no-wasm-dry-run`; generated `build/web/_headers` still includes
+  no-cache/no-store policy for the same entry scripts and service-worker files,
+  and `build/web/index.html` still loads `flutter_bootstrap.js` with a
+  timestamp cache buster.
 - `flutter build macos --debug`: passed after the user completed the local
   Xcode installation and license flow. The build produced
   `build/macos/Build/Products/Debug/vibe-fridge.app`; Flutter also generated
