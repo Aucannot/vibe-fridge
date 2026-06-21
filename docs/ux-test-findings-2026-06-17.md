@@ -289,7 +289,11 @@ Platform notification checklist for that gate:
   again on 2026-06-20 after adding the Android environment gate, with 112 tests
   and `All tests passed!`. Passed again on 2026-06-20 after adding the macOS
   secure-storage runtime smoke extension, with 113 tests and
-  `All tests passed!`.
+  `All tests passed!`. Passed again on 2026-06-21 from the current worktree
+  with `HOME=/private/tmp/vibe-fridge-sendtest-home flutter test --no-pub`;
+  the first sandboxed attempt was blocked by Flutter tester's local
+  server-socket bind, and the same command passed after allowing local port
+  binding, with 113 tests and `All tests passed!`.
 - `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
   the generic error snackbar copy action and covering that technical details
   stay hidden from the visible message.
@@ -330,7 +334,8 @@ Platform notification checklist for that gate:
   debug-only running-app notification status extension. Passed again on
   2026-06-20 on the current worktree with `No issues found!`. Passed again on
   2026-06-20 after the macOS notification smoke recheck with
-  `No issues found! (ran in 1.5s)`.
+  `No issues found! (ran in 1.5s)`. Passed again on 2026-06-21 from the
+  current worktree with `flutter analyze --no-pub` and `No issues found!`.
 - `flutter test test/local_notification_service_test.dart`: passed after the
   Android reminder scheduler refactor, notification tap controller handoff
   coverage, notification permission-to-sync controller coverage, and Settings
