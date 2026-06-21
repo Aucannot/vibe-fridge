@@ -162,6 +162,22 @@ an Android SDK plus an Android device or emulator. A current run returned
 `emulatorAvailable: false`, `sdkPath: null`, and blockers for missing Android
 SDK plus missing Android device/emulator.
 
+Remaining gate recheck on 2026-06-21: the current worktree remains clean on
+`codex/beta-user-testing`. `node tools/check_android_environment.mjs` still
+returned `ready: false`, no Android SDK path, no Android device/emulator, and
+the same blockers for missing Android SDK plus missing Android device/emulator.
+The repository still only exposes `.github/workflows/flutter.yml`,
+`mobile/web/_headers`, and the generated `mobile/build/web/_headers`; no
+Netlify, Vercel, Firebase, Cloudflare, Pages, or other final-host deployment
+configuration was present to verify hosted update headers. A fresh running-app
+macOS smoke with `HOME=/private/tmp/vibe-fridge-sendtest-home node
+tools/run_macos_notification_smoke.mjs --expect-supported true --timeout-ms
+180000` rebuilt and launched the debug app, reached the VM Service at
+`http://127.0.0.1:60702/...`, and returned `supported: true`,
+`granted: false`, `status: denied`, and `displayText: 未授权`. This confirms
+the macOS notification bridge still works but the host permission state still
+blocks delivered-notification and click-through validation.
+
 ## Beta Readiness
 
 Verdict: ready for continued Web beta testing of the core inventory workflow,
