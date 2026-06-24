@@ -124,6 +124,21 @@ Organic Milk x2
     expect(banana.unit, '根');
   });
 
+  test('skips standalone order reference lines in pasted order text', () {
+    final result = parseOrderTextImport('''
+BETA-BACKUP-001
+备份提醒米 1袋
+ABC维生素C 1瓶
+''');
+
+    expect(
+      result.items.map((item) => item.name),
+      isNot(contains('BETA-BACKUP-001')),
+    );
+    expect(result.items.map((item) => item.name), contains('备份提醒米'));
+    expect(result.items.map((item) => item.name), contains('ABC维生素C'));
+  });
+
   test('validates VLM configuration successfully', () async {
     final service = VlmOrderService(
       client: MockClient(

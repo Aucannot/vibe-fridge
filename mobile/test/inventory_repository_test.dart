@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vibe_fridge/data/acceptance_test_service.dart';
 import 'package:vibe_fridge/data/app_database.dart';
@@ -292,17 +295,70 @@ void main() {
     );
     expect(batches.map((item) => item.quantity), contains(2));
     expect(batches.map((item) => item.sourceApp), contains('采购清单'));
+    final convertedBatch = batches.singleWhere(
+      (item) => item.sourceApp == '采购清单',
+    );
+    expect(convertedBatch.description, '买嫩一点');
+    final wiki = await repository.getWiki(registered.single.wikiId);
+    expect(wiki?.description, isNull);
   });
 
   test('runs app acceptance checks without leaving temporary data', () async {
+    final categories = await repository.getCategories();
+    for (var index = 0; index < 10; index += 1) {
+      await repository.createItem(
+        name: '用户备份提醒保留-$index',
+        categoryId: categories.first.id,
+        quantity: 1,
+        unit: '个',
+      );
+    }
+    final reminderBefore = await repository.getBackupReminderState();
+    expect(reminderBefore.isPending, isTrue);
+    expect(reminderBefore.reason, '新增库存');
+    expect(reminderBefore.dirtyCount, 10);
+
     final report =
         await AcceptanceTestService(repository).runCoreInventoryChecks();
 
-    expect(report.passed, isTrue);
-    expect(report.checks, hasLength(15));
     expect(
-      (await repository.getRegisteredItems(keyword: '自验收测试物品-')),
+      report.passed,
+      isTrue,
+      reason: report.checks
+          .where((check) => !check.passed)
+          .map((check) => '${check.name}: ${check.message}')
+          .join('\n'),
+    );
+    expect(report.checks, hasLength(17));
+    expect(
+      (await repository.getRegisteredItems(keyword: '应用自检测试物品-')),
       isEmpty,
+    );
+    final temporaryShoppingItems =
+        (await repository.getShoppingListItems(includeConverted: true))
+            .where((item) => item.name.startsWith('应用自检测试物品-'));
+    expect(temporaryShoppingItems, isEmpty);
+
+    final reminderAfter = await repository.getBackupReminderState();
+    expect(reminderAfter.isPending, reminderBefore.isPending);
+    expect(reminderAfter.reason, reminderBefore.reason);
+    expect(reminderAfter.dirtyCount, reminderBefore.dirtyCount);
+    expect(reminderAfter.updatedAt, reminderBefore.updatedAt);
+    expect(reminderAfter.lastExportedAt, reminderBefore.lastExportedAt);
+  });
+
+  test('formats app self-check failures without technical prefixes', () {
+    expect(
+      selfCheckFailureMessage(StateError('没有可用分类')),
+      '没有可用分类',
+    );
+    expect(
+      selfCheckFailureMessage(ArgumentError('数量必须大于 0')),
+      '数量必须大于 0',
+    );
+    expect(
+      selfCheckFailureMessage(Exception('临时检查失败')),
+      '临时检查失败',
     );
   });
 
@@ -561,6 +617,41 @@ void main() {
     expect(importedItems.single.importBatchId, 'ORDER-001');
     expect(importedItems.single.imagePath, '/tmp/order-001.png');
     expect(importedItems.single.recognitionConfidence, 0.91);
+
+    const noDateResult = OrderRecognitionResult(
+      sourceApp: '手动粘贴',
+      merchant: '内测超市',
+      orderId: 'ORDER-NODATE-001',
+      items: [
+        OrderRecognitionItem(
+          name: '无日期重复苹果',
+          quantity: 2,
+          unit: '个',
+          categoryName: '食品',
+          confidence: 0.72,
+        ),
+      ],
+    );
+    final firstNoDateSummary = await controller.createItemsFromOrder(
+      result: noDateResult,
+      items: noDateResult.items,
+    );
+    expect(firstNoDateSummary.addedCount, 1);
+
+    final noDateDuplicates = await controller.findOrderImportDuplicates(
+      result: noDateResult,
+      items: noDateResult.items,
+    );
+    expect(noDateDuplicates, hasLength(1));
+    expect(noDateDuplicates.single.index, 0);
+    expect(noDateDuplicates.single.purchaseDate, isNull);
+
+    final secondNoDateSummary = await controller.createItemsFromOrder(
+      result: noDateResult,
+      items: noDateResult.items,
+    );
+    expect(secondNoDateSummary.addedCount, 0);
+    expect(secondNoDateSummary.duplicateCount, 1);
   });
 
   test('exports and restores backup with a pre-restore snapshot', () async {
@@ -602,6 +693,123 @@ void main() {
     );
     expect(await repository.getBackupSnapshots(), isNotEmpty);
     expect((await repository.checkDataHealth()).passed, isTrue);
+  });
+
+  test('backup restore round-trips tags reminders and shopping list', () async {
+    final categories = await repository.getCategories();
+    final foodCategory = categories.firstWhere(
+      (category) => category.name == '食品',
+    );
+
+    await repository.createItem(
+      name: '备份往返复杂苹果',
+      categoryId: foodCategory.id,
+      quantity: 3,
+      unit: '个',
+      purchaseDate: DateTime(2026, 6, 10),
+      expiryDate: DateTime(2026, 6, 20),
+      storageLocation: '冷藏',
+      tags: const ['临期优先', '常用'],
+      reminderDaysBefore: 2,
+    );
+    final registered = (await repository.getRegisteredItems(
+      keyword: '备份往返复杂苹果',
+    ))
+        .single;
+    final item =
+        (await repository.getInventoryByWikiId(registered.wikiId)).single;
+    await repository.ignoreReminderForToday(
+      item.id,
+      now: DateTime(2026, 6, 18, 9),
+    );
+    final shoppingId = await repository.addShoppingListItem(
+      ShoppingListDraft(
+        name: '备份往返采购盐',
+        categoryId: foodCategory.id,
+        quantity: 2,
+        unit: '袋',
+        note: '恢复后仍应保留',
+        source: 'manual',
+      ),
+    );
+
+    final backup = await repository.exportBackup();
+
+    await repository.deleteShoppingListItem(shoppingId);
+    await repository.deleteItem(item.id);
+    await repository.deleteWiki(registered.wikiId, force: true);
+    await appDatabase.database.delete(
+      'reminder_logs',
+      where: 'item_id = ?',
+      whereArgs: [item.id],
+    );
+
+    expect(
+      await repository.getRegisteredItems(keyword: '备份往返复杂苹果'),
+      isEmpty,
+    );
+    expect(
+      (await repository.getShoppingListItems()).map((item) => item.name),
+      isNot(contains('备份往返采购盐')),
+    );
+
+    await repository.restoreBackup(backup, replaceExisting: true);
+
+    final restoredRegistered = (await repository.getRegisteredItems(
+      keyword: '备份往返复杂苹果',
+    ))
+        .single;
+    final restoredItem =
+        (await repository.getInventoryByWikiId(restoredRegistered.wikiId))
+            .singleWhere((item) => item.name == '备份往返复杂苹果');
+    expect(restoredItem.quantity, 3);
+    expect(restoredItem.storageLocation, '冷藏');
+    expect(restoredItem.tags, containsAll(['临期优先', '常用']));
+
+    final restoredShopping = (await repository.getShoppingListItems())
+        .singleWhere((item) => item.name == '备份往返采购盐');
+    expect(restoredShopping.quantity, 2);
+    expect(restoredShopping.unit, '袋');
+    expect(restoredShopping.note, '恢复后仍应保留');
+    expect(restoredShopping.categoryName, '食品');
+
+    final reminderLogs = await appDatabase.database.query(
+      'reminder_logs',
+      where: 'item_id = ? AND reminder_type = ?',
+      whereArgs: [restoredItem.id, 'ignored'],
+    );
+    expect(reminderLogs, hasLength(1));
+    expect(reminderLogs.single['message'], '忽略本次提醒');
+    expect((await repository.checkDataHealth()).passed, isTrue);
+  });
+
+  test('escapes special characters in inventory table export', () async {
+    final categories = await repository.getCategories();
+
+    await repository.createItem(
+      name: '导出测试 "牛奶,大盒"\n第二行',
+      categoryId: categories.first.id,
+      quantity: 1,
+      unit: '盒',
+      purchaseDate: DateTime(2026, 6, 18),
+      expiryDate: DateTime(2026, 6, 25),
+      storageLocation: '冷藏,第二层',
+      tags: const ['临期,优先', '常用"标签'],
+      sourceApp: '采购"清单,手动',
+    );
+
+    final csv = await repository.exportInventoryCsv();
+
+    expect(csv, contains('"导出测试 ""牛奶,大盒""\n第二行"'));
+    expect(csv, contains('"冷藏,第二层"'));
+    expect(
+      csv,
+      anyOf(
+        contains('"临期,优先;常用""标签"'),
+        contains('"常用""标签;临期,优先"'),
+      ),
+    );
+    expect(csv, contains('"采购""清单,手动"'));
   });
 
   test('rejects incomplete backup before changing current data', () async {
@@ -651,12 +859,13 @@ void main() {
     final pending = await repository.getBackupReminderState();
     expect(pending.isPending, isTrue);
     expect(pending.dirtyCount, 10);
-    expect(pending.message, contains('建议导出一份备份'));
+    expect(pending.message, '因为新增库存，建议备份一次');
 
     await repository.markBackupExported();
     final cleared = await repository.getBackupReminderState();
     expect(cleared.isPending, isFalse);
     expect(cleared.dirtyCount, 0);
+    expect(cleared.message, '当前没有待处理的备份提醒');
     expect(cleared.lastExportedAt, isNotNull);
   });
 
@@ -786,6 +995,35 @@ void main() {
     expect(await repository.getRegisteredItems(keyword: '鲜牛奶'), isEmpty);
   });
 
+  test('loads default legacy asset without probing missing local override',
+      () async {
+    const legacyAsset = 'assets/import/legacy_inventory.json';
+    const localAsset = 'assets/import/legacy_inventory.local.json';
+    final bundle = _FakeLegacyAssetBundle(
+      manifestAssets: const [legacyAsset],
+      assets: const {
+        legacyAsset: '''
+{
+  "format": "vibe-fridge-legacy-export",
+  "version": 1,
+  "categories": [],
+  "wikis": [],
+  "items": [],
+  "tags": [],
+  "item_tags": []
+}
+''',
+      },
+    );
+    final controller = InventoryController(repository, assetBundle: bundle);
+
+    final preview = await controller.previewLegacyAssetImport();
+
+    expect(preview.source.total, 0);
+    expect(bundle.loadedAssets, contains(legacyAsset));
+    expect(bundle.loadedAssets, isNot(contains(localAsset)));
+  });
+
   test('reports invariant violations in health check', () async {
     final now = DateTime.now().toIso8601String();
     await appDatabase.database.insert('items', {
@@ -825,6 +1063,9 @@ void main() {
         'invalid_date',
       ]),
     );
+    expect(health.summary, contains('使用中库存不应带有消耗时间 1 处'));
+    expect(health.summary, isNot(contains('active')));
+    expect(health.summary, isNot(contains('consumed_at')));
   });
 
   test(
@@ -950,4 +1191,39 @@ void main() {
       );
     },
   );
+}
+
+class _FakeLegacyAssetBundle extends CachingAssetBundle {
+  _FakeLegacyAssetBundle({
+    required List<String> manifestAssets,
+    required Map<String, String> assets,
+  })  : _assets = assets,
+        _manifestData = _encodeManifest(manifestAssets);
+
+  final Map<String, String> _assets;
+  final ByteData _manifestData;
+  final loadedAssets = <String>[];
+
+  static ByteData _encodeManifest(List<String> assets) {
+    final manifest = <String, Object>{
+      for (final asset in assets)
+        asset: [
+          <String, Object>{'asset': asset},
+        ],
+    };
+    return const StandardMessageCodec().encodeMessage(manifest)!;
+  }
+
+  @override
+  Future<ByteData> load(String key) async {
+    loadedAssets.add(key);
+    if (key == 'AssetManifest.bin') {
+      return _manifestData;
+    }
+    final content = _assets[key];
+    if (content == null) {
+      throw StateError('Missing fake asset: $key');
+    }
+    return ByteData.sublistView(Uint8List.fromList(utf8.encode(content)));
+  }
 }

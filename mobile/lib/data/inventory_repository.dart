@@ -411,25 +411,29 @@ class InventoryRepository {
   Future<int> countOrderImportDuplicates({
     required String sourceOrderId,
     required String name,
-    required DateTime purchaseDate,
+    DateTime? purchaseDate,
   }) async {
     final normalizedOrderId = _blankToNull(sourceOrderId);
     final normalizedName = _blankToNull(name);
     if (normalizedOrderId == null || normalizedName == null) {
       return 0;
     }
-    return Sqflite.firstIntValue(
-          await _db.rawQuery('''
+    final where = StringBuffer('''
             SELECT COUNT(*)
             FROM items
             WHERE source_order_id = ?
               AND lower(name) = lower(?)
-              AND purchase_date = ?
-          ''', [
-            normalizedOrderId,
-            normalizedName,
-            _dateText(purchaseDate),
-          ]),
+    ''');
+    final args = <Object?>[
+      normalizedOrderId,
+      normalizedName,
+    ];
+    if (purchaseDate != null) {
+      where.write(' AND purchase_date = ?');
+      args.add(_dateText(purchaseDate));
+    }
+    return Sqflite.firstIntValue(
+          await _db.rawQuery(where.toString(), args),
         ) ??
         0;
   }
@@ -537,6 +541,7 @@ class InventoryRepository {
     required String name,
     String? categoryId,
     String? description,
+    bool syncDescriptionToWiki = true,
     int quantity = 1,
     String? unit,
     DateTime? purchaseDate,
@@ -584,7 +589,7 @@ class InventoryRepository {
           'id': wikiId,
           'name': normalizedName,
           'icon': null,
-          'description': description,
+          'description': syncDescriptionToWiki ? description : null,
           'category_id': categoryId,
           'default_unit': unit,
           'suggested_expiry_days': null,
@@ -599,13 +604,17 @@ class InventoryRepository {
         wikiId = existing.first['id'] as String;
         effectiveReminderDays = reminderDaysBefore ??
             ((existing.first['default_reminder_days'] as int?) ?? 3);
-        if (categoryId != null || unit != null || description != null) {
+        if (categoryId != null ||
+            unit != null ||
+            (syncDescriptionToWiki && description != null)) {
           await txn.update(
             'item_wikis',
             {
               if (categoryId != null) 'category_id': categoryId,
               if (unit != null && unit.trim().isNotEmpty) 'default_unit': unit,
-              if (description != null && description.trim().isNotEmpty)
+              if (syncDescriptionToWiki &&
+                  description != null &&
+                  description.trim().isNotEmpty)
                 'description': description,
               if (storageLocation != null && storageLocation.trim().isNotEmpty)
                 'storage_location': storageLocation.trim(),
@@ -809,6 +818,8 @@ class InventoryRepository {
       await createItem(
         name: item.name,
         categoryId: item.categoryId,
+        description: item.note,
+        syncDescriptionToWiki: false,
         quantity: item.quantity,
         unit: item.unit,
         purchaseDate: boughtAt,
@@ -1613,7 +1624,7 @@ class InventoryRepository {
         LegacyImportLogEntry.updated(
           table: 'demo',
           name: '示例数据',
-          reason: '导入前清理 $clearedDemoRows 行示例资料/库存',
+          reason: '导入前清理 $clearedDemoRows 条示例资料/库存',
         ),
       );
     }
@@ -2322,13 +2333,7 @@ class InventoryRepository {
   }
 
   Future<BackupReminderState> getBackupReminderState() async {
-    final metadata = await _getAppMetadata([
-      _metadataBackupReminderPending,
-      _metadataBackupReminderReason,
-      _metadataBackupDirtyCount,
-      _metadataBackupReminderUpdatedAt,
-      _metadataLastBackupExportedAt,
-    ]);
+    final metadata = await _getAppMetadata(_backupReminderMetadataKeys);
     final pending = metadata[_metadataBackupReminderPending] == '1';
     final dirtyCount =
         int.tryParse(metadata[_metadataBackupDirtyCount] ?? '0') ?? 0;
@@ -2343,6 +2348,27 @@ class InventoryRepository {
         metadata[_metadataLastBackupExportedAt],
       ),
     );
+  }
+
+  Future<T> preserveBackupReminderState<T>(
+    Future<T> Function() action,
+  ) async {
+    final snapshot = await _getAppMetadata(_backupReminderMetadataKeys);
+    try {
+      return await action();
+    } finally {
+      await _setAppMetadata({
+        _metadataBackupReminderPending:
+            snapshot[_metadataBackupReminderPending] ?? '0',
+        _metadataBackupReminderReason:
+            snapshot[_metadataBackupReminderReason] ?? '',
+        _metadataBackupDirtyCount: snapshot[_metadataBackupDirtyCount] ?? '0',
+        _metadataBackupReminderUpdatedAt:
+            snapshot[_metadataBackupReminderUpdatedAt] ?? '',
+        _metadataLastBackupExportedAt:
+            snapshot[_metadataLastBackupExportedAt] ?? '',
+      });
+    }
   }
 
   Future<void> markBackupExported({DateTime? exportedAt}) async {
@@ -2389,7 +2415,7 @@ class InventoryRepository {
 
       final health = await _checkDataHealth(txn);
       if (!health.passed) {
-        throw StateError('恢复后的数据健康检查失败：${health.summary}');
+        throw StateError('恢复后的资料检查未通过：${health.summary}');
       }
     });
 
@@ -2441,7 +2467,7 @@ class InventoryRepository {
       executor,
       issues,
       code: 'invalid_status',
-      message: '库存状态不在允许集合内',
+      message: '库存状态需要修正',
       query: '''
         SELECT COUNT(*)
         FROM items
@@ -2486,7 +2512,7 @@ class InventoryRepository {
       executor,
       issues,
       code: 'active_with_consumed_at',
-      message: 'active 库存不应带 consumed_at',
+      message: '使用中库存不应带有消耗时间',
       query: '''
         SELECT COUNT(*)
         FROM items
@@ -2497,7 +2523,7 @@ class InventoryRepository {
       executor,
       issues,
       code: 'consumed_without_consumed_at',
-      message: 'consumed 库存应记录 consumed_at',
+      message: '已消耗库存缺少消耗时间',
       query: '''
         SELECT COUNT(*)
         FROM items
@@ -2554,7 +2580,7 @@ class InventoryRepository {
       issues.add(
         DataHealthIssue(
           code: 'foreign_key_violation',
-          message: '数据关联检查失败',
+          message: '资料关联需要修正',
           count: foreignKeyRows.length,
         ),
       );
@@ -2706,6 +2732,13 @@ const _metadataBackupReminderReason = 'backup_reminder_reason';
 const _metadataBackupDirtyCount = 'backup_dirty_count';
 const _metadataBackupReminderUpdatedAt = 'backup_reminder_updated_at';
 const _metadataLastBackupExportedAt = 'last_backup_exported_at';
+const _backupReminderMetadataKeys = [
+  _metadataBackupReminderPending,
+  _metadataBackupReminderReason,
+  _metadataBackupDirtyCount,
+  _metadataBackupReminderUpdatedAt,
+  _metadataLastBackupExportedAt,
+];
 
 const _demoWikiIds = [
   'wiki-milk',
@@ -2916,8 +2949,10 @@ class BackupReminderState {
     if (!isPending) {
       return '当前没有待处理的备份提醒';
     }
-    final prefix = reason == null || reason!.isEmpty ? '数据已变更' : reason!;
-    return '$prefix 后建议导出一份备份';
+    if (reason == null || reason!.isEmpty) {
+      return '库存资料有更新，建议备份一次';
+    }
+    return '因为$reason，建议备份一次';
   }
 }
 
@@ -2995,7 +3030,7 @@ class DataHealthReport {
 
   String get summary {
     if (passed) {
-      return '数据健康';
+      return '资料检查正常';
     }
     return issues.map((issue) => '${issue.message} ${issue.count} 处').join('；');
   }

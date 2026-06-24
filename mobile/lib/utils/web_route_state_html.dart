@@ -30,24 +30,29 @@ Stream<String> getWebRouteStateChanges() {
   return controller.stream;
 }
 
+bool isCurrentWebRoute(String route) {
+  return _currentRoute() == _canonicalRoute(route);
+}
+
 void setWebRouteState(String route, {bool replace = false}) {
   final nextRoute = _normalizeRoute(route);
+  final canonicalNextRoute = _canonicalRoute(nextRoute);
   final currentRoute = _currentRoute();
   final location = web.window.location;
   final hasHashRoute = location.hash.isNotEmpty;
-  if (currentRoute == nextRoute && !hasHashRoute) {
+  if (currentRoute == canonicalNextRoute && !hasHashRoute) {
     _scheduleHashRouteCleanup(
-        nextRoute, '${location.pathname}${location.search}');
+        canonicalNextRoute, '${location.pathname}${location.search}');
     return;
   }
 
   final nextUrl = '${location.pathname}${_queryForRoute(nextRoute)}';
-  if (replace || currentRoute == nextRoute) {
+  if (replace || currentRoute == canonicalNextRoute) {
     web.window.history.replaceState(null, '', nextUrl);
   } else {
     web.window.history.pushState(null, '', nextUrl);
   }
-  _scheduleHashRouteCleanup(nextRoute, nextUrl);
+  _scheduleHashRouteCleanup(canonicalNextRoute, nextUrl);
 }
 
 String _currentRoute() {
@@ -82,6 +87,14 @@ String _normalizeRoute(String route) {
     return '/home';
   }
   return trimmed.startsWith('/') ? trimmed : '/$trimmed';
+}
+
+String _canonicalRoute(String route) {
+  final uri = Uri.parse(_normalizeRoute(route));
+  return Uri(
+    path: uri.path,
+    queryParameters: uri.queryParameters.isEmpty ? null : uri.queryParameters,
+  ).toString();
 }
 
 void _clearHashRouteIfStillCurrent(String route, String url) {

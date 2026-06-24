@@ -10,6 +10,7 @@ import '../models/inventory_item.dart';
 import '../models/item_status.dart';
 import '../theme/app_theme.dart';
 import '../utils/date_formatters.dart';
+import '../utils/import_trace_display.dart';
 import '../widgets/app_cards.dart';
 import '../widgets/image_attachment_card.dart';
 import '../widgets/icon_mapper.dart';
@@ -417,10 +418,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
 }
 
 bool _hasImportTrace(InventoryItem item) {
-  return item.sourceApp != null ||
-      item.sourceOrderId != null ||
-      item.importBatchId != null ||
-      item.recognitionConfidence != null;
+  return hasUserVisibleImportTrace(item);
 }
 
 class _Header extends StatelessWidget {
@@ -818,7 +816,7 @@ class _Facts extends StatelessWidget {
       child: Column(
         children: [
           _FactRow(label: '数量', value: '${item.quantity}${item.unit ?? ''}'),
-          _FactRow(label: '分类', value: item.categoryName ?? '其他'),
+          _FactRow(label: '分类', value: item.categoryName ?? '未分类'),
           _FactRow(label: '购买日期', value: formatDate(item.purchaseDate)),
           _FactRow(label: '过期日期', value: formatDate(item.expiryDate)),
           _FactRow(label: '提醒日期', value: formatDate(item.reminderDate)),
@@ -951,6 +949,7 @@ class _ImportTrace extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final source = importSourceLabel(item.sourceApp);
     return SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -963,12 +962,9 @@ class _ImportTrace extends StatelessWidget {
                 ),
           ),
           const SizedBox(height: 10),
-          if (item.sourceApp != null)
-            _TraceRow(label: '来源', value: item.sourceApp!),
+          if (source != null) _TraceRow(label: '来源', value: source),
           if (item.sourceOrderId != null)
             _TraceRow(label: '订单号', value: item.sourceOrderId!),
-          if (item.importBatchId != null)
-            _TraceRow(label: '导入批次', value: item.importBatchId!),
           if (item.recognitionConfidence != null)
             _TraceRow(
               label: '识别置信度',

@@ -302,7 +302,9 @@ class _ItemWikiDetailScreenState extends State<ItemWikiDetailScreen> {
     );
     setWebRouteState(route, replace: true);
     await detail;
-    setWebRouteState('/items/wiki/${widget.wikiId}', replace: true);
+    if (!supportsWebRouteState || isCurrentWebRoute(route)) {
+      setWebRouteState('/items/wiki/${widget.wikiId}', replace: true);
+    }
     if (mounted) {
       setState(() {
         _future = _load();
@@ -623,7 +625,7 @@ class _WikiFacts extends StatelessWidget {
     return SectionCard(
       child: Column(
         children: [
-          _FactRow(label: '分类', value: wiki.categoryName ?? '其他'),
+          _FactRow(label: '分类', value: wiki.categoryName ?? '未分类'),
           _FactRow(label: '默认单位', value: wiki.defaultUnit ?? '未设置'),
           _FactRow(
             label: '建议保质期',
@@ -636,6 +638,8 @@ class _WikiFacts extends StatelessWidget {
             value: '提前 ${wiki.defaultReminderDays} 天',
           ),
           _FactRow(label: '存放位置', value: wiki.storageLocation ?? '未设置'),
+          if (wiki.notes != null && wiki.notes!.trim().isNotEmpty)
+            _FactRow(label: '备注', value: wiki.notes!.trim()),
           _FactRow(label: '使用中批次', value: '${wiki.inventoryCount}'),
         ],
       ),

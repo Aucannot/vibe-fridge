@@ -13,11 +13,15 @@ class AcceptanceTestService {
 
   final InventoryRepository repository;
 
-  Future<AcceptanceReport> runCoreInventoryChecks() async {
+  Future<AcceptanceReport> runCoreInventoryChecks() {
+    return repository.preserveBackupReminderState(_runCoreInventoryChecks);
+  }
+
+  Future<AcceptanceReport> _runCoreInventoryChecks() async {
     final startedAt = DateTime.now();
     final checks = <AcceptanceCheckResult>[];
-    final testName = '自验收测试物品-${startedAt.microsecondsSinceEpoch}';
-    const testNamePrefix = '自验收测试物品-';
+    final testName = '应用自检测试物品-${startedAt.microsecondsSinceEpoch}';
+    const testNamePrefix = '应用自检测试物品-';
     String? wikiId;
     String? originalItemId;
     String? restoredItemId;
@@ -40,7 +44,7 @@ class AcceptanceTestService {
           AcceptanceCheckResult.failed(
             name: name,
             duration: stopwatch.elapsed,
-            message: error.toString(),
+            message: selfCheckFailureMessage(error),
           ),
         );
       }
@@ -65,7 +69,7 @@ class AcceptanceTestService {
       await repository.createItem(
         name: testName,
         categoryId: categories.isEmpty ? null : categories.first.id,
-        description: 'app 自验收临时数据',
+        description: '应用自检临时数据',
         quantity: 2,
         unit: '份',
         purchaseDate: startedAt,
@@ -87,7 +91,7 @@ class AcceptanceTestService {
         throw StateError('提醒日期或提醒开关未正确初始化');
       }
       if (item.imagePath != '/tmp/vibe-fridge-acceptance/package.jpg') {
-        throw StateError('图片附件路径未正确保存');
+        throw StateError('图片附件未正确保存');
       }
       if (item.storageLocation != '冷藏') {
         throw StateError('存放位置未正确保存');
@@ -106,7 +110,7 @@ class AcceptanceTestService {
     });
 
     await check('本地通知内容可基于提醒生成', () async {
-      final item = await _activeItem(_required(wikiId, 'wikiId'));
+      final item = await _activeItem(_required(wikiId, '物品资料'));
       final pending = await repository.getPendingReminderNotifications();
       PendingReminderNotification? notification;
       for (final candidate in pending) {
@@ -126,16 +130,16 @@ class AcceptanceTestService {
     });
 
     await check('提醒日志防重复并支持忽略本次', () async {
-      final item = await _activeItem(_required(wikiId, 'wikiId'));
+      final item = await _activeItem(_required(wikiId, '物品资料'));
       final firstSent = await repository.recordReminderSentIfNeeded(
         itemId: item.id,
         reminderType: 'reminder_due',
-        message: '自验收提醒',
+        message: '应用自检提醒',
       );
       final duplicateSent = await repository.recordReminderSentIfNeeded(
         itemId: item.id,
         reminderType: 'reminder_due',
-        message: '自验收重复提醒',
+        message: '应用自检重复提醒',
       );
       if (!firstSent || duplicateSent) {
         throw StateError('同日同类型提醒没有正确去重');
@@ -179,6 +183,57 @@ class AcceptanceTestService {
       }
     });
 
+    await check('食谱扣减会更新库存数量', () async {
+      await repository.createItem(
+        name: '$testName-食谱鸡蛋',
+        quantity: 3,
+        unit: '个',
+        expiryDate: startedAt.add(const Duration(days: 1)),
+      );
+      await repository.createItem(
+        name: '$testName-食谱牛奶',
+        quantity: 2,
+        unit: '盒',
+        expiryDate: startedAt.add(const Duration(days: 1)),
+      );
+      await repository.createItem(
+        name: '$testName-食谱面包',
+        quantity: 2,
+        unit: '片',
+        expiryDate: startedAt.add(const Duration(days: 2)),
+      );
+
+      final activeItems = await repository.getActiveItems(limit: 100);
+      final recipeItems = activeItems
+          .where((item) => item.name.startsWith('$testName-食谱'))
+          .toList();
+      final suggestions = RecipeSuggestionService().generate(recipeItems);
+      final recipe = suggestions.firstWhere(
+        (suggestion) => suggestion.id == 'quick-breakfast',
+        orElse: () => throw StateError('没有生成可扣减的早餐食谱'),
+      );
+      final recipeUses = recipe.inventoryUses
+          .where((use) => use.item.name.startsWith('$testName-食谱'))
+          .toList();
+      if (recipeUses.length != 3) {
+        throw StateError('食谱没有使用预期的临时库存');
+      }
+
+      final beforeQuantities = <String, int>{
+        for (final use in recipeUses) use.item.id: use.item.quantity,
+      };
+      for (final use in recipeUses) {
+        await repository.updateItemQuantity(use.item.id, -use.quantity);
+      }
+      for (final use in recipeUses) {
+        final updated = await repository.getItem(use.item.id);
+        final expectedQuantity = beforeQuantities[use.item.id]! - use.quantity;
+        if (updated == null || updated.quantity != expectedQuantity) {
+          throw StateError('食谱扣减后库存数量不正确');
+        }
+      }
+    });
+
     await check('采购清单可添加并转为库存', () async {
       final categories = await repository.getCategories();
       final suggestionName = '$testName-建议';
@@ -199,8 +254,8 @@ class AcceptanceTestService {
           categoryId: categories.isEmpty ? null : categories.first.id,
           quantity: 1,
           unit: '份',
-          note: '自验收补货',
-          source: 'acceptance',
+          note: '应用自检补货',
+          source: '应用自检',
         ),
       );
 
@@ -226,8 +281,44 @@ class AcceptanceTestService {
       }
     });
 
+    await check('备份内容包含关键数据', () async {
+      final item = await _activeItem(_required(wikiId, '物品资料'));
+      final categories = await repository.getCategories();
+      final backupShoppingId = await repository.addShoppingListItem(
+        ShoppingListDraft(
+          name: '$testName-备份采购',
+          categoryId: categories.isEmpty ? null : categories.first.id,
+          quantity: 2,
+          unit: '份',
+          note: '应用自检备份验证',
+          source: '应用自检',
+        ),
+      );
+
+      final backup = await repository.exportBackup();
+      final itemRows = _backupRows(backup, 'items');
+      final itemTagRows = _backupRows(backup, 'item_tags');
+      final reminderRows = _backupRows(backup, 'reminder_logs');
+      final shoppingRows = _backupRows(backup, 'shopping_list_items');
+
+      final containsItem = itemRows.any((row) => row['id'] == item.id);
+      final containsTags = itemTagRows.any((row) => row['item_id'] == item.id);
+      final containsIgnoredReminder = reminderRows.any((row) {
+        return row['item_id'] == item.id && row['reminder_type'] == 'ignored';
+      });
+      final containsShoppingItem = shoppingRows.any((row) {
+        return row['id'] == backupShoppingId && row['note'] == '应用自检备份验证';
+      });
+      if (!containsItem ||
+          !containsTags ||
+          !containsIgnoredReminder ||
+          !containsShoppingItem) {
+        throw StateError('备份内容缺少库存、标签、提醒或采购清单数据');
+      }
+    });
+
     await check('更新库存数量', () async {
-      final item = await _activeItem(_required(wikiId, 'wikiId'));
+      final item = await _activeItem(_required(wikiId, '物品资料'));
       await repository.updateItemQuantity(item.id, 1);
       final updated = await repository.getItem(item.id);
       if (updated == null || updated.quantity != 3) {
@@ -237,7 +328,7 @@ class AcceptanceTestService {
     });
 
     await check('批量修改位置和分类', () async {
-      final item = await _activeItem(_required(wikiId, 'wikiId'));
+      final item = await _activeItem(_required(wikiId, '物品资料'));
       final categories = await repository.getCategories();
       final targetCategory = categories.firstWhere(
         (category) => category.name == '日用品',
@@ -256,7 +347,7 @@ class AcceptanceTestService {
     });
 
     await check('标记消耗并写入历史', () async {
-      final itemId = _required(originalItemId, 'itemId');
+      final itemId = _required(originalItemId, '库存记录');
       await repository.markAsConsumed(itemId);
       final active = await repository.getItem(itemId);
       if (active == null ||
@@ -273,16 +364,16 @@ class AcceptanceTestService {
     });
 
     await check('恢复已消耗记录', () async {
-      final itemId = _required(restoredItemId, 'restoredItemId');
+      final itemId = _required(restoredItemId, '已消耗记录');
       await repository.restoreItem(itemId);
       final restored = await repository.getItem(itemId);
       if (restored == null || restored.status != ItemStatus.active) {
-        throw StateError('恢复后记录未回到 active 状态');
+        throw StateError('恢复后记录未回到使用中状态');
       }
     });
 
     await check('删除恢复后的库存记录', () async {
-      final itemId = _required(restoredItemId, 'restoredItemId');
+      final itemId = _required(restoredItemId, '已恢复记录');
       await repository.deleteItem(itemId);
       final deleted = await repository.getItem(itemId);
       if (deleted != null) {
@@ -290,7 +381,7 @@ class AcceptanceTestService {
       }
     });
 
-    await check('清理验收测试数据', () async {
+    await check('清理自检临时数据', () async {
       await _cleanupTemporaryData(testNamePrefix);
       final remaining = await repository.getRegisteredItems(
         keyword: testNamePrefix,
@@ -300,7 +391,7 @@ class AcceptanceTestService {
       }
     });
 
-    await check('数据健康检查通过', () async {
+    await check('资料一致性检查通过', () async {
       final health = await repository.checkDataHealth();
       if (!health.passed) {
         throw StateError(health.summary);
@@ -329,11 +420,11 @@ class AcceptanceTestService {
         .where(
           (item) =>
               item.status == ItemStatus.active &&
-              item.name.startsWith('自验收测试物品-'),
+              item.name.startsWith('应用自检测试物品-'),
         )
         .toList();
     if (activeItems.isEmpty) {
-      throw StateError('没有找到 active 测试库存记录');
+      throw StateError('没有找到使用中的自检库存记录');
     }
     return activeItems.first;
   }
@@ -376,6 +467,46 @@ class AcceptanceTestService {
     }
     return value;
   }
+
+  List<Map<String, Object?>> _backupRows(
+    Map<String, dynamic> backup,
+    String table,
+  ) {
+    final data = backup['data'];
+    if (data is! Map) {
+      throw StateError('备份内容缺少数据');
+    }
+    final rows = data[table];
+    if (rows is! List) {
+      throw StateError('备份内容缺少 $table');
+    }
+    return rows.map((row) {
+      if (row is! Map) {
+        throw StateError('备份内容包含无效记录');
+      }
+      return Map<String, Object?>.from(row);
+    }).toList();
+  }
+}
+
+String selfCheckFailureMessage(Object error) {
+  var message = error.toString().trim();
+  const prefixes = [
+    'Bad state: ',
+    'Invalid argument(s): ',
+    'Exception: ',
+    'FormatException: ',
+  ];
+  for (final prefix in prefixes) {
+    if (message.startsWith(prefix)) {
+      message = message.substring(prefix.length).trim();
+      break;
+    }
+  }
+  if (message.isEmpty) {
+    return '检查没有完成，请稍后重试';
+  }
+  return message;
 }
 
 class AcceptanceReport {

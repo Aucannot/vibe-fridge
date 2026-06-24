@@ -1,8 +1,10 @@
 package com.vibefridge.vibe_fridge
 
 import android.Manifest
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -19,7 +21,7 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         ensureNotificationChannel()
-        launchItemId = intent?.getStringExtra(LocalNotificationContract.extraItemId)
+        launchItemId = normalizedNotificationItemId(intent)
         notificationChannel = MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             LocalNotificationContract.channelName,
@@ -41,6 +43,7 @@ class MainActivity : FlutterActivity() {
                         )
                         result.success(null)
                     }
+                    "sendTestNotification" -> sendTestNotification(result)
                     "cancelAll" -> {
                         LocalReminderScheduler.cancelScheduledReminders(this)
                         result.success(null)
@@ -54,14 +57,21 @@ class MainActivity : FlutterActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        val itemId = intent.getStringExtra(LocalNotificationContract.extraItemId)
-        if (!itemId.isNullOrEmpty()) {
+        val itemId = normalizedNotificationItemId(intent)
+        if (itemId != null) {
             launchItemId = itemId
             notificationChannel?.invokeMethod(
                 "notificationTapped",
                 mapOf("itemId" to itemId),
             )
         }
+    }
+
+    private fun normalizedNotificationItemId(intent: Intent?): String? {
+        return intent
+            ?.getStringExtra(LocalNotificationContract.extraItemId)
+            ?.trim()
+            ?.takeIf { itemId -> itemId.isNotEmpty() }
     }
 
     override fun onRequestPermissionsResult(
@@ -118,6 +128,47 @@ class MainActivity : FlutterActivity() {
             description = LocalNotificationContract.notificationChannelDescription
         }
         notificationManager.createNotificationChannel(channel)
+    }
+
+    private fun sendTestNotification(result: MethodChannel.Result) {
+        try {
+            ensureNotificationChannel()
+            val notificationManager = getSystemService(
+                Context.NOTIFICATION_SERVICE,
+            ) as NotificationManager
+            val launchIntent = Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            }
+            val pendingIntent = PendingIntent.getActivity(
+                this,
+                LocalNotificationContract.testNotificationRequestCode,
+                launchIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+            val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                Notification.Builder(
+                    this,
+                    LocalNotificationContract.notificationChannelId,
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                Notification.Builder(this)
+            }
+            val notification = builder
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle("库存提醒测试")
+                .setContentText("看到这条通知说明本地通知可用")
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
+                .build()
+            notificationManager.notify(
+                LocalNotificationContract.testNotificationRequestCode,
+                notification,
+            )
+            result.success(null)
+        } catch (error: SecurityException) {
+            result.error("permission", error.localizedMessage, null)
+        }
     }
 
 }

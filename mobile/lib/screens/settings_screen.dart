@@ -4,26 +4,39 @@ import 'package:file_selector/file_selector.dart' as file_selector;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import '../data/acceptance_test_service.dart';
 import '../data/inventory_controller.dart';
 import '../data/inventory_repository.dart';
 import '../data/recipe_preferences_store.dart';
 import '../data/vlm_order_service.dart';
 import '../data/vlm_settings_store.dart';
+import '../data/webdav_backup_service.dart';
+import '../data/webdav_backup_store.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_cards.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key, required this.controller});
+  const SettingsScreen({
+    super.key,
+    required this.controller,
+    this.vlmSettingsStore,
+    this.recipePreferencesStore,
+    this.vlmOrderService,
+    this.webDavBackupSettingsStore,
+    this.webDavBackupService,
+  });
 
   final InventoryController controller;
+  final VlmSettingsStore? vlmSettingsStore;
+  final RecipePreferencesStore? recipePreferencesStore;
+  final VlmOrderService? vlmOrderService;
+  final WebDavBackupSettingsStore? webDavBackupSettingsStore;
+  final WebDavBackupService? webDavBackupService;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final _vlmSettingsStore = VlmSettingsStore();
   final _vlmEndpointController = TextEditingController();
   final _vlmModelController = TextEditingController();
   final _vlmApiKeyController = TextEditingController();
@@ -32,24 +45,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _recipeToolsController = TextEditingController();
   final _recipeMinutesController = TextEditingController();
   final _recipeServingsController = TextEditingController();
-  final _vlmOrderService = VlmOrderService();
-  final _recipePreferencesStore = RecipePreferencesStore();
+  final _webDavServerUrlController = TextEditingController();
+  final _webDavRemoteDirectoryController = TextEditingController();
+  final _webDavUsernameController = TextEditingController();
+  final _webDavPasswordController = TextEditingController();
+  late final _vlmSettingsStore = widget.vlmSettingsStore ?? VlmSettingsStore();
+  late final _vlmOrderService = widget.vlmOrderService ?? VlmOrderService();
+  late final _recipePreferencesStore =
+      widget.recipePreferencesStore ?? RecipePreferencesStore();
+  late final _webDavBackupSettingsStore =
+      widget.webDavBackupSettingsStore ?? WebDavBackupSettingsStore();
+  late final _webDavBackupService =
+      widget.webDavBackupService ?? WebDavBackupService();
   bool _importing = false;
   bool _exportingBackup = false;
   bool _restoringBackup = false;
   bool _exportingCsv = false;
   bool _loadingVlmSettings = true;
   bool _loadingRecipePreferences = true;
+  bool _loadingWebDavSettings = true;
   bool _savingRecipePreferences = false;
   bool _savingVlmSettings = false;
   bool _testingVlmSettings = false;
-  bool _runningAcceptance = false;
+  bool _savingWebDavSettings = false;
+  bool _testingWebDavConnection = false;
+  bool _uploadingWebDavBackup = false;
+  bool _restoringWebDavBackup = false;
+  int _webDavPasswordFieldRevision = 0;
   bool _resettingDemoData = false;
   bool _syncingNotifications = false;
   bool _hasStoredVlmApiKey = false;
+  bool _hasStoredWebDavPassword = false;
   String? _vlmTestMessage;
   bool? _vlmTestPassed;
-  AcceptanceReport? _lastAcceptanceReport;
+  String? _webDavStatusMessage;
+  bool? _webDavStatusPassed;
   LegacyImportResult? _lastLegacyImportResult;
 
   @override
@@ -57,6 +87,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _loadVlmSettings();
     _loadRecipePreferences();
+    _loadWebDavSettings();
   }
 
   @override
@@ -69,7 +100,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _recipeToolsController.dispose();
     _recipeMinutesController.dispose();
     _recipeServingsController.dispose();
+    _webDavServerUrlController.dispose();
+    _webDavRemoteDirectoryController.dispose();
+    _webDavUsernameController.dispose();
+    _webDavPasswordController.dispose();
     _vlmOrderService.close();
+    _webDavBackupService.close();
     super.dispose();
   }
 
@@ -158,6 +194,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         onRestoreBackup: _restoreBackupJson,
                         onExportCsv: _exportInventoryCsv,
                       ),
+                      const SizedBox(height: AppSpacing.cardGap),
+                      _WebDavBackupPanel(
+                        loading: _loadingWebDavSettings,
+                        serverUrlController: _webDavServerUrlController,
+                        remoteDirectoryController:
+                            _webDavRemoteDirectoryController,
+                        usernameController: _webDavUsernameController,
+                        passwordController: _webDavPasswordController,
+                        hasStoredPassword: _hasStoredWebDavPassword,
+                        passwordFieldRevision: _webDavPasswordFieldRevision,
+                        statusMessage: _webDavStatusMessage,
+                        statusPassed: _webDavStatusPassed,
+                        saving: _savingWebDavSettings,
+                        testing: _testingWebDavConnection,
+                        uploading: _uploadingWebDavBackup,
+                        restoring: _restoringWebDavBackup,
+                        onSave: _saveWebDavSettings,
+                        onTest: _testWebDavConnection,
+                        onUpload: _uploadBackupToWebDav,
+                        onRestore: _restoreBackupFromWebDav,
+                        onClear: _clearWebDavSettings,
+                        onPasswordChanged: () => setState(() {}),
+                      ),
                       if (kDebugMode) ...[
                         const SizedBox(height: AppSpacing.cardGap),
                         SizedBox(
@@ -204,9 +263,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             '尚未同步',
                       ),
                       const SizedBox(height: AppSpacing.cardGap),
-                      Row(
+                      Column(
                         children: [
-                          Expanded(
+                          SizedBox(
+                            width: double.infinity,
                             child: OutlinedButton.icon(
                               onPressed: _syncingNotifications ||
                                       !notificationsSupported
@@ -220,8 +280,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               label: const Text('请求权限'),
                             ),
                           ),
-                          const SizedBox(width: AppSpacing.cardGap),
-                          Expanded(
+                          const SizedBox(height: AppSpacing.compactPadding),
+                          SizedBox(
+                            width: double.infinity,
                             child: FilledButton.icon(
                               onPressed: _syncingNotifications ||
                                       !notificationsSupported
@@ -231,6 +292,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   ? const _TinyProgress()
                                   : const Icon(Icons.sync_outlined),
                               label: const Text('同步提醒'),
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.compactPadding),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: _syncingNotifications ||
+                                      !notificationsSupported
+                                  ? null
+                                  : _sendTestNotification,
+                              icon: _syncingNotifications
+                                  ? const _TinyProgress()
+                                  : const Icon(
+                                      Icons.notification_important_outlined,
+                                    ),
+                              label: const Text('测试通知'),
                             ),
                           ),
                         ],
@@ -356,85 +433,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              '自验收测试',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                            ),
-                          ),
-                          if (_lastAcceptanceReport != null)
-                            StatusPill(
-                              label: _lastAcceptanceReport!.passed
-                                  ? '全部通过'
-                                  : '存在失败',
-                              icon: _lastAcceptanceReport!.passed
-                                  ? Icons.check_circle_outline
-                                  : Icons.error_outline,
-                              color: _lastAcceptanceReport!.passed
-                                  ? AppColors.success
-                                  : AppColors.error,
-                              backgroundColor: _lastAcceptanceReport!.passed
-                                  ? AppColors.successContainer
-                                  : AppColors.errorContainer,
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.cardGap),
-                      _SettingRow(
-                        icon: Icons.fact_check_outlined,
-                        label: '核心闭环',
-                        value: _lastAcceptanceReport == null
-                            ? '未运行'
-                            : '${_lastAcceptanceReport!.passedCount}/'
-                                '${_lastAcceptanceReport!.checks.length}',
-                      ),
-                      if (_lastAcceptanceReport != null) ...[
-                        _SettingRow(
-                          icon: Icons.timer_outlined,
-                          label: '耗时',
-                          value: _formatDuration(
-                            _lastAcceptanceReport!.duration,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.compactPadding),
-                        _AcceptanceResults(report: _lastAcceptanceReport!),
-                        const SizedBox(height: AppSpacing.cardGap),
-                      ] else
-                        const SizedBox(height: AppSpacing.cardGap),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed:
-                              _runningAcceptance ? null : _runAcceptanceChecks,
-                          icon: _runningAcceptance
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Icon(Icons.play_arrow_outlined),
-                          label: Text(
-                            _runningAcceptance ? '运行中' : '运行自验收',
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.fieldGap),
-                SectionCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
                       Text(
                         '订单识别 AI',
                         style:
@@ -453,8 +451,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         const _SettingRow(
                           icon: Icons.security_outlined,
-                          label: '密钥存储',
-                          value: '系统安全存储',
+                          label: '密钥状态',
+                          value: '本机安全保存',
                         ),
                         const SizedBox(height: AppSpacing.cardGap),
                         TextField(
@@ -483,7 +481,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             labelText: 'API 密钥',
                             hintText: _hasStoredVlmApiKey
                                 ? '已安全保存，留空保持不变'
-                                : '只保存在系统安全存储',
+                                : '只保存在本机安全区域',
                             helperText: _hasStoredVlmApiKey
                                 ? '已保存的密钥不会明文显示'
                                 : '仅保存在本机安全区域',
@@ -492,7 +490,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         const SizedBox(height: AppSpacing.cardGap),
                         if (_vlmTestMessage != null) ...[
-                          _VlmTestResult(
+                          _InlineStatusMessage(
                             message: _vlmTestMessage!,
                             passed: _vlmTestPassed == true,
                           ),
@@ -548,6 +546,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _loadingRecipePreferences = false);
   }
 
+  Future<void> _loadWebDavSettings() async {
+    final settings = await _webDavBackupSettingsStore.load(
+      revealPassword: false,
+    );
+    if (!mounted) {
+      return;
+    }
+    _webDavServerUrlController.text = settings.serverUrl;
+    _webDavRemoteDirectoryController.text = settings.remoteDirectory;
+    _webDavUsernameController.text = settings.username;
+    _webDavPasswordController.clear();
+    setState(() {
+      _hasStoredWebDavPassword = settings.hasStoredPassword;
+      _loadingWebDavSettings = false;
+    });
+  }
+
   Future<void> _requestNotificationPermission() async {
     setState(() => _syncingNotifications = true);
     try {
@@ -593,6 +608,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
       showAppErrorSnackBar(
         context,
         message: '同步本地通知失败',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _syncingNotifications = false);
+      }
+    }
+  }
+
+  Future<void> _sendTestNotification() async {
+    setState(() => _syncingNotifications = true);
+    try {
+      final result = await widget.controller.sendTestNotification();
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result.displayText)),
+      );
+    } catch (error, stackTrace) {
+      if (!mounted) {
+        return;
+      }
+      showAppErrorSnackBar(
+        context,
+        message: '测试通知发送失败',
         error: error,
         stackTrace: stackTrace,
       );
@@ -876,7 +918,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context) => AlertDialog(
         title: const Text('恢复备份'),
         content: const Text(
-          '会先创建恢复前快照，然后用备份替换当前库存数据。',
+          '会先自动保留一份恢复前备份，然后用所选备份替换当前库存数据。',
         ),
         actions: [
           TextButton(
@@ -922,6 +964,309 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } finally {
       if (mounted) {
         setState(() => _restoringBackup = false);
+      }
+    }
+  }
+
+  Future<WebDavBackupSettings> _currentWebDavSettings() async {
+    final saved = await _webDavBackupSettingsStore.load();
+    final password = _webDavPasswordController.text.trim().isEmpty
+        ? saved.password
+        : _webDavPasswordController.text.trim();
+    return WebDavBackupSettings(
+      serverUrl: _webDavServerUrlController.text,
+      remoteDirectory: _webDavRemoteDirectoryController.text,
+      username: _webDavUsernameController.text,
+      password: password,
+      hasStoredPassword: password.isNotEmpty,
+    );
+  }
+
+  Future<void> _saveWebDavSettings() async {
+    ScaffoldMessenger.of(context).clearSnackBars();
+    setState(() => _savingWebDavSettings = true);
+    final password = _webDavPasswordController.text;
+    FocusManager.instance.primaryFocus?.unfocus();
+    try {
+      await _webDavBackupSettingsStore.save(
+        WebDavBackupSettings(
+          serverUrl: _webDavServerUrlController.text,
+          remoteDirectory: _webDavRemoteDirectoryController.text,
+          username: _webDavUsernameController.text,
+          password: password,
+          hasStoredPassword: _hasStoredWebDavPassword,
+        ),
+        preserveExistingPasswordIfBlank: true,
+      );
+      if (!mounted) {
+        return;
+      }
+      final saved = await _webDavBackupSettingsStore.load(
+        revealPassword: false,
+      );
+      if (!mounted) {
+        return;
+      }
+      _webDavServerUrlController.text = saved.serverUrl;
+      _webDavRemoteDirectoryController.text = saved.remoteDirectory;
+      _webDavUsernameController.text = saved.username;
+      _webDavPasswordController.clear();
+      FocusManager.instance.primaryFocus?.unfocus();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('WebDAV 配置已保存')),
+      );
+      setState(() {
+        _hasStoredWebDavPassword = saved.hasStoredPassword;
+        _webDavPasswordFieldRevision += 1;
+        _webDavStatusMessage = null;
+        _webDavStatusPassed = null;
+      });
+    } catch (error, stackTrace) {
+      if (!mounted) {
+        return;
+      }
+      showAppErrorSnackBar(
+        context,
+        message: _webDavErrorMessage(error, fallback: '保存 WebDAV 配置失败'),
+        error: error,
+        stackTrace: stackTrace,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _savingWebDavSettings = false);
+      }
+    }
+  }
+
+  Future<void> _testWebDavConnection() async {
+    ScaffoldMessenger.of(context).clearSnackBars();
+    setState(() {
+      _testingWebDavConnection = true;
+      _webDavStatusMessage = null;
+      _webDavStatusPassed = null;
+    });
+    try {
+      await _webDavBackupService.validateConfiguration(
+        await _currentWebDavSettings(),
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _webDavStatusPassed = true;
+        _webDavStatusMessage = 'WebDAV 连接可用';
+      });
+    } catch (error, stackTrace) {
+      if (!mounted) {
+        return;
+      }
+      final message = _webDavErrorMessage(error, fallback: 'WebDAV 连接失败');
+      setState(() {
+        _webDavStatusPassed = false;
+        _webDavStatusMessage = message;
+      });
+      showAppErrorSnackBar(
+        context,
+        message: message,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _testingWebDavConnection = false);
+      }
+    }
+  }
+
+  Future<void> _uploadBackupToWebDav() async {
+    ScaffoldMessenger.of(context).clearSnackBars();
+    setState(() {
+      _uploadingWebDavBackup = true;
+      _webDavStatusMessage = null;
+      _webDavStatusPassed = null;
+    });
+    try {
+      final fileName = 'vibe-fridge-backup-${_fileTimestamp()}.json';
+      final backup = await widget.controller.exportBackup();
+      final text = const JsonEncoder.withIndent('  ').convert(backup);
+      final result = await _webDavBackupService.uploadBackup(
+        settings: await _currentWebDavSettings(),
+        fileName: fileName,
+        backupJson: text,
+      );
+      await widget.controller.markBackupExported();
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('备份已上传到 WebDAV')),
+      );
+      setState(() {
+        _webDavStatusPassed = true;
+        _webDavStatusMessage = '最近上传：${result.fileName}';
+      });
+    } catch (error, stackTrace) {
+      if (!mounted) {
+        return;
+      }
+      final message = _webDavErrorMessage(error, fallback: '上传 WebDAV 备份失败');
+      setState(() {
+        _webDavStatusPassed = false;
+        _webDavStatusMessage = message;
+      });
+      showAppErrorSnackBar(
+        context,
+        message: message,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _uploadingWebDavBackup = false);
+      }
+    }
+  }
+
+  Future<void> _restoreBackupFromWebDav() async {
+    ScaffoldMessenger.of(context).clearSnackBars();
+    setState(() {
+      _restoringWebDavBackup = true;
+      _webDavStatusMessage = null;
+      _webDavStatusPassed = null;
+    });
+    WebDavBackupDownloadResult downloaded;
+    try {
+      downloaded = await _webDavBackupService.downloadLatestBackup(
+        await _currentWebDavSettings(),
+      );
+    } catch (error, stackTrace) {
+      if (!mounted) {
+        return;
+      }
+      final message = _webDavErrorMessage(error, fallback: '下载 WebDAV 备份失败');
+      setState(() {
+        _restoringWebDavBackup = false;
+        _webDavStatusPassed = false;
+        _webDavStatusMessage = message;
+      });
+      showAppErrorSnackBar(
+        context,
+        message: message,
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return;
+    }
+
+    if (!mounted) {
+      return;
+    }
+    setState(() => _restoringWebDavBackup = false);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('恢复云端备份'),
+        content: Text(
+          '将用云端备份「${downloaded.fileName}」替换当前库存数据。'
+          '恢复前会自动保留一份当前备份。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('恢复'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    setState(() => _restoringWebDavBackup = true);
+    try {
+      final decoded = jsonDecode(downloaded.backupJson);
+      if (decoded is! Map) {
+        throw const FormatException('备份文件格式不正确');
+      }
+      await widget.controller.restoreBackup(
+        Map<String, dynamic>.from(decoded),
+      );
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('已从 WebDAV 恢复：${downloaded.fileName}')),
+      );
+      setState(() {
+        _webDavStatusPassed = true;
+        _webDavStatusMessage = '最近恢复：${downloaded.fileName}';
+      });
+    } catch (error, stackTrace) {
+      if (!mounted) {
+        return;
+      }
+      showAppErrorSnackBar(
+        context,
+        message: '恢复 WebDAV 备份失败',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _restoringWebDavBackup = false);
+      }
+    }
+  }
+
+  Future<void> _clearWebDavSettings() async {
+    ScaffoldMessenger.of(context).clearSnackBars();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('清空 WebDAV 配置'),
+        content: const Text('服务地址、账号和已保存的密码都会被清空。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('清空'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) {
+      return;
+    }
+
+    setState(() => _savingWebDavSettings = true);
+    try {
+      await _webDavBackupSettingsStore.clear();
+      if (!mounted) {
+        return;
+      }
+      await _loadWebDavSettings();
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _hasStoredWebDavPassword = false;
+        _webDavPasswordFieldRevision += 1;
+        _webDavStatusMessage = null;
+        _webDavStatusPassed = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('WebDAV 配置已清空')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _savingWebDavSettings = false);
       }
     }
   }
@@ -1010,7 +1355,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ? '没有可导入的数据'
                 : '导入完成：${result.items} 条库存，'
                     '${result.wikis} 个物品资料，${result.tags} 个标签，'
-                    '健康检查${result.healthPassed ? '通过' : '未通过'}',
+                    '资料检查${result.healthPassed ? '通过' : '未通过'}',
           ),
         ),
       );
@@ -1059,7 +1404,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '示例数据已重置，清理 $clearedRows 行旧示例数据',
+            '示例数据已重置，清理 $clearedRows 条旧示例数据',
           ),
         ),
       );
@@ -1079,44 +1424,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     }
   }
-
-  Future<void> _runAcceptanceChecks() async {
-    setState(() => _runningAcceptance = true);
-    try {
-      final report = await widget.controller.runAcceptanceChecks();
-      if (!mounted) {
-        return;
-      }
-      setState(() => _lastAcceptanceReport = report);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            report.passed
-                ? '自验收通过：${report.passedCount}/${report.checks.length}'
-                : '自验收失败：${report.passedCount}/${report.checks.length}',
-          ),
-        ),
-      );
-    } catch (error, stackTrace) {
-      if (!mounted) {
-        return;
-      }
-      showAppErrorSnackBar(
-        context,
-        message: '自验收无法运行',
-        error: error,
-        stackTrace: stackTrace,
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _runningAcceptance = false);
-      }
-    }
-  }
 }
 
-class _VlmTestResult extends StatelessWidget {
-  const _VlmTestResult({
+class _InlineStatusMessage extends StatelessWidget {
+  const _InlineStatusMessage({
     required this.message,
     required this.passed,
   });
@@ -1222,6 +1533,243 @@ class _VlmSettingsActions extends StatelessWidget {
               tooltip: '清空配置',
               onPressed: saving ? null : onClear,
               icon: const Icon(Icons.delete_outline),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _WebDavBackupPanel extends StatelessWidget {
+  const _WebDavBackupPanel({
+    required this.loading,
+    required this.serverUrlController,
+    required this.remoteDirectoryController,
+    required this.usernameController,
+    required this.passwordController,
+    required this.hasStoredPassword,
+    required this.passwordFieldRevision,
+    required this.statusMessage,
+    required this.statusPassed,
+    required this.saving,
+    required this.testing,
+    required this.uploading,
+    required this.restoring,
+    required this.onSave,
+    required this.onTest,
+    required this.onUpload,
+    required this.onRestore,
+    required this.onClear,
+    required this.onPasswordChanged,
+  });
+
+  final bool loading;
+  final TextEditingController serverUrlController;
+  final TextEditingController remoteDirectoryController;
+  final TextEditingController usernameController;
+  final TextEditingController passwordController;
+  final bool hasStoredPassword;
+  final int passwordFieldRevision;
+  final String? statusMessage;
+  final bool? statusPassed;
+  final bool saving;
+  final bool testing;
+  final bool uploading;
+  final bool restoring;
+  final VoidCallback onSave;
+  final VoidCallback onTest;
+  final VoidCallback onUpload;
+  final VoidCallback onRestore;
+  final VoidCallback onClear;
+  final VoidCallback onPasswordChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final busy = saving || testing || uploading || restoring;
+    final hasConfig = serverUrlController.text.trim().isNotEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Divider(height: 1),
+        const SizedBox(height: AppSpacing.cardGap),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'WebDAV 云备份',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w900,
+                    ),
+              ),
+            ),
+            IconButton.outlined(
+              tooltip: '清空 WebDAV 配置',
+              onPressed: busy ? null : onClear,
+              icon: const Icon(Icons.delete_outline),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          '把备份保存到你自己的 WebDAV 空间，可在新设备上恢复。'
+          '网页版使用时，云盘服务需要允许网页访问。',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppColors.textSecondary,
+              ),
+        ),
+        const SizedBox(height: AppSpacing.cardGap),
+        if (loading)
+          const Center(child: CircularProgressIndicator())
+        else ...[
+          _SettingRow(
+            icon: Icons.cloud_outlined,
+            label: '云端备份',
+            value: hasConfig ? '已配置' : '未配置',
+          ),
+          if (hasStoredPassword)
+            const _SettingRow(
+              icon: Icons.security_outlined,
+              label: '密码状态',
+              value: '本机安全保存',
+            ),
+          const SizedBox(height: AppSpacing.cardGap),
+          TextField(
+            controller: serverUrlController,
+            textInputAction: TextInputAction.next,
+            decoration: const InputDecoration(
+              labelText: 'WebDAV 服务地址',
+              hintText: 'https://example.com/remote.php/dav/files/me/',
+              prefixIcon: Icon(Icons.link_outlined),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.cardGap),
+          TextField(
+            controller: remoteDirectoryController,
+            textInputAction: TextInputAction.next,
+            decoration: const InputDecoration(
+              labelText: '备份目录',
+              hintText: WebDavBackupSettingsStore.defaultRemoteDirectory,
+              prefixIcon: Icon(Icons.folder_outlined),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.cardGap),
+          TextField(
+            controller: usernameController,
+            textInputAction: TextInputAction.next,
+            decoration: const InputDecoration(
+              labelText: '用户名',
+              prefixIcon: Icon(Icons.person_outline),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.cardGap),
+          TextField(
+            key: ValueKey('webdav-password-$passwordFieldRevision'),
+            controller: passwordController,
+            obscureText: true,
+            onChanged: (_) => onPasswordChanged(),
+            decoration: InputDecoration(
+              labelText: '密码或应用密码',
+              hintText: hasStoredPassword ? '已安全保存，留空保持不变' : '可留空',
+              helperText: hasStoredPassword ? '已保存的密码不会明文显示' : '仅保存在本机安全区域',
+              prefixIcon: const Icon(Icons.key_outlined),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.cardGap),
+          if (statusMessage != null) ...[
+            _InlineStatusMessage(
+              message: statusMessage!,
+              passed: statusPassed == true,
+            ),
+            const SizedBox(height: AppSpacing.cardGap),
+          ],
+          _WebDavBackupActions(
+            saving: saving,
+            testing: testing,
+            uploading: uploading,
+            restoring: restoring,
+            onSave: onSave,
+            onTest: onTest,
+            onUpload: onUpload,
+            onRestore: onRestore,
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _WebDavBackupActions extends StatelessWidget {
+  const _WebDavBackupActions({
+    required this.saving,
+    required this.testing,
+    required this.uploading,
+    required this.restoring,
+    required this.onSave,
+    required this.onTest,
+    required this.onUpload,
+    required this.onRestore,
+  });
+
+  final bool saving;
+  final bool testing;
+  final bool uploading;
+  final bool restoring;
+  final VoidCallback onSave;
+  final VoidCallback onTest;
+  final VoidCallback onUpload;
+  final VoidCallback onRestore;
+
+  @override
+  Widget build(BuildContext context) {
+    final busy = saving || testing || uploading || restoring;
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: busy ? null : onSave,
+                icon: saving
+                    ? const _TinyProgress()
+                    : const Icon(Icons.save_outlined),
+                label: Text(saving ? '保存中' : '保存配置'),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: busy ? null : onTest,
+                icon: testing
+                    ? const _TinyProgress()
+                    : const Icon(Icons.cloud_sync_outlined),
+                label: Text(testing ? '测试中' : '测试连接'),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: busy ? null : onUpload,
+                icon: uploading
+                    ? const _TinyProgress()
+                    : const Icon(Icons.cloud_upload_outlined),
+                label: Text(uploading ? '上传中' : '上传备份'),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: busy ? null : onRestore,
+                icon: restoring
+                    ? const _TinyProgress()
+                    : const Icon(Icons.cloud_download_outlined),
+                label: Text(restoring ? '恢复中' : '恢复云备份'),
+              ),
             ),
           ],
         ),
@@ -1336,7 +1884,7 @@ class _BackupReminderCard extends StatelessWidget {
                 if (state.dirtyCount > 0) ...[
                   const SizedBox(height: 3),
                   Text(
-                    '累计 ${state.dirtyCount} 行本地变更尚未导出',
+                    '累计 ${state.dirtyCount} 次库存资料变更尚未备份',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppColors.textHint,
                         ),
@@ -1399,7 +1947,7 @@ class _LegacyImportPreviewDialogState
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _ImportCountRow(label: '源数据', counts: preview.source),
+            _ImportCountRow(label: '待导入', counts: preview.source),
             _ImportCountRow(label: '将新增', counts: preview.inserts),
             _ImportCountRow(label: '将更新', counts: preview.updates),
             _ImportCountRow(label: '将跳过', counts: preview.skipped),
@@ -1407,7 +1955,7 @@ class _LegacyImportPreviewDialogState
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: StatusPill(
-                  label: '${preview.failedRows} 行无法导入',
+                  label: '${preview.failedRows} 条无法导入',
                   color: AppColors.error,
                   backgroundColor: AppColors.errorContainer,
                 ),
@@ -1422,7 +1970,7 @@ class _LegacyImportPreviewDialogState
               },
               title: const Text('导入前清空示例资料/库存'),
               subtitle: const Text(
-                '只清理内置演示数据，保留分类和用户数据。',
+                '只清理内置示例资料/库存，保留分类和用户数据。',
               ),
             ),
             if (preview.logs.isNotEmpty) ...[
@@ -1438,7 +1986,7 @@ class _LegacyImportPreviewDialogState
                 _LegacyLogLine(entry: log),
               if (preview.logs.length > 5)
                 Text(
-                  '还有 ${preview.logs.length - 5} 条日志会在导入后展示',
+                  '还有 ${preview.logs.length - 5} 条记录会在导入后展示',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: AppColors.textHint,
                       ),
@@ -1499,7 +2047,7 @@ class _LegacyImportResultSummary extends StatelessWidget {
                 ),
               ),
               StatusPill(
-                label: result.healthPassed ? '健康' : '需检查',
+                label: result.healthPassed ? '正常' : '需检查',
                 color:
                     result.healthPassed ? AppColors.success : AppColors.error,
                 backgroundColor: result.healthPassed
@@ -1510,8 +2058,8 @@ class _LegacyImportResultSummary extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            '新增 ${result.total} 行，更新 ${result.updates.total} 行，'
-            '跳过 ${result.skipped.total} 行，失败 ${result.failedRows} 行',
+            '新增 ${result.total} 条记录，更新 ${result.updates.total} 条记录，'
+            '跳过 ${result.skipped.total} 条记录，失败 ${result.failedRows} 条记录',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: AppColors.textSecondary,
                 ),
@@ -1519,7 +2067,7 @@ class _LegacyImportResultSummary extends StatelessWidget {
           if (result.clearedDemoRows > 0) ...[
             const SizedBox(height: 4),
             Text(
-              '已清理 ${result.clearedDemoRows} 行示例数据',
+              '已清理 ${result.clearedDemoRows} 条示例数据',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppColors.textSecondary,
                   ),
@@ -1540,7 +2088,7 @@ class _LegacyImportResultSummary extends StatelessWidget {
             child: TextButton.icon(
               onPressed: onShowLog,
               icon: const Icon(Icons.list_alt_outlined),
-              label: const Text('查看日志'),
+              label: const Text('查看详情'),
             ),
           ),
         ],
@@ -1557,7 +2105,7 @@ class _LegacyImportLogDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('旧版库存导入日志'),
+      title: const Text('旧版库存导入详情'),
       content: SizedBox(
         width: double.maxFinite,
         child: SingleChildScrollView(
@@ -1580,7 +2128,7 @@ class _LegacyImportLogDialog extends StatelessWidget {
               const SizedBox(height: 10),
               if (result.logs.isEmpty)
                 Text(
-                  '没有详细日志。',
+                  '没有详细记录。',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: AppColors.textSecondary,
                       ),
@@ -1694,83 +2242,11 @@ String _vlmErrorMessage(OrderRecognitionException error) {
   return error.userMessage;
 }
 
-class _AcceptanceResults extends StatelessWidget {
-  const _AcceptanceResults({required this.report});
-
-  final AcceptanceReport report;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: report.checks
-          .map(
-            (check) => _AcceptanceCheckTile(check: check),
-          )
-          .toList(),
-    );
+String _webDavErrorMessage(Object error, {required String fallback}) {
+  if (error is WebDavBackupException) {
+    return error.userMessage;
   }
-}
-
-class _AcceptanceCheckTile extends StatelessWidget {
-  const _AcceptanceCheckTile({required this.check});
-
-  final AcceptanceCheckResult check;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            check.passed ? Icons.check_circle : Icons.error_outline,
-            color: check.passed ? AppColors.success : AppColors.error,
-            size: 20,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  check.name,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
-                if (check.message != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    check.message!,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.error,
-                        ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            _formatDuration(check.duration),
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: AppColors.textHint,
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-String _formatDuration(Duration duration) {
-  if (duration.inSeconds >= 1) {
-    return '${duration.inSeconds}s';
-  }
-  return '${duration.inMilliseconds}ms';
+  return fallback;
 }
 
 String _fileTimestamp() {

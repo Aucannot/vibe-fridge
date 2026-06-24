@@ -1,3 +1,4 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vibe_fridge/data/vlm_settings_store.dart';
@@ -7,6 +8,17 @@ void main() {
 
   setUp(() {
     secretStore = _MemorySecretStore();
+  });
+
+  test('fresh settings load default endpoint and model', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = VlmSettingsStore(secretStore: secretStore);
+
+    final loaded = await store.load();
+
+    expect(loaded.endpoint, VlmSettingsStore.defaultEndpoint);
+    expect(loaded.model, VlmSettingsStore.defaultModel);
+    expect(loaded.hasStoredApiKey, isFalse);
   });
 
   test('migrates legacy plaintext API key into secure storage', () async {
@@ -55,7 +67,8 @@ void main() {
     expect(loaded.apiKey, 'saved-secret');
   });
 
-  test('clear removes shared preferences and secure API key', () async {
+  test('clear keeps endpoint and model blank and removes secure API key',
+      () async {
     SharedPreferences.setMockInitialValues({});
     final store = VlmSettingsStore(secretStore: secretStore);
     await store.save(
@@ -70,12 +83,29 @@ void main() {
     final preferences = await SharedPreferences.getInstance();
     final loaded = await store.load();
 
-    expect(preferences.getString('vlm.endpoint'), isNull);
-    expect(preferences.getString('vlm.model'), isNull);
+    expect(preferences.getString('vlm.endpoint'), isEmpty);
+    expect(preferences.getString('vlm.model'), isEmpty);
     expect(await secretStore.read('vlm.secure_api_key'), isNull);
-    expect(loaded.endpoint, VlmSettingsStore.defaultEndpoint);
-    expect(loaded.model, VlmSettingsStore.defaultModel);
+    expect(loaded.endpoint, isEmpty);
+    expect(loaded.model, isEmpty);
     expect(loaded.hasStoredApiKey, isFalse);
+  });
+
+  test('secure API key storage disables macOS data protection keychain',
+      () async {
+    final storage = _CapturingSecureStorage();
+    final secretStore = FlutterSecureVlmSecretStore(storage: storage);
+
+    await secretStore.write('vlm.secure_api_key', 'saved-secret');
+    await secretStore.read('vlm.secure_api_key');
+    await secretStore.delete('vlm.secure_api_key');
+
+    expect(
+      storage.macOsOptions,
+      everyElement(
+        containsPair('useDataProtectionKeyChain', 'false'),
+      ),
+    );
   });
 }
 
@@ -95,5 +125,50 @@ class _MemorySecretStore implements VlmSecretStore {
   @override
   Future<void> delete(String key) async {
     _values.remove(key);
+  }
+}
+
+class _CapturingSecureStorage extends FlutterSecureStorage {
+  final macOsOptions = <Map<String, String>>[];
+
+  @override
+  Future<void> write({
+    required String key,
+    required String? value,
+    IOSOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    MacOsOptions? mOptions,
+    WindowsOptions? wOptions,
+  }) async {
+    macOsOptions.add(mOptions?.toMap() ?? const {});
+  }
+
+  @override
+  Future<String?> read({
+    required String key,
+    IOSOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    MacOsOptions? mOptions,
+    WindowsOptions? wOptions,
+  }) async {
+    macOsOptions.add(mOptions?.toMap() ?? const {});
+    return null;
+  }
+
+  @override
+  Future<void> delete({
+    required String key,
+    IOSOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    MacOsOptions? mOptions,
+    WindowsOptions? wOptions,
+  }) async {
+    macOsOptions.add(mOptions?.toMap() ?? const {});
   }
 }

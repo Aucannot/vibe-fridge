@@ -18,12 +18,15 @@ class InventoryController extends ChangeNotifier {
   InventoryController(
     this.repository, {
     LocalNotificationService? notificationService,
-  }) : notificationService = notificationService ?? LocalNotificationService() {
+    AssetBundle? assetBundle,
+  })  : notificationService = notificationService ?? LocalNotificationService(),
+        assetBundle = assetBundle ?? rootBundle {
     this.notificationService.setOnNotificationTap(_handleNotificationTap);
   }
 
   final InventoryRepository repository;
   final LocalNotificationService notificationService;
+  final AssetBundle assetBundle;
 
   bool isLoading = true;
   String? errorMessage;
@@ -145,7 +148,7 @@ class InventoryController extends ChangeNotifier {
     for (var index = 0; index < items.length; index += 1) {
       final item = items[index];
       final purchaseDate = item.purchaseDate ?? result.purchaseDate;
-      if (item.name.trim().isEmpty || purchaseDate == null) {
+      if (item.name.trim().isEmpty) {
         continue;
       }
       final count = await repository.countOrderImportDuplicates(
@@ -181,9 +184,7 @@ class InventoryController extends ChangeNotifier {
     final sourceOrderId = result.orderId;
     for (final item in items) {
       final purchaseDate = item.purchaseDate ?? result.purchaseDate;
-      if (sourceOrderId != null &&
-          sourceOrderId.trim().isNotEmpty &&
-          purchaseDate != null) {
+      if (sourceOrderId != null && sourceOrderId.trim().isNotEmpty) {
         final duplicates = await repository.countOrderImportDuplicates(
           sourceOrderId: sourceOrderId,
           name: item.name,
@@ -306,9 +307,7 @@ class InventoryController extends ChangeNotifier {
         sourceItemId: item.id,
         quantity: 1,
         unit: item.unit,
-        note: item.status == ItemStatus.consumed
-            ? '上次已消耗'
-            : '从库存记录加入',
+        note: item.status == ItemStatus.consumed ? '上次已消耗' : '从库存记录加入',
       ),
     );
   }
@@ -395,6 +394,13 @@ class InventoryController extends ChangeNotifier {
     if (!silent) {
       notifyListeners();
     }
+    return result;
+  }
+
+  Future<LocalNotificationTestResult> sendTestNotification() async {
+    final result = await notificationService.sendTestNotification();
+    notificationPermission = result.permission;
+    notifyListeners();
     return result;
   }
 
@@ -524,12 +530,13 @@ class InventoryController extends ChangeNotifier {
   }
 
   Future<String> _loadLegacyImportAsset() async {
-    try {
-      return await rootBundle
-          .loadString('assets/import/legacy_inventory.local.json');
-    } catch (_) {
-      return rootBundle.loadString('assets/import/legacy_inventory.json');
+    const localAsset = 'assets/import/legacy_inventory.local.json';
+    const defaultAsset = 'assets/import/legacy_inventory.json';
+    final manifest = await AssetManifest.loadFromAssetBundle(assetBundle);
+    if (manifest.listAssets().contains(localAsset)) {
+      return assetBundle.loadString(localAsset);
     }
+    return assetBundle.loadString(defaultAsset);
   }
 
   String? _categoryIdForName(String? categoryName) {
@@ -562,7 +569,7 @@ class OrderImportDuplicate {
 
   final int index;
   final String name;
-  final DateTime purchaseDate;
+  final DateTime? purchaseDate;
   final int existingCount;
 }
 

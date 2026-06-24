@@ -7,7 +7,7 @@ Viewport: mobile-sized browser viewport, 390 x 844.
 
 Focus: whether a user can complete the main app jobs: understand the dashboard,
 add inventory, inspect inventory detail, use the shopping loop, consume via
-recipes, and run the built-in acceptance check.
+recipes, and manage settings without developer-only diagnostics exposed.
 
 ## Summary
 
@@ -16,66 +16,1241 @@ item, see it in the catalog, open expiring inventory detail, adjust quantity,
 add an item to the shopping list, mark it purchased, convert it back to
 inventory, open recipe suggestions, and deduct inventory after cooking.
 
-The strongest remaining product gap is platform-specific notification
-validation. Flutter Web cold-start text now has a native HTML loading screen to
-cover the short CanvasKit font fallback window, and the latest mobile Web smoke
-check confirmed it hands off cleanly to the rendered Home screen.
+The strongest remaining product gap is platform-specific notification runtime
+validation. Settings now has an immediate test-notification action to make
+permission and delivery checks faster on Android/macOS, but scheduled reminder
+delivery and click behavior from a real delivered Android/macOS notification
+still require target-platform manual validation. The app-side notification tap
+handoff, launch target handling, and macOS payload bridge are covered by current
+automated tests. Flutter Web cold-start text now has a native HTML loading
+screen to cover the short CanvasKit font fallback window, and the latest mobile
+Web smoke check confirmed it hands off cleanly to the rendered Home screen.
+
+Update on 2026-06-19: current-worktree macOS debug build, native RunnerTests,
+and a `flutter run -d macos` launch smoke all pass. `xcodebuild
+-checkFirstLaunchStatus` now also returns success. This proves the macOS app
+still builds, the native notification bridge remains wired at source/runtime
+test level, and the debug app can start and expose a Dart VM Service. It still
+does not prove system notification permission prompts, delivered notification
+visibility, or click routing from a real delivered macOS notification.
+
+Additional macOS notification update on 2026-06-19: RunnerTests now also query
+the real `UNUserNotificationCenter` from the Runner app/test host and confirm
+that the bundle can read the system notification permission state. A pending
+system-request smoke test is available and passed as a controlled skip on this
+machine because notifications are not yet authorized for the test host; it will
+validate that the system accepts a real pending request once macOS notification
+permission has been granted. This still does not replace manual delivered-banner
+and click-through validation.
+
+Runtime macOS update on 2026-06-19: launching the rebuilt debug app exposed a
+startup `NSInvalidArgumentException` from calling
+`super.applicationDidFinishLaunching(notification)` on Flutter's macOS app
+delegate optional selector. The app now only installs the notification-center
+delegate in `applicationDidFinishLaunching`; after rebuilding and launching the
+debug app again, the process checked in as a foreground app, created a
+`UNUserNotificationCenter`, and read notification settings without the previous
+selector exception. RunnerTests now also prove the launched app delegate is
+registered as `UNUserNotificationCenter.current().delegate`, so notification
+responses have an app-side entry point before manual delivered-notification
+validation.
+
+Running-app macOS update on 2026-06-19: a debug-only VM Service extension now
+queries the real `LocalNotificationService.getPermissionStatus()` path from
+inside the launched macOS Flutter app. A fresh `flutter run -d macos` launch
+then returned `supported: true`, `granted: false`, `status: unknown`, and
+`displayText: 未确认` from the extension. This proves the running app's Flutter
+method channel can reach the native macOS notification bridge and read system
+permission state. It still does not prove permission approval, delivered
+notification visibility, or notification-click routing because this machine has
+not authorized notifications for the app.
+
+Running-app macOS recheck on 2026-06-20: after the Web startup-bootstrap
+change, `HOME=/private/tmp/vibe-fridge-flutter-home node
+tools/run_macos_notification_smoke.mjs --expect-supported true --timeout-ms
+180000` rebuilt and launched the macOS debug app, reached the VM Service at
+`http://127.0.0.1:58130/...`, returned `supported: true`, `granted: false`,
+`status: unknown`, and `displayText: 未确认`, then exited cleanly. This keeps
+the running-app macOS notification-channel evidence current while still
+avoiding permission prompts and diagnostic notification delivery.
+
+Running-app macOS smoke hardening on 2026-06-20: a later re-run showed the VM
+Service URL can be emitted before the debug notification extension has finished
+registering, which produced a transient `Method not found` failure. The smoke
+helper now waits for extension registration before reading notification state.
+After that change, the same read-only command rebuilt and launched the macOS
+debug app, reached `http://127.0.0.1:57168/...`, returned `supported: true`,
+`granted: false`, `status: unknown`, and `displayText: 未确认`, then exited
+cleanly without requesting permission or sending a notification.
+
+Running-app macOS notification recheck on 2026-06-20: reran
+`HOME=/private/tmp/vibe-fridge-flutter-home node
+tools/run_macos_notification_smoke.mjs --expect-supported true --timeout-ms
+180000` from the current worktree. The command rebuilt and launched the macOS
+debug app, reached the VM Service at `http://127.0.0.1:62175/...`, returned
+`supported: true`, `granted: false`, `status: unknown`, and
+`displayText: 未确认`, then exited with `Application finished.` This confirms
+the current build still exposes the macOS notification bridge and permission
+status path. It remains a non-delivery check: no permission prompt was accepted,
+no diagnostic notification was sent, and notification-click routing still needs
+manual platform validation.
+
+macOS send-test smoke attempt on 2026-06-21: after the user explicitly
+authorized the notification-send path, `HOME=/private/tmp/vibe-fridge-sendtest-home
+node tools/run_macos_notification_smoke.mjs --send-test --expect-supported true
+--timeout-ms 180000` rebuilt and launched the macOS debug app from a clean
+temporary Flutter home, reached the VM Service at
+`http://127.0.0.1:59927/...`, and called the debug notification test extension.
+The extension returned `supported: true`, `granted: false`, `status: denied`,
+`displayText: 未授权`, `sent: false`, and `skippedReason: permission`, then the
+app exited with `Application finished.` This proves the send-test route reaches
+the real macOS permission gate in the launched app. It still does not prove
+delivered notification visibility or click-through behavior because the system
+did not grant notification permission, so no diagnostic notification was sent.
+
+Reusable macOS smoke update on 2026-06-19: `tools/check_notification_status.mjs`
+now wraps the VM Service extension call so future beta passes can reproduce the
+running-app notification status check without ad hoc scripting. Against a fresh
+`flutter run -d macos` session, the tool found the app isolate and returned the
+same live native-channel status: `supported: true`, `granted: false`,
+`status: unknown`, and `displayText: 未确认`. The tool now also supports
+optional `--expect-supported`, `--expect-granted`, and `--expect-status`
+assertions so the smoke can fail fast when the runtime status diverges from the
+expected beta environment.
+
+Automated macOS smoke update on 2026-06-19:
+`tools/run_macos_notification_smoke.mjs` now starts `flutter run -d macos`,
+waits for the VM Service URL, runs the notification status helper with optional
+expectations, and exits `flutter run` cleanly. This turns the live notification
+permission-channel check into a single repeatable command while still avoiding
+permission prompts or delivered-notification side effects by default.
+
+Optional notification-send smoke update on 2026-06-19: the debug VM Service now
+also exposes an explicit notification test extension, and the smoke tools can
+call it only when `--send-test` is passed. The default command remains read-only
+and does not request notification permission or send a notification. The
+optional send path is reserved for a manual authorization pass because it may
+open the macOS notification permission prompt or send the diagnostic
+notification if permission has already been granted.
+
+Debug smoke payload update on 2026-06-19: the VM Service notification status
+and test-notification payload builders now live in a small tested module, so
+the app-side JSON contract used by `tools/check_notification_status.mjs` is
+covered without registering duplicate VM extensions or triggering notification
+permission prompts during tests.
+
+macOS secure-storage runtime update on 2026-06-20:
+`HOME=/private/tmp/vibe-fridge-flutter-home node
+tools/run_macos_secure_storage_smoke.mjs --timeout-ms 180000` rebuilt and
+launched the macOS debug app, reached the VM Service at
+`http://127.0.0.1:61416/...`, wrote a temporary secure-storage key, read it
+back, deleted it, and exited cleanly. This directly verifies the running app's
+Keychain path used by order-recognition and WebDAV secrets no longer hits the
+previous macOS `-34018` entitlement failure path.
+
+Environment recheck on 2026-06-20: Android SDK and Android devices are still
+absent. `xcodebuild -runFirstLaunch`, `xcodebuild -checkFirstLaunchStatus`,
+and `xcodebuild -license check` all return success, while `flutter doctor -v`
+still reports Xcode additional-component setup because no Simulator runtimes or
+Simulator devices are installed. The macOS desktop target itself remains
+usable: `flutter build macos --debug` passed and native RunnerTests passed with
+14 passed tests and 1 authorization-gated notification request test skipped.
+The Android readiness check is now also reproducible through
+`tools/check_android_environment.mjs`, which exits non-zero until Flutter has
+an Android SDK plus an Android device or emulator. A current run returned
+`ready: false`, `androidToolchainReady: false`, `androidDeviceReady: false`,
+`emulatorAvailable: false`, `sdkPath: null`, and blockers for missing Android
+SDK plus missing Android device/emulator.
+
+Remaining gate recheck on 2026-06-21: the current worktree remains clean on
+`codex/beta-user-testing`. `node tools/check_android_environment.mjs` still
+returned `ready: false`, no Android SDK path, no Android device/emulator, and
+the same blockers for missing Android SDK plus missing Android device/emulator.
+The repository still only exposes `.github/workflows/flutter.yml`,
+`mobile/web/_headers`, and the generated `mobile/build/web/_headers`; no
+Netlify, Vercel, Firebase, Cloudflare, Pages, or other final-host deployment
+configuration was present to verify hosted update headers. A fresh running-app
+macOS smoke with `HOME=/private/tmp/vibe-fridge-sendtest-home node
+tools/run_macos_notification_smoke.mjs --expect-supported true --timeout-ms
+180000` rebuilt and launched the debug app, reached the VM Service at
+`http://127.0.0.1:60702/...`, and returned `supported: true`,
+`granted: false`, `status: denied`, and `displayText: 未授权`. This confirms
+the macOS notification bridge still works but the host permission state still
+blocks delivered-notification and click-through validation.
+
+## Beta Readiness
+
+Verdict: ready for continued Web beta testing of the core inventory workflow,
+but not yet ready to claim Android/macOS notification readiness.
+
+Proven enough for beta:
+
+- Home dashboard, today actions, reminder snooze/ignore, item catalog, item
+  profile, inventory detail, manual add, order-text import, shopping list,
+  recipes, local backup/export, local restore/import copy, WebDAV
+  cloud-backup configuration/upload/restore paths, settings, and the internal
+  app self-check service all have passing automated or browser-smoke evidence.
+- Web deep links and browser Back/Forward now preserve hash-free query routes
+  across catalog search detail, inventory detail, and recipe detail paths.
+- Web startup now paints a Flutter-owned loading state before local inventory
+  initialization starts, and falls back to a user-safe copy-details error page
+  if initialization stalls or fails instead of leaving users on the static
+  native loading screen.
+- User-facing copy has been scrubbed across the main tested flows to avoid raw
+  database, migration, legacy implementation, and diagnostic details.
+
+Not proven yet:
+
+- Android/macOS scheduled local notification runtime behavior. Dart fallback
+  behavior, the Settings test-notification action, Android manifest wiring
+  tests, macOS bridge wiring source tests, repository notification payload
+  tests, Dart platform-schedule payload handoff tests, Flutter shell
+  notification-tap detail routing, and macOS native
+  scheduling-payload/content/trigger construction, permission-status mapping,
+  and tap payload handoff tests are covered, but real device/desktop scheduled
+  reminder delivery and system notification click behavior still need runtime
+  validation on the target platforms.
+- Hosted Web update behavior on the final deployment origin. Local same-origin
+  stale service-worker and stale Flutter Cache Storage recovery is now proven
+  with browser smokes. A deployment host that ignores `_headers` still needs
+  equivalent HTTP cache headers before hosted update behavior is fully proven.
+  Current repository audit found only the Flutter CI workflow and
+  `mobile/web/_headers`; no Netlify, Vercel, Firebase, Cloudflare, or Pages
+  deployment configuration was present to identify or verify a final hosted
+  origin from the worktree alone.
+
+Recommended next beta gate:
+
+- Run one Android debug build on a machine with Android SDK configured, then
+  manually verify Android notification permission, scheduled reminder delivery,
+  and notification click opening the matching inventory detail. On macOS, build
+  plus native scheduling payload, permission-status mapping, and tap payload
+  handoff are now covered locally; the next gate is manual permission,
+  delivery, and system notification click validation.
+
+Platform notification checklist for that gate:
+
+- Build and launch Android debug on a device or emulator with notification
+  permission support; verify Settings shows a supported permission state.
+- On Android, request notification permission from Settings, send a test
+  notification, sync reminders, wait for a due reminder, tap the delivered
+  reminder notification, and confirm the matching inventory detail opens.
+- Restart the Android app or emulator after reminders are scheduled, then
+  confirm boot/package-replaced restoration still delivers the stored reminder.
+- Build and launch macOS debug with full Xcode/CocoaPods tooling; verify
+  Settings shows a supported permission state.
+- On macOS, request notification permission, send a test notification, sync
+  reminders, wait for a due reminder, tap the delivered reminder notification,
+  and confirm the matching inventory detail opens.
+- Re-run the internal app self-check after platform notification testing to
+  confirm notification experiments did not leave invalid inventory, shopping,
+  recipe, reminder, or history state behind.
 
 ## Verification
 
 - `flutter test`: passed after the latest beta fixes including Android reminder
-  restoration, Web route cleanup, notification channel coverage, startup error
-  copy coverage, plus AI recipe and order-recognition error-copy coverage,
-  48 tests.
+  restoration, Web route cleanup, the `MaterialApp.router` browser-history fix,
+  notification channel coverage, startup error copy coverage, AI recipe and
+  order-recognition error-copy coverage, plus the generic error snackbar
+  detail-copy coverage, notification tap controller handoff coverage, and
+  notification permission-to-sync controller coverage, 57 tests; passed again
+  after the macOS native notification request builder extraction. Passed again
+  after adding the custom Web bootstrap guard, 58 tests. Passed again after
+  adding Android notification wiring source tests, 60 tests. Passed again after
+  adding macOS notification wiring source tests, 62 tests. Passed again after
+  extending app self-check backup coverage, 64 tests. Passed again after adding
+  the Settings test-notification action and channel coverage, 67 tests. Passed
+  again after adding Settings widget coverage for the test-notification action,
+  68 tests. Passed again after adding Web entry cache-busting coverage and
+  hardening loading-screen hiding, 69 tests. Passed again after adding recipe
+  cooking inventory-deduction coverage, 70 tests. Passed again after adding
+  Settings widget coverage for the app self-check 17/17 result, 71 tests.
+  Passed again after adding Web deployment header coverage, 72 tests. Passed
+  again after adding Settings backup reminder widget coverage, 73 tests.
+  Passed again after adding Settings order-recognition key privacy widget
+  coverage, 74 tests. Passed again after fixing order-recognition clear
+  persistence and adding clear-confirmation coverage, 76 tests. Passed again
+  after adding recipe-preference store and Settings save coverage, 80 tests.
+  Passed again after adding Settings demo-data reset confirmation coverage, 81
+  tests. Passed again after adding order-import review widget coverage, 82
+  tests. Passed again after adding shopping conversion confirmation coverage,
+  83 tests. Passed again after adding notification sync payload handoff
+  coverage, 85 tests. Passed again after fixing macOS order-recognition secure
+  key storage, 86 tests. Passed again after removing the user-facing Settings
+  self-check controls while keeping the internal coverage, 86 tests. Passed
+  again after making macOS notification scheduling wait for native add
+  completion and report scheduling failures, 87 tests. Passed again after
+  adding WebDAV cloud-backup configuration/upload/restore coverage and
+  Web-facing access copy, 97 tests. Passed again after adding a local HTTP
+  WebDAV round-trip for MKCOL, PUT, PROPFIND, and GET restore flow, 100 tests.
+  Passed again after adding WebDAV restore-cancellation coverage, 101 tests.
+  Passed again after adding AppShell notification tap-to-detail route coverage,
+  102 tests. Passed again after adding AppShell launch-notification target
+  routing coverage, 103 tests. Passed again after adding Android native
+  malformed-reminder-id guard coverage, 104 tests. Passed again after adding
+  launch notification target filtering coverage, 105 tests. Passed again after
+  fixing WebDAV password-field cleanup and stale error feedback during retry,
+  106 tests. Passed again on the current worktree on 2026-06-19 with 106 tests;
+  the first sandboxed attempt was blocked by the pub.dev advisories DNS check,
+  and the same command passed after network access was allowed. Passed again
+  after the macOS AppDelegate launch fix, still with 106 tests; as before, the
+  sandboxed first attempt was blocked by the pub.dev advisories DNS check and
+  the same command passed after network access was allowed. Passed again after
+  adding the source-level user-facing copy guard, now with 107 tests.
+  Passed again after adding the debug-only running-app notification status
+  extension, still with 107 tests. Passed again on 2026-06-20 on the current
+  worktree with 109 tests after the WebDAV, debug smoke payload, and platform
+  validation record work. Passed again on 2026-06-20 after the macOS
+  notification smoke recheck, with 109 tests and `All tests passed!`. Passed
+  again on 2026-06-20 after adding the Android environment gate, with 112 tests
+  and `All tests passed!`. Passed again on 2026-06-20 after adding the macOS
+  secure-storage runtime smoke extension, with 113 tests and
+  `All tests passed!`. Passed again on 2026-06-21 from the current worktree
+  with `HOME=/private/tmp/vibe-fridge-sendtest-home flutter test --no-pub`;
+  the first sandboxed attempt was blocked by Flutter tester's local
+  server-socket bind, and the same command passed after allowing local port
+  binding, with 113 tests and `All tests passed!`.
+- Current core workflow targeted recheck on 2026-06-21 with `flutter test
+  --no-pub test/inventory_repository_test.dart test/items_screen_test.dart
+  test/order_import_review_screen_test.dart test/recipes_screen_test.dart
+  test/recipe_suggestion_service_test.dart test/app_shell_widget_test.dart
+  test/app_error_snackbar_test.dart`: passed with 31 tests and `All tests
+  passed!`. The first sandboxed attempt was blocked by Flutter tester's local
+  server-socket bind; the same command passed after allowing local port
+  binding.
+- `flutter test test/app_error_snackbar_test.dart`: passed after clarifying
+  the generic error snackbar copy action and covering that technical details
+  stay hidden from the visible message.
+- `flutter test test/app_shell_widget_test.dart`: passed after adding widget
+  coverage that a local-notification tap callback is consumed by AppShell and
+  opens the matching inventory detail route with the expected quantity and
+  storage-location content. Passed again after adding coverage that AppShell
+  opens the matching inventory detail when a launch notification target is
+  already pending as the shell starts.
+- `flutter test test/inventory_repository_test.dart`: passed after the
+  no-date order duplicate fix and backup-reminder copy cleanup, 19 tests.
+  Passed again after adding inventory-table export coverage for commas,
+  quotes, and newline characters in user-entered fields, 20 tests. Passed
+  again after adding backup round-trip coverage for inventory tags, reminder
+  logs, and shopping-list data, 21 tests. Passed again after extending the
+  internal app self-check to verify backup content includes inventory, tags,
+  reminder logs, and shopping-list data, 21 tests. Passed again after adding
+  recipe cooking deduction to app self-check, 21 tests.
 - `flutter analyze`: passed after the latest beta fixes including Web route
-  cleanup, direct Web detail URL hash cleanup, notification channel coverage,
-  and the edit-page Material fix.
+  cleanup, direct Web detail URL hash cleanup, the `MaterialApp.router`
+  browser-history fix, notification channel coverage, the edit-page Material
+  fix, and no-date order duplicate handling; passed again during final route
+  code review, after the final Settings copy cleanup, and after adding the
+  notification tap and permission-to-sync controller tests, after the macOS
+  native notification request builder extraction, and after the Web entry cache
+  and loading-screen fixes, and after adding recipe cooking deduction coverage,
+  after adding former Settings self-check result coverage, and after adding Web
+  deployment headers, after adding Settings backup reminder coverage, after
+  adding Settings order-recognition key privacy coverage, and after fixing
+  order-recognition clear persistence, and after adding recipe-preference
+  coverage, and after adding Settings demo-data reset confirmation coverage,
+  after adding order-import review widget coverage, and after adding shopping
+  conversion confirmation coverage, and after adding notification sync payload
+  handoff coverage, and after adding macOS inventory-reminder content/trigger
+  wiring coverage, and after fixing macOS order-recognition secure key storage,
+  with no issues. Passed again on the current worktree on 2026-06-19 after
+  allowing the pub.dev advisories network check. Passed again after adding the
+  debug-only running-app notification status extension. Passed again on
+  2026-06-20 on the current worktree with `No issues found!`. Passed again on
+  2026-06-20 after the macOS notification smoke recheck with
+  `No issues found! (ran in 1.5s)`. Passed again on 2026-06-21 from the
+  current worktree with `flutter analyze --no-pub` and `No issues found!`.
 - `flutter test test/local_notification_service_test.dart`: passed after the
-  Android reminder scheduler refactor, 6 tests.
+  Android reminder scheduler refactor, notification tap controller handoff
+  coverage, notification permission-to-sync controller coverage, and Settings
+  test-notification flow coverage, 12 tests. Passed again after adding
+  coverage that granted notification sync sends the real pending-reminder
+  payload to the platform and denied permission skips platform scheduling, 14
+  tests. Passed again after adding coverage that a native scheduling
+  `PlatformException` reports `同步失败，请稍后重试` instead of a successful sync,
+  15 tests. Passed again after adding coverage that launch notification targets
+  return only non-empty platform item ids, 17 tests. Passed again after
+  normalizing notification tap and launch-target item ids by trimming
+  surrounding whitespace and ignoring blank payloads, 17 tests.
+- `flutter test test/debug_service_extensions_test.dart
+  test/local_notification_service_test.dart`: passed after extracting the
+  debug VM Service notification payload builders and covering the exact status
+  and test-notification JSON shapes consumed by the smoke helper, 19 tests.
+  The first sandboxed attempt was blocked by the pub.dev advisories DNS check;
+  the same command passed after network access was allowed. Passed again after
+  adding the secure-storage smoke payload and temporary-key cleanup coverage.
+- `flutter test test/settings_screen_test.dart`: passed after adding widget
+  coverage that renders the Settings test-notification action and verifies the
+  button calls the notification service path. Historical coverage previously
+  tapped `运行自检` and verified the user-visible `应用自检通过：17/17` result;
+  this was later replaced when the developer-only entry was hidden. Passed
+  again after adding widget coverage for
+  the pending backup reminder card and its user-facing copy. Passed again after
+  adding widget coverage that verifies a stored order-recognition key is shown
+  as configured without exposing the saved secret. Passed again after adding
+  widget coverage for the order-recognition clear confirmation flow. Passed
+  again after adding widget coverage for saving recipe preferences from user
+  inputs and reloading the normalized values into the fields. Passed again
+  after adding widget coverage that confirms demo-data reset cancellation does
+  not run the reset and confirmation reports the cleared-row count. Passed
+  again after replacing the Settings self-check action coverage with a
+  regression check that developer-only self-check controls are not rendered.
+  Passed again after adding coverage that cancelling a WebDAV restore leaves
+  the current inventory unchanged. Passed again after covering that a failed
+  WebDAV connection retry clears the stale authentication error once the retry
+  succeeds, 12 Settings tests. Current targeted recheck on 2026-06-21 with
+  `flutter test --no-pub test/settings_screen_test.dart
+  test/user_facing_copy_test.dart test/webdav_backup_store_test.dart
+  test/webdav_backup_service_test.dart` passed with 21 tests. The first
+  sandboxed attempt was blocked by the SQLite native asset download DNS check;
+  the same command passed after allowing network access.
+- `flutter test test/order_import_review_screen_test.dart`: passed after
+  adding widget coverage that low-confidence rows remain excluded until marked
+  confirmed, the primary import count updates, the batch-confirmation copy is
+  shown, and the controller receives the confirmed items.
+- `flutter test test/items_screen_test.dart`: passed after adding widget
+  coverage that the shopping view asks for confirmation before converting
+  checked items, the cancel path does not call conversion, and confirmation
+  reports the `已入库 1 项` success feedback.
+- `flutter test test/recipe_preferences_store_test.dart`: passed after adding
+  coverage for default first-run preferences, trimmed text persistence, bounded
+  time/serving values, and damaged persisted numeric values.
+- `flutter test test/vlm_settings_store_test.dart`: passed after verifying
+  fresh settings still load the default endpoint/model while the explicit
+  clear action persists blank endpoint/model values and removes the secure API
+  key. Passed again after verifying VLM API key storage disables the macOS
+  Data Protection Keychain path that caused local debug saves to fail with
+  security result `-34018`, 5 tests.
+- `flutter test test/android_notification_wiring_test.dart`: passed after
+  adding Android source-level checks for notification manifest permissions,
+  receivers, method-channel names, payload keys, scheduling persistence,
+  boot/package-update restoration, and click handoff wiring. Passed again after
+  adding source-level coverage that Android skips blank reminder item ids and
+  non-positive scheduled times before scheduling or showing a notification.
+  Passed again after adding scheduled-receiver permission-revocation guards and
+  `SecurityException` handling, 3 tests. Passed again after covering Android
+  launch intent target normalization before forwarding taps to Flutter, 3
+  tests. Passed again on 2026-06-20 after adding the reusable Android
+  environment checker, still with 3 tests. Rechecked from the current worktree
+  with `flutter test --no-pub test/android_notification_wiring_test.dart`:
+  passed with the same 3 source-level Android notification wiring tests.
+- `flutter test test/macos_notification_wiring_test.dart`: passed after adding
+  macOS source-level checks for method-channel names, native bridge methods,
+  notification payload parsing, delegate presentation behavior, and system tap
+  handoff into the launch target. Passed again after moving test-notification
+  request construction into the native request factory. Passed again after
+  verifying scheduled inventory reminders use the native content and trigger
+  helpers. Passed again after updating the macOS bridge contract coverage for
+  asynchronous native scheduling completion and `schedule_failed` propagation.
+  Passed again after covering macOS bridge item-id trimming before invoking
+  Flutter. Passed again after adding coverage that the AppDelegate no longer
+  calls FlutterAppDelegate's unimplemented optional
+  `applicationDidFinishLaunching` selector.
+- `flutter test test/web_bootstrap_test.dart`: passed after adding the custom
+  Web bootstrap guard that clears stale service workers without registering a
+  replacement Flutter service worker; passed again after extending the guard to
+  delete stale Flutter Cache Storage entries; passed again after adding
+  no-cache entry hints, a cache-busted bootstrap script request, inline
+  loading-screen hide styles, and HTTP header policy coverage. Rechecked from
+  the current worktree on 2026-06-21 with
+  `flutter test --no-pub test/web_bootstrap_test.dart`: passed with 3 tests
+  after downloading the SQLite native test asset.
+- `flutter test test/bootstrap_error_app_test.dart
+  test/app_database_web_wiring_test.dart test/web_bootstrap_test.dart`: passed
+  on 2026-06-20 after moving Flutter Web startup to a Flutter-owned bootstrap
+  app. The test coverage now proves the loading UI is rendered before
+  inventory initialization finishes, failed initialization routes to a
+  user-safe copy-details page without exposing paths or SQLite details, and
+  the Web database factory avoids both the shared-worker path and the
+  main-thread no-worker path.
+- `flutter build web --debug --no-pub --no-wasm-dry-run`: passed on
+  2026-06-20 after the bootstrap app change. A local static server on
+  `http://127.0.0.1:54424/` served the rebuilt `main.dart.js`; direct HTTP
+  checks confirmed that the served runtime contains
+  `VibeFridgeBootstrapLoadingApp` and the Settings WebDAV copy. A full
+  Playwright visual smoke could not be completed in this environment because
+  the bundled Playwright browser was not installed and system Microsoft Edge
+  aborted in headless automation, so this entry proves build and served
+  runtime content, not a fresh visual browser pass.
+- `flutter test test/webdav_backup_service_test.dart`: passed after adding a
+  `dart:io` local WebDAV server that requires Basic Auth and exercises the
+  real service through MKCOL directory creation, PUT backup upload, PROPFIND
+  listing, and GET restore download against the same local endpoint.
+- Browser WebDAV smoke on `http://127.0.0.1:54391/?route=settings`: passed
+  against a temporary CORS-enabled local WebDAV endpoint on
+  `http://127.0.0.1:54392/`. The browser flow saved WebDAV configuration,
+  verified that the password input DOM value is cleared after save, confirmed
+  a successful connection and upload do not retain the earlier authentication
+  error copy, and the smoke endpoint recorded MKCOL, PROPFIND, and PUT
+  requests plus two uploaded backup JSON files. Rechecked on 2026-06-19 after
+  the earlier local smoke endpoint had stopped: Settings first showed the
+  user-actionable network error copy with no console warnings/errors; after
+  starting a fresh local WebDAV endpoint, re-saving `codex/codex`
+  credentials, and verifying the password field no longer exposed the typed
+  value, `测试连接` showed `WebDAV 连接可用` and `上传备份` showed
+  `备份已上传到 WebDAV` with the latest uploaded file name.
+- Browser WebDAV restore smoke on
+  `http://127.0.0.1:54393/?route=settings`: passed against a temporary
+  CORS-enabled local WebDAV endpoint on `http://127.0.0.1:54394/`. The browser
+  flow saved WebDAV configuration, uploaded a backup, opened the restore
+  confirmation dialog naming the latest cloud backup, confirmed restore,
+  showed `已从 WebDAV 恢复：...`, then verified the configuration still worked
+  by running a successful connection test. The smoke endpoint recorded PUT,
+  Depth 1 PROPFIND, GET download, and the post-restore Depth 0 PROPFIND.
+- Browser WebDAV clear-configuration smoke on
+  `http://127.0.0.1:54395/?route=settings`: passed after saving a WebDAV
+  configuration with a password. The clear action showed a confirmation dialog
+  explaining that the service address, account, and saved password would be
+  removed; after confirming, Settings returned to `云端备份 未配置`, removed the
+  saved-password status row, cleared all WebDAV input values, and showed
+  `WebDAV 配置已清空`.
+- Current mobile Web route smoke on `http://127.0.0.1:54396/`: passed on
+  2026-06-20 at 390 x 844. Home rendered the dashboard with today actions,
+  expiring inventory, and category distribution. Direct routes for
+  `?route=items`, `?route=recipes`, and `?route=settings` initially showed the
+  Flutter-owned loading state, then settled to the item catalog, recipe
+  suggestions, and Settings content within the smoke wait. Browser logs showed
+  no warnings or errors on the checked routes. Settings scrolling confirmed
+  WebDAV backup, local notification fallback, recipe preferences, and order
+  recognition settings remain visible while `应用自检` / `运行自检` controls did
+  not reappear.
+- Current mobile Web add/delete smoke on `http://127.0.0.1:54396/?route=add`:
+  passed on 2026-06-20 at 390 x 844. The Add flow accepted a unique item name
+  and unit, saved the item, navigated back to the item catalog, and showed the
+  new item with quantity `1` and unit copy. Opening the saved item showed the
+  item profile plus one active inventory batch. Attempting to delete the
+  profile before deleting its active batch correctly showed a user-facing
+  blocker message. Deleting the inventory batch required confirmation, returned
+  to the profile with `暂无库存`, then deleting the empty profile required
+  confirmation and returned to the catalog with the test item removed. Browser
+  logs showed no warnings or errors throughout the flow.
+- Current mobile Web shopping-list smoke on
+  `http://127.0.0.1:54396/?route=items&view=shopping`: passed on 2026-06-20 at
+  390 x 844. The shopping view loaded with the `view=shopping` route parameter
+  and showed replenishment suggestions plus empty pending/purchased sections.
+  A unique manual shopping item was added with unit `袋`, checked into the
+  purchased section, and converted through the `采购项入库` confirmation. The app
+  showed `已入库 1 项`, the item appeared in the catalog search as inventory with
+  quantity `1`, unit `袋`, and one active batch, then the created batch and empty
+  item profile were deleted. Browser logs showed no warnings or errors
+  throughout the flow.
+- Current mobile Web order-recognition settings smoke on
+  `http://127.0.0.1:54397/?route=settings`: passed on 2026-06-20 at 390 x 844.
+  The Settings page loaded the `订单识别 AI` card with status `未配置` and key
+  status `本机安全保存`. Entering a fake local API secret and saving showed
+  `订单识别配置已保存`, updated the status to `已配置`, and kept the secret field
+  blank with the helper text that saved secrets are not shown. Reloading
+  Settings preserved `已配置` without exposing the secret. The clear action
+  showed a confirmation dialog explaining that service address, model name, and
+  saved API secret would be removed; after confirming, the status returned to
+  `未配置`, all order-recognition fields were blank, and a second reload kept
+  them blank. Browser logs showed no warnings or errors throughout the flow.
+- Current mobile Web demo-data reset smoke on
+  `http://127.0.0.1:54404/?route=settings`: passed on 2026-06-20 at 390 x 844.
+  A unique user-created inventory item was added first, then the built-in
+  no-inventory sample profile `牙膏` was deleted through its confirmation
+  dialog and verified absent from catalog search. Settings then opened the
+  `重置示例数据` confirmation dialog with copy explaining that only built-in
+  sample profiles/inventory are rebuilt and user-created data is not deleted.
+  After confirming, the app showed `示例数据已重置，清理 8 条旧示例数据`, catalog
+  search showed `牙膏` restored, and the user-created test item was still
+  present with quantity `1` and one active batch. The test item and its empty
+  profile were then deleted through the UI. Browser logs showed no warnings or
+  errors throughout the flow.
+- Current mobile Web inventory-edit smoke on
+  `http://127.0.0.1:54405/?route=add`: passed on 2026-06-20 at 390 x 844. A
+  unique inventory item was created with an initial description and unit, then
+  opened through item profile and inventory detail. The edit screen preserved
+  the existing quantity, unit, location, and description values. Updating the
+  quantity to `3`, unit to `盒`, storage location to `冷藏`, and description to
+  `编辑后描述` saved successfully and returned to inventory detail. The detail
+  summary showed `3盒`, the storage suggestion updated to `冷藏`, and the facts
+  card showed quantity `3盒`, location `冷藏`, and description `编辑后描述`. The
+  edited batch and empty item profile were then deleted through the UI. Browser
+  logs showed no warnings or errors throughout the flow.
+- Current mobile Web order-text import smoke on
+  `http://127.0.0.1:54406/?route=add`: passed on 2026-06-20 at 390 x 844. The
+  Add screen opened the `粘贴订单文本` dialog, accepted a unique pasted order
+  containing two inventory lines and a standalone order id, then showed the
+  review screen with `2/2 已选` and `2 可入库`. The first parsed item showed
+  quantity `4` and unit `个`; the second showed quantity `2` and unit `盒`.
+  Confirming `添加 2 个物品` opened the batch confirmation with `新增 2`,
+  `重复跳过 0`, and `仍需确认 0`, then the result dialog showed `导入完成`,
+  `新增 2`, `跳过 0`, and `需要手动处理 0`. Catalog search verified the imported
+  apple item as quantity `4` with one active batch and the yogurt item as
+  quantity `2` with one active batch. Both imported batches and their empty
+  item profiles were then deleted through the UI. Browser logs showed no
+  warnings or errors throughout the flow.
+- Current mobile Web today-action reminder smoke on
+  `http://127.0.0.1:54407/`: passed on 2026-06-20 at 390 x 844. Home loaded
+  with `今天要处理 2 件` and `提醒到期 2`; tapping the `提醒到期 2` summary opened
+  `?route=items&focus=reminderDue` with `面包` and `鲜牛奶` in the focused list.
+  Returning to Home and using `稍后` on `面包` changed the list from 2 items to
+  1 and showed `今天稍后再提醒：面包`. Using `忽略` on `鲜牛奶` changed the section
+  to `0 项`, showed `今天没有待处理`, and the summary card updated to `0 件`,
+  `已过期 0`, `今日到期 0`, and `提醒到期 0`, with feedback
+  `今天不再提醒：鲜牛奶`. Settings `重置示例数据` then restored the sample state,
+  and Home returned to `今天要处理 2 件` / `提醒到期 2`. Browser logs showed no
+  warnings or errors throughout the flow.
+- Current mobile Web recipe-cooking smoke on
+  `http://127.0.0.1:54408/?route=recipes`: passed on 2026-06-20 at 390 x 844.
+  The Recipes page initially listed priority consumables `面包 1袋`,
+  `鲜牛奶 2盒`, and `鸡蛋 12个`, and `快手蛋奶早餐` showed `消耗 3 项`.
+  Opening the recipe detail preserved the hash-free route
+  `?route=recipes%2Fquick-breakfast`, showed the exact inventory deductions
+  `鸡蛋 1个`, `鲜牛奶 1盒`, and `面包 1袋`, plus possible missing seasonings.
+  Using `做这道菜并扣减库存` returned to `?route=recipes`, showed the rule list
+  with priority consumables reduced to `鲜牛奶 1盒` and `鸡蛋 11个`, and the
+  recipe card changed to `消耗 2 项`. Catalog search for `面包` then showed the
+  profile with `0` active batches. Settings `重置示例数据` restored the sample
+  state, and the Recipes page returned to `面包 1袋`, `鲜牛奶 2盒`, `鸡蛋 12个`,
+  and `消耗 3 项`. Browser logs showed no warnings or errors throughout the
+  flow.
+- Current mobile Web AI-recipe fallback smoke on
+  `http://127.0.0.1:54409/?route=recipes`: passed on 2026-06-20 at 390 x 844.
+  With no AI service configured, the Recipes page showed the `AI 食谱` card with
+  the primary `生成食谱` action and the rule-based recipe list still visible.
+  Tapping `生成食谱` changed the card status to `规则兜底`, showed the
+  user-facing message `AI 食谱未配置，已使用规则建议`, kept the same rule suggestions
+  available below the card, and exposed the reset icon action. Using the reset
+  action returned the card to the initial `生成食谱` state without leaving the
+  Recipes route. Browser logs showed no warnings or errors throughout the flow.
+- Current mobile Web WebDAV backup smoke on
+  `http://127.0.0.1:54410/?route=settings`: passed on 2026-06-20 at 390 x 844
+  against a temporary CORS-enabled local WebDAV endpoint on
+  `http://127.0.0.1:54411/dav`. Settings saved `codex/codex` credentials,
+  changed `云端备份` to `已配置`, showed `密码状态 本机安全保存`, and cleared the
+  active password field with helper copy saying the saved password is not shown.
+  `测试连接` showed `WebDAV 连接可用`; `上传备份` showed
+  `备份已上传到 WebDAV` plus latest-upload filename
+  `vibe-fridge-backup-20260620-154621.json`. The smoke endpoint recorded MKCOL
+  for `/dav/vibe-fridge/` and `/dav/vibe-fridge/backups/`, Depth 0 PROPFIND for
+  the backup directory, and PUT for the uploaded backup file. The clear action
+  showed `清空 WebDAV 配置` confirmation copy for service address, account, and
+  saved password, then returned Settings to `云端备份 未配置` with blank service
+  address, account, and password fields. Browser logs showed no warnings or
+  errors throughout the flow.
+- Current WebDAV restore smoke on
+  `http://127.0.0.1:54412/?route=settings`: passed on 2026-06-20 against a
+  temporary CORS-enabled local WebDAV endpoint on
+  `http://127.0.0.1:54413/dav`. The in-app browser rendered this pass at its
+  default wide viewport after reconnect, so this validates the current build's
+  cloud-restore behavior rather than a mobile breakpoint. Settings saved
+  `codex/codex` credentials with remote directory `codex`, showed
+  `WebDAV 连接可用`, uploaded
+  `vibe-fridge-backup-20260620-155516.json`, opened a restore confirmation
+  dialog naming that backup and explaining that current data would be replaced
+  after keeping a current backup, then restored successfully with
+  `已从 WebDAV 恢复：vibe-fridge-backup-20260620-155516.json` and
+  `最近恢复：vibe-fridge-backup-20260620-155516.json`. A post-restore
+  `测试连接` still showed `WebDAV 连接可用`, proving the saved configuration and
+  password remained usable after restore. The smoke endpoint recorded MKCOL,
+  Depth 0 and Depth 1 PROPFIND, PUT upload, GET restore download, and a
+  post-restore Depth 0 PROPFIND; the uploaded backup file was 7755 bytes.
+  Browser logs showed no warnings or errors throughout the flow.
+- Current mobile Web local-export smoke on
+  `http://127.0.0.1:54414/?route=settings`: passed on 2026-06-20 at 390 x 844.
+  Settings loaded after the startup inventory screen, showed the Data and
+  Backup card, and triggered both local export actions from the first screen.
+  `导出备份` showed `备份已导出`, and `导出库存表格` showed `库存表格已导出`; browser
+  logs showed no warnings or errors. The in-app browser did not emit a
+  Playwright `download` event for either programmatic save within the 8-second
+  observation window, so this pass verifies the current UI flow and success
+  feedback. The implementation path still reaches `XFile.saveTo` before
+  showing either success snackbar, which keeps the smoke aligned with the
+  actual save operation rather than a purely cosmetic button tap.
+- Current mobile Web item-profile edit smoke on
+  `http://127.0.0.1:54415/?route=items%2Fwiki%2Fwiki-milk`: passed on
+  2026-06-20 at 390 x 844. The direct `鲜牛奶` item-profile route loaded with
+  category, default unit, suggested shelf life, default reminder, storage
+  location, active-batch count, and its active batch. Using the edit icon
+  opened `编辑物品资料` with editable name, category, icon, description, default
+  unit, shelf-life, reminder, storage-location, and notes fields. Adding
+  `内测资料编辑1605` to the description and `内测备注1605` to notes, then using
+  `保存资料`, returned to the item-profile detail without leaving the route;
+  the header immediately showed the updated description and the facts card
+  showed the new notes row. Settings `重置示例数据` then showed clear
+  confirmation copy, reset 9 sample rows, and a return to the direct
+  `鲜牛奶` profile proved the default description was restored and the notes
+  row disappeared. Browser logs showed no warnings or errors throughout the
+  flow.
+- Current mobile Web recipe-preference smoke on
+  `http://127.0.0.1:54416/?route=settings`: passed on 2026-06-20 at 390 x 844.
+  Settings scrolled to `食谱偏好` with default blank preference fields plus
+  `30` minutes and `2` people. Entering `清淡内测1608`, `不吃辣1608`,
+  `电饭煲1608`, `28` minutes, and `4` people, then using `保存食谱偏好`, showed
+  `食谱偏好已保存`. Reloading the Settings route and scrolling back to the same
+  card showed all five values persisted from local storage. The smoke then
+  cleared the three text fields, restored `30` minutes and `2` people, saved
+  again, and saw the same success feedback so later tests start from the
+  default preference state. Browser logs showed no warnings or errors
+  throughout the flow.
+- Current mobile Web legacy-import preview smoke on
+  `http://127.0.0.1:54417/?route=settings`: passed on 2026-06-20 at 390 x 844.
+  Settings opened with `库存批次 4`, `物品资料 5`, and a visible
+  `导入旧版库存` action. Tapping it opened `预览旧版库存导入` without a Flutter Web
+  asset error. The bundled empty legacy payload produced readable zero-count
+  rows for `待导入`, `将新增`, `将更新`, and `将跳过`, showed the
+  `导入前清空示例资料/库存` checkbox with copy that only built-in examples would
+  be cleared while categories and user data are retained, and kept
+  `确认导入` disabled because there were no importable rows. Using `取消`
+  returned to Settings with the same inventory/profile counts and no import
+  result summary or snackbar. Browser logs showed no warnings or errors
+  throughout the flow.
+- Current mobile Web shopping-management smoke on
+  `http://127.0.0.1:54418/?route=items&view=shopping`: passed on 2026-06-20
+  at 390 x 844. The Shopping view loaded with replenishment suggestions and
+  empty `待采购` / `已买到` sections. The top `添加` action opened the
+  `添加采购项` sheet; saving `购物管理1609番茄` with quantity `2`, unit `袋`, and
+  note `初始备注1609` created one pending item with the expected quantity and
+  note summary. The row overflow menu opened `编辑采购项`; changing the item to
+  `购物管理1609番茄编辑`, quantity `5`, unit `盒`, and note `编辑备注1609` saved back
+  to the pending list and refreshed the visible row. Checking the item moved it
+  from `待采购 1` to `已买到 1` and revealed the `入库` action; unchecking it
+  moved it back to `待采购 1` and returned `已买到` to `0`. The row menu's
+  destructive `删除采购项` confirmation named the edited item; confirming delete
+  returned both shopping sections to `0`. Browser logs showed no warnings or
+  errors throughout the flow.
+- Current mobile Web consume/restore smoke on `http://127.0.0.1:54419/`:
+  passed on 2026-06-20 at 390 x 844 against a freshly rebuilt Web debug build.
+  Directly opening `?route=items%2Fitem%2Fitem-bread-1` showed the `面包`
+  inventory detail as `使用中`, quantity `1袋`, and quantity controls enabled.
+  The bottom `标记已消耗` action showed a confirmation dialog with clear
+  destructive copy; confirming returned to the catalog where `面包` had
+  `0` batches. Opening the `历史` tab showed `面包` as `已消耗`; opening that
+  history record showed disabled quantity controls and the consumed state.
+  Using `恢复为使用中` restored the detail state to `使用中`, re-enabled quantity
+  controls, returned History to `暂无历史记录`, and returned the catalog to
+  `面包` with `1` batch. Browser logs showed no warnings or errors throughout
+  the flow.
+- Current mobile Web full-field manual-add smoke on
+  `http://127.0.0.1:54420/?route=add`: passed on 2026-06-20 at 390 x 844
+  against a freshly rebuilt Web debug build. Saving with a blank name kept the
+  user on the Add page and highlighted `物品名称` with `请输入物品名称`. Filling a
+  unique item `完整添加1620燕麦`, selecting tags `临期优先` and `囤货`, changing
+  category to `日用品`, storage location to `冷藏`, description to
+  `完整字段验证描述1620`, quantity to `3`, and unit to `袋` saved successfully and
+  returned to the catalog. The catalog row showed quantity `3`, category
+  `日用品`, location `冷藏`, unit `袋`, and one active batch. The item-profile
+  detail showed description, default unit, category, default reminder, storage
+  location, and `使用中批次 1`; the inventory row showed `3袋` and tag summary.
+  The inventory detail facts card showed quantity `3袋`, category `日用品`,
+  purchase date `2026-06-20`, unset expiry/reminder date, enabled reminder,
+  storage location `冷藏`, and the saved description; the tags card showed
+  `囤货` and `临期优先`. The created batch was deleted through its named
+  destructive confirmation, the empty item profile was deleted through its
+  named destructive confirmation, and catalog search for the unique name then
+  showed `没有匹配物品`. Browser logs showed no warnings or errors throughout the
+  flow.
+- Current mobile Web item-profile batch-delete smoke on
+  `http://127.0.0.1:54421/`: passed on 2026-06-20 at 390 x 844 against a
+  freshly rebuilt Web debug build. Adding `批量删除1621麦片` twice created a
+  single item profile with total quantity `3`, unit `袋`, and `2` active
+  batches. Opening the item profile showed `使用中批次 2` and two inventory rows
+  (`1` and `2袋`). Entering `批量` mode showed `已选择 0 项`, `全选`, `消耗`,
+  `改分类`, `改位置`, and `删除`; using `全选` changed the header to
+  `已选择 2 项` and visually selected both rows. `删除` opened a
+  `批量删除库存` confirmation that named the selected count; confirming returned
+  to the profile with `使用中批次 0`, the `暂无库存` empty state, and feedback
+  `已删除 2 条库存记录`. Deleting the now-empty item profile showed a named
+  destructive confirmation, returned to the catalog, and searching the unique
+  name showed `没有匹配物品`. Browser logs showed no warnings or errors
+  throughout the flow.
+- Current mobile Web shopping-note conversion smoke on
+  `http://127.0.0.1:54422/?route=items&view=shopping`: passed on 2026-06-20 at
+  390 x 844 against a freshly rebuilt Web debug build. The Shopping view loaded
+  with empty `待采购` and `已买到` sections. Adding `采购转库存1622酸奶` with
+  quantity `4`, unit `盒`, and note `采购备注应保留1622` created a pending row
+  showing `4盒` plus the note summary. Checking the row moved it to `已买到 1`
+  and revealed `入库`; the `采购项入库` confirmation clearly said one purchased
+  item would be converted into an inventory record. Confirming conversion
+  returned both shopping sections to `0` and showed `已入库 1 项`. Catalog
+  search found the converted inventory as quantity `4`, unit `盒`, `未分类`,
+  and one active batch. The item-profile detail remained `暂无描述`, proving the
+  shopping note did not pollute the profile description; the inventory detail
+  facts card showed `描述 采购备注应保留1622`, proving the shopping note was
+  preserved on the inventory batch. The converted batch and empty item profile
+  were then deleted through their named destructive confirmations, and searching
+  the unique name showed `没有匹配物品`. Browser logs showed no warnings or errors
+  throughout the flow.
+- `flutter test test/recipes_screen_test.dart`: passed after adding coverage
+  that applies a recipe's inventory uses through `InventoryController` and
+  verifies the real inventory quantities are deducted.
 - `flutter build web --debug --no-wasm-dry-run`: passed after the latest beta
   fixes including Web route cleanup, direct Web detail URL hash cleanup,
-  startup error copy coverage, and the edit-page Material fix.
+  startup error copy coverage, the edit-page Material fix, and no-date order
+  duplicate handling; passed again after extending the native Web loading
+  screen delay to cover desktop CanvasKit font settling, again before the
+  latest Settings smoke check, and again as a final current-worktree Web build
+  gate after the browser-history route fix. Passed again after pushing the
+  beta notification and routing validation commit, then served on port 54390
+  for post-push smoke testing. Passed again after adding the custom Web
+  bootstrap; generated `flutter_bootstrap.js` now calls `_flutter.loader.load()`
+  without `serviceWorkerSettings` and contains the stale-registration cleanup.
+  Passed again after adding no-cache entry hints and a cache-busted bootstrap
+  request to `index.html`. Passed again after adding recipe cooking deduction
+  to the app self-check. Passed again after adding `_headers`; the generated
+  `build/web/_headers` contains no-cache policy for `index.html`,
+  `flutter_bootstrap.js`, `flutter.js`, `main.dart.js`, and `sqflite_sw.js`.
+  Passed again after removing the user-facing Settings self-check controls.
+  Passed again after adding no-cache policy for Flutter's generated
+  `flutter_service_worker.js`. Passed again before the browser WebDAV smoke
+  that verified password cleanup, retry feedback, and upload. Passed again on
+  the current worktree on 2026-06-19 after allowing the pub.dev advisories
+  network check. Passed again after adding the user-facing copy guard; the
+  generated `build/web/_headers` still contains no-cache/no-store policy for
+  entry scripts and service-worker files, and the generated Web entry still
+  uses a cache-busted bootstrap request plus stale service-worker/cache cleanup.
+  Passed again on 2026-06-20 with the bundled Flutter SDK; `build/web` was
+  generated and `build/web/_headers` still includes no-cache/no-store policy
+  for `index.html`, `flutter_bootstrap.js`, `flutter.js`,
+  `flutter_service_worker.js`, `main.dart.js`, and `sqflite_sw.js`. Passed
+  again on 2026-06-21 with `flutter build web --debug --no-pub
+  --no-wasm-dry-run`; generated `build/web/_headers` still includes
+  no-cache/no-store policy for the same entry scripts and service-worker files,
+  and `build/web/index.html` still loads `flutter_bootstrap.js` with a
+  timestamp cache buster.
+- `flutter build macos --debug`: passed after the user completed the local
+  Xcode installation and license flow. The build produced
+  `build/macos/Build/Products/Debug/vibe-fridge.app`; Flutter also generated
+  Swift Package Manager integration for the macOS project and warned that
+  `flutter_secure_storage_macos` still uses CocoaPods. Passed again after
+  extracting and testing the macOS notification request builder and permission
+  status mapper, again after adding the native tap payload handoff helper,
+  again after the Web entry cache and loading-screen fixes, and again after
+  extracting inventory-reminder content/trigger construction into tested
+  helpers. Passed again after fixing macOS order-recognition secure key
+  storage without requiring a development-certificate keychain entitlement.
+  Passed again after routing macOS inventory reminder scheduling through an
+  async scheduler that waits for native add completion and propagates failures.
+  Passed again on the current worktree on 2026-06-19; the build produced
+  `build/macos/Build/Products/Debug/vibe-fridge.app`. Flutter still warns that
+  `flutter_secure_storage_macos` has not adopted Swift Package Manager support,
+  and Xcode emitted stale DerivedData path warnings, but neither blocked the
+  app build. Passed again on 2026-06-20 with the bundled Flutter SDK, producing
+  `build/macos/Build/Products/Debug/vibe-fridge.app`; the same
+  `flutter_secure_storage_macos` Swift Package Manager adoption warning remains
+  informational for this build.
+- `xcodebuild -checkFirstLaunchStatus`: returned success on 2026-06-19,
+  confirming the local Xcode first-launch setup is no longer blocking macOS
+  build/test validation.
+- `xcodebuild test -workspace Runner.xcworkspace -scheme Runner -configuration
+  Debug -destination 'platform=macOS' -derivedDataPath
+  /private/tmp/vibe-fridge-xcode-derived-empty-launch
+  -clonedSourcePackagesDirPath
+  /private/tmp/vibe-fridge-xcode-spm-empty-launch`:
+  passed after fixing the RunnerTests `TEST_HOST` product path and importing
+  the app module as `vibe_fridge`. RunnerTests now covers macOS notification
+  request construction, malformed payload skipping, the 60-second minimum
+  notification trigger delay, immediate test-notification request construction,
+  native permission-status channel mapping, and native tap payload handoff into
+  the launch target plus Flutter event path. Passed again with 7 tests after
+  extracting the diagnostic test-notification request factory. Passed again
+  with 8 tests after adding direct inventory-reminder content construction and
+  future trigger coverage. Passed again with 9 tests after adding a native
+  Keychain write/read/delete smoke for VLM API secret storage without the Data
+  Protection Keychain entitlement path. Passed again with 11 tests after adding
+  native scheduler coverage for both successful pending-request handoff and
+  system add failure reporting.
+  Passed again on the current worktree on 2026-06-19 with 12 RunnerTests:
+  diagnostic notification request construction, Keychain secret smoke,
+  inventory-reminder request parsing, malformed payload skipping, scheduler
+  success/failure reporting, tap payload storage/event handoff, empty stored
+  launch-target cleanup, trigger timing, and permission-status channel mapping.
+  Passed again after adding real `UNUserNotificationCenter` status coverage,
+  with 13 passed RunnerTests and 1 skipped pending-request smoke because the
+  current test host is not authorized for notifications. Passed again after
+  adding native tap-handler coverage for whitespace-trimmed and blank
+  launch-target ids, again with 13 passed and 1 skipped. Passed again after
+  the AppDelegate launch fix, with 13 passed and 1 skipped. Passed again after
+  adding runtime notification-center delegate registration coverage, with 14
+  passed and 1 skipped. Passed again on 2026-06-20 with 14 passed RunnerTests
+  and 1 skipped pending-request smoke because notification authorization has
+  not been granted for the test host. Passed again on 2026-06-20 after the
+  Web startup-bootstrap change using `xcodebuild test -workspace
+  Runner.xcworkspace -scheme Runner -configuration Debug -destination
+  'platform=macOS' -derivedDataPath /private/tmp/vibe-fridge-macos-derived`:
+  `TEST SUCCEEDED`, 14 RunnerTests passed, and the same authorization-gated
+  pending-request smoke was skipped.
+- `xcodebuild test -workspace Runner.xcworkspace -scheme Runner
+  -configuration Debug -destination 'platform=macOS' -derivedDataPath
+  /private/tmp/vibe-fridge-macos-derived`: passed on 2026-06-20 after adding
+  direct AppDelegate notification-response payload routing coverage:
+  `TEST SUCCEEDED`, 15 RunnerTests passed, and the same authorization-gated
+  pending-request smoke was skipped.
+- `flutter test --no-pub test/local_notification_service_test.dart
+  test/app_shell_widget_test.dart test/macos_notification_wiring_test.dart`:
+  passed on 2026-06-20 after the AppDelegate payload-routing change, proving
+  the Dart-side notification channel, AppShell notification tap-to-detail route,
+  launch notification target route, and macOS static wiring tests still agree.
+  Rechecked on 2026-06-20 from the current worktree: `flutter test --no-pub
+  test/local_notification_service_test.dart test/app_shell_widget_test.dart`
+  passed with 20 tests after downloading the SQLite native test asset, and
+  `flutter test --no-pub test/macos_notification_wiring_test.dart` passed with
+  2 tests. This keeps the automated notification tap/launch/payload-routing
+  evidence current while still not replacing real delivered-notification manual
+  validation.
+- `flutter run -d macos`: launched the current debug macOS target on
+  2026-06-19, built `vibe-fridge.app`, started the app process, and exposed a
+  Dart VM Service. The shell still reported `Failed to foreground app; open
+  returned 1`, so this remains a launch smoke rather than a manual UI or
+  delivered-notification validation. The run session was then terminated and
+  the app exited with `Application finished.` Passed again after adding the
+  debug-only notification-status VM Service extension; calling
+  `ext.vibe_fridge.notificationStatus` against the running app returned
+  `supported: true`, `granted: false`, `status: unknown`, and
+  `displayText: 未确认`, proving the live Flutter-to-macOS notification
+  permission channel is wired while confirming system notification permission
+  remains unapproved on this machine.
+- `node tools/check_notification_status.mjs
+  http://127.0.0.1:57383/rRIjQRZY31c=/`: passed against the live macOS
+  `flutter run` VM Service. The tool found the main app isolate and returned
+  the same native-channel status payload: `supported: true`, `granted: false`,
+  `status: unknown`, `displayText: 未确认`.
+- `node tools/check_notification_status.mjs --expect-supported true
+  --expect-granted false --expect-status unknown
+  http://127.0.0.1:57872/m5FH7TIIYx8=/`: passed against a fresh live macOS
+  `flutter run` VM Service, proving the reusable smoke helper can assert the
+  current notification permission state rather than only printing it.
+- `node --check tools/check_notification_status.mjs`: passed after adding the
+  reusable VM Service smoke helper and again after adding expectation options.
+  Passed again after adding `--wait-extension-ms` support so the helper can
+  tolerate the app isolate appearing before debug extensions are registered.
+- `HOME=/private/tmp/vibe-fridge-flutter-home node
+  tools/run_macos_notification_smoke.mjs --expect-supported true
+  --expect-granted false --expect-status unknown`: passed. The runner built and
+  launched the macOS debug app, parsed the VM Service URL, verified the live
+  notification status payload, then exited `flutter run` with `Application
+  finished.` Passed again after adding the optional `--send-test` path,
+  confirming the default runner remains read-only and still returns
+  `supported: true`, `granted: false`, `status: unknown`, `displayText: 未确认`.
+  Passed again after extracting and testing the debug notification payload
+  builders, proving the real launched app still registers the VM Service
+  extensions and the default smoke path still avoids permission prompts or
+  notification delivery. Rechecked on 2026-06-20 against the current
+  `codex/beta-user-testing` worktree with `node
+  tools/run_macos_notification_smoke.mjs --expect-supported true
+  --timeout-ms 180000`: the app built, launched, exposed
+  `http://127.0.0.1:64161/...`, returned `supported: true`, `granted: false`,
+  `status: unknown`, and `displayText: 未确认`, then exited cleanly with
+  `Application finished.`. Rechecked again after the Web startup-bootstrap
+  change with the same read-only command: the app exposed
+  `http://127.0.0.1:58130/...`, returned the same status payload, and exited
+  cleanly. Rechecked again after adding extension-registration waiting: the
+  app exposed `http://127.0.0.1:57168/...`, returned `supported: true`,
+  `granted: false`, `status: unknown`, and `displayText: 未确认`, then exited
+  cleanly without sending a notification.
+- `node --check tools/run_macos_notification_smoke.mjs`: passed after adding
+  the automated macOS smoke runner and again after wiring its default
+  extension-registration wait into `tools/check_notification_status.mjs`.
+- `node --check tools/check_secure_storage_smoke.mjs
+  tools/run_macos_secure_storage_smoke.mjs`: passed after adding the reusable
+  secure-storage VM Service helpers.
+- `HOME=/private/tmp/vibe-fridge-flutter-home node
+  tools/run_macos_secure_storage_smoke.mjs --timeout-ms 180000`: passed on
+  2026-06-20. The runner built and launched the macOS debug app, parsed the VM
+  Service URL, called `ext.vibe_fridge.secureStorageSmoke`, and got
+  `wrote: true`, `readBackMatches: true`, and `deleted: true` for a temporary
+  `debug.secure_storage_smoke` key, then exited `flutter run` cleanly.
+- Tool argument guards: `node tools/check_notification_status.mjs
+  --expect-sent false ...` and `node tools/run_macos_notification_smoke.mjs
+  --expect-sent false` both fail before any runtime call unless `--send-test`
+  is present, protecting the default smoke from accidental permission prompts.
+- `flutter build macos --debug`: passed again after removing the invalid
+  AppDelegate `super.applicationDidFinishLaunching(notification)` call and
+  produced `build/macos/Build/Products/Debug/vibe-fridge.app`.
+- `open -n build/macos/Build/Products/Debug/vibe-fridge.app`: launched the
+  rebuilt debug app as process `vibe-fridge`; recent system logs showed the
+  app checked in as foreground, created a user notification center, and read
+  notification settings. The previous `applicationDidFinishLaunching` /
+  `NSInvalidArgumentException` log entries were not present in the repaired
+  launch window.
+- `flutter build apk --debug`: attempted after the latest route and platform
+  checks. Dependency resolution completed, but the local environment could not
+  continue because no Android SDK was found; this did not produce an app compile
+  error, but leaves Android native runtime validation unproven in this
+  environment. Rechecked on 2026-06-20 with the bundled Flutter SDK after
+  dependency resolution completed: Flutter still stops with `[!] No Android SDK
+  found. Try setting the ANDROID_HOME environment variable.` `flutter emulators`
+  also reports no emulator sources, and `android/local.properties` only points
+  at the bundled Flutter SDK. Rechecked again on 2026-06-20 after the full
+  Flutter regression recheck: `flutter devices` still detected only macOS,
+  `flutter emulators` still reported no emulator sources, `flutter doctor -v`
+  still reported `Unable to locate Android SDK`, and `flutter build apk
+  --debug` again stopped before Android compilation with `[!] No Android SDK
+  found. Try setting the ANDROID_HOME environment variable.` Network resources
+  were available during this pass. Rechecked again from the current worktree
+  with `HOME=/private/tmp/vibe-fridge-flutter-home
+  ../.tools/flutter/bin/flutter build apk --debug --no-pub`: Flutter still
+  stopped immediately with `[!] No Android SDK found. Try setting the
+  ANDROID_HOME environment variable.`, so Android compile/runtime validation
+  remains blocked by host setup rather than a new app compile error.
+- `node --check tools/check_android_environment.mjs`: passed after adding the
+  reusable Android runtime-gate helper.
+- `node tools/check_android_environment.mjs`: currently exits non-zero, as
+  expected for this host, and returns a JSON report with
+  `ready: false`, `androidToolchainReady: false`,
+  `androidDeviceReady: false`, `emulatorAvailable: false`, `sdkPath: null`,
+  and blockers `Android SDK is not configured for Flutter` plus
+  `No Android device or emulator is available`. Rechecked from the current
+  worktree on 2026-06-20 with the same result; the report saw only the macOS
+  desktop device, no emulator sources, and `flutter doctor -v` still reported
+  `Unable to locate Android SDK`. This makes the Android runtime validation
+  blocker explicit and reproducible without attempting to install or launch
+  anything.
+- Native notification bridge static review: Android and macOS implementations
+  use the same `vibe_fridge/local_notifications` method channel as Dart,
+  preserve `itemId` in scheduled notification payloads, expose launch/tap
+  callbacks back to Flutter, and include boot or app-start recovery paths where
+  the platform supports them. Android manifest/channel/payload-key wiring and
+  macOS bridge/delegate wiring are now covered by
+  `android_notification_wiring_test.dart` and
+  `macos_notification_wiring_test.dart`. No obvious channel-name, payload-key,
+  or click callback mismatch was found, but this does not replace runtime
+  validation on real Android/macOS environments.
+- Final targeted user-facing copy grep: scanned Flutter screens, widgets, and
+  bootstrap UI for database, SQLite, migration, legacy, Wiki, JSON/id, and
+  related implementation wording. Remaining matches were internal identifiers,
+  file extensions, prompts, hidden diagnostics, or already-user-facing product
+  language. The only visible wording tightened in this pass was the order
+  recognition key copy, rephrased from storage terminology to
+  `密钥状态` / `本机安全保存` / `本机安全区域`.
 - Web build output now includes the native HTML loading screen used to cover
   Flutter Web's cold-start font fallback window.
-- App self-check from Settings: passed, 15/15.
+- Web bootstrap output now omits Flutter service-worker registration settings,
+  unregisters stale same-origin service workers, and deletes stale Flutter
+  Cache Storage entries before loading the app. A same-origin Settings smoke
+  check on port 54390 loaded successfully with no active controller, no
+  registrations, hidden loading screen, and no browser warnings or errors in
+  this environment. After adding Cache Storage cleanup, the rebuilt Web output
+  contained the cache-deletion calls, and a follow-up Settings smoke check on
+  port 54390 loaded `vibe-fridge`, hid the loading screen, captured a non-empty
+  page screenshot, and reported no browser warnings or errors.
+- Existing-origin Web update simulation on port 54390: seeded a stale
+  same-origin service worker plus a `flutter-*` Cache Storage entry, then
+  navigated to the current Settings build. The app recovered to the current
+  Flutter view, the stale registration list was empty, the stale Flutter cache
+  was gone, the loading screen was hidden, and browser warning/error logs were
+  empty.
+- Existing-origin Web update simulation recheck on port 54397: seeded
+  `registrations=1` and `caches=flutter-stale-smoke-cache` from a same-origin
+  page, then opened the current Settings build. The Settings page rendered
+  successfully, browser warning/error logs were empty, and a follow-up
+  same-origin check page reported `registrations=0;caches=`.
+- Web entry HTML now carries no-cache meta hints and loads
+  `flutter_bootstrap.js` through a cache-busted dynamic script request, reducing
+  the chance that a current index page reuses stale bootstrap code.
+- In-app browser retesting on port 54390 showed the Flutter view was mounted
+  but the loading layer still captured center hit testing after only adding the
+  `is-hidden` class. The hide handler now also applies inline opacity,
+  visibility, and pointer-events styles; after rebuilding and reloading, center
+  hit testing lands on `FLUTTER-VIEW` instead of the loading layer.
+- Historical app self-check from Settings: passed, 15/15; passed again on the
+  restarted Web target on port 54390 in about 354ms. After adding the backup
+  content check and rebuilding Web, the then-current Settings self-check passed
+  16/16 on port 54390 in about 372ms with no browser warning or error logs.
+  The repository-level self-check test now covers 17 checks including recipe
+  cooking inventory deduction.
 - Fresh Web smoke check on a new local port: no new console warnings or errors
   for the latest build.
 - Mobile Web cold-start visual smoke check on port 54331: the native loading
   screen handed off to the rendered Home screen at 390 x 844 with no blank
   viewport and no browser warning or error logs.
+- Mobile Web core-tab smoke check on port 54410 against the current
+  `build/web` on 2026-06-20: opened Home at 390 x 844, then used the bottom
+  navigation to open Items, Add, Recipes, and Settings. Each tab rendered the
+  expected first-viewport content and updated the query route
+  (`?route=items`, `?route=add`, `?route=recipes`, `?route=settings`) without
+  browser warning or error logs. Scrolling Settings confirmed WebDAV backup
+  controls and Web-local-notification unavailable/disabled states were visible
+  while the developer-only app self-check remained absent.
+- Desktop Web main-surface smoke check on port 54409 at 1280 x 720: opened
+  Home, Items, Add, Recipes, and Settings. Home, Items, Add, and Settings used
+  the centered content width and wider card layouts without overlap or console
+  warnings/errors. The first desktop Recipes direct-load pass exposed that
+  Flutter content with square Chinese glyphs could become visible before fonts
+  settled; after extending the native loading screen's first-frame delay, port
+  54411 kept the native loading screen visible during that window and then
+  handed off to correctly rendered Chinese text with no browser warning or
+  error logs.
 - Mobile Web detail URL smoke check on port 54331: tapping the Home priority
   row for `面包` opened the inventory detail page and kept the address bar at
   `?route=items%2Fitem%2Fitem-bread-1` with no hash fragment and no browser
   warning or error logs.
+- Mobile Web today-action reminder smoke check on port 54403: opened Home,
+  tapped the `提醒到期 2` summary to verify it linked to the focused
+  reminder-due inventory list at `?route=items&focus=reminderDue`, then returned
+  to Home and used `稍后` on `面包` plus `忽略` on `鲜牛奶`. The Home list updated
+  from `2项` to `1项` to `0项`, showed `今天没有待处理`, the top summary updated
+  to `0件` and `提醒到期 0`, and the snackbars said
+  `今天稍后再提醒：面包` and `今天不再提醒：鲜牛奶`, with no browser warning or
+  error logs.
 - Mobile Web recipe consumption smoke check on port 54332: opened the Recipes
   tab, opened `快手蛋奶早餐`, used `做这道菜并扣减库存`, returned to
   `?route=recipes`, saw `库存已扣减`, and verified priority counts dropped
   from `鸡蛋 12个` / `鲜牛奶 2盒` to `鸡蛋 11个` / `鲜牛奶 1盒` with no
   browser warning or error logs.
+- Mobile Web direct recipe URL smoke check on port 54386: loaded
+  `?route=recipes%2Fquick-breakfast` directly and verified it opened the
+  `快手蛋奶早餐` detail page with inventory use, missing ingredients, and steps;
+  tapping back returned to `?route=recipes`, and both URLs stayed hash-free
+  with no browser warning or error logs.
+- Desktop Web recipe browser-history smoke check on fresh port 54390 after the
+  `MaterialApp.router` fix: opened `?route=recipes`, tapped
+  `快手蛋奶早餐` to reach `?route=recipes%2Fquick-breakfast`, used browser Back
+  to return to the recipe list, then browser Forward to reopen the same recipe
+  detail. Both transitions preserved hash-free query routes and produced no
+  browser warning or error logs.
+- Post-push desktop Web target smoke check on restarted port 54390: opened
+  Settings, switched to Recipes, verified the URL became `?route=recipes`,
+  opened `快手蛋奶早餐` at `?route=recipes%2Fquick-breakfast`, and used browser
+  Back to return to `?route=recipes` with the recipe list restored.
+- Desktop Web direct recipe URL regression check on port 54381 after switching
+  the root app shell to `MaterialApp.router`: loaded
+  `?route=recipes%2Fquick-breakfast` directly and verified it opened
+  `快手蛋奶早餐` with inventory use, missing ingredients, and steps. The URL
+  stayed hash-free and no browser warning or error logs appeared.
+- Mobile Web unknown recipe URL smoke check on port 54387: loaded an
+  unrecoverable generated-style route,
+  `?route=recipes%2Fai-recipe-old-generated-0`, and verified the app replaced
+  it with `?route=recipes` while rendering the recipe list, with no hash
+  fragment and no browser warning or error logs.
 - Mobile Web AI-recipe fallback smoke check on port 54364: opened Recipes with
   no AI service configured, tapped `生成食谱`, saw the AI card switch to
   `规则兜底` with `AI 食谱未配置，已使用规则建议`, verified rule suggestions stayed
   visible, then used the reset button to return to the initial `生成食谱` state
   with no browser warning or error logs.
+- Mobile Web recipe favorite/recent smoke check on port 54388: favorited
+  `快手蛋奶早餐` from the Recipes list without navigating away, verified
+  `收藏` appeared with `1 个常用方案`, opened the favorited recipe detail with
+  the heart state preserved, unfavorited it from detail, returned to the list,
+  and verified `收藏` disappeared while `最近生成` listed the viewed recipes,
+  with no browser warning or error logs.
+- Mobile Web AI-recipe success smoke check on ports 54383 and 54385: configured
+  a localhost-only fake OpenAI-compatible endpoint, generated one AI recipe
+  named `内测牛奶快手杯`, opened its detail, and verified inventory use,
+  missing ingredients, steps, and no browser warning or error logs. The first
+  pass exposed that a Chinese AI recipe id left the address bar as a mixed
+  query/hash route; after canonicalizing Web route cleanup, the rebuilt detail
+  URL stayed at `?route=recipes%2Fai-recipe-...` with no hash fragment.
 - Mobile Web shopping-loop smoke check on port 54333: opened the shopping tab,
   added the `感冒药` replenishment suggestion to the list, checked it as
   purchased, confirmed `采购项入库`, saw `已入库 1 项`, and verified the
   catalog count for `感冒药` increased from 1 to 2 with no browser warning or
   error logs.
-- Mobile Web Settings self-check smoke check on port 54334: opened Settings,
-  ran `运行自验收`, saw the card switch to `全部通过` with `15/15`, verified
-  the detailed check list rendered readable rows for inventory, reminders,
-  recipes, shopping, batch edits, and history, with no browser warning or error
-  logs.
+- Mobile Web manual shopping edit/convert smoke check on port 54395: added
+  `shopping-edit-test` from the shopping tab with quantity `3`, unit `包`, and
+  a note, edited it to quantity `5` with a new note, checked it as purchased,
+  and converted it into inventory. The first pass exposed that the shopping
+  note was lost after conversion; after preserving it as the inventory batch
+  description without updating the item-profile description, the rebuilt Web
+  app converted `shopping-note-test` and showed `描述 采购备注应保留` on the
+  inventory detail facts card, while the item-profile header stayed
+  `暂无描述`, with no browser warning or error logs. The temporary test
+  inventory and profiles were cleaned up through the UI.
+- Mobile Web uncategorized shopping conversion smoke check on port 54396:
+  added `category-copy-test` from the shopping tab without selecting a
+  category, converted it into inventory, and verified the shopping list,
+  catalog card, item-profile facts card, and inventory-detail facts card all
+  consistently used `未分类` instead of switching the converted inventory to
+  `其他`, with no browser warning or error logs. The temporary test inventory
+  and profile were cleaned up through the UI.
+- Mobile Web catalog-to-shopping smoke check on port 54391: opened the item
+  catalog, tapped the cart action on the `感冒药` row, saw
+  `已加入采购清单：感冒药` without leaving the catalog, opened the Shopping view,
+  verified `待采购 1` contained `感冒药` with quantity `1` and source-note copy,
+  then deleted the pending item and verified `待采购 0` while `感冒药` returned
+  to replenishment suggestions, with no browser warning or error logs.
+- Mobile Web focused-inventory shopping smoke check on port 54392: opened Home,
+  tapped the `提醒到期 2` tile to reach `?route=items&focus=reminderDue`,
+  added `面包` to the shopping list from the focused inventory card without
+  leaving that list, opened the Shopping view, verified `待采购 1` contained
+  `面包` with quantity `1袋` and source-note copy, then deleted it and verified
+  `待采购 0` while `面包` returned to replenishment suggestions, with no browser
+  warning or error logs.
+- Historical Mobile Web Settings self-check smoke check on port 54334, before
+  the entry was hidden: opened Settings, ran the app self-check, saw the card
+  switch to `全部通过` with `15/15`, verified the detailed check list rendered
+  readable rows for inventory, reminders, recipes, shopping, batch edits, and
+  history, with no browser warning or error logs.
+- Historical Desktop Web Settings self-check smoke check on fresh port 54372
+  after a rebuild, before the entry was hidden: opened Settings, verified the
+  then-current `应用自检` / `运行自检` copy, ran the app self-check, saw
+  `全部通过` with `15/15` in about 397ms, and saw no browser warning or error
+  logs for the fresh origin. A same-port reload on
+  port 54371 still showed older self-check copy after rebuilding, indicating
+  older same-origin cache or previous registration state can keep stale Web
+  assets during validation. The Web bootstrap now avoids registering a
+  replacement Flutter service worker and clears stale registrations once the
+  current index is loaded.
+- Historical desktop and mobile Web Settings regression smoke check on fresh
+  port 54384, before the self-check entry was hidden: opened Settings on that
+  build, verified backup/notification copy, scrolled to recipe preferences and
+  app self-check, ran self-check, and saw `全部通过` with `15/15`. Then switched
+  to 390 x 844, reloaded Settings,
+  verified the mobile layout stayed readable, opened Recipes from the bottom
+  navigation, and opened `快手蛋奶早餐` at
+  `?route=recipes%2Fquick-breakfast` with no browser warning or error logs.
 - Mobile Web recipe-preference settings smoke check on port 54363: opened
   Settings, scrolled to `食谱偏好`, entered `清淡内测`, `不吃辣`, `电饭煲`,
   changed time to `25` minutes and servings to `3`, saved, saw `食谱偏好已保存`,
   then reloaded Settings and verified all preference fields persisted with no
   browser warning or error logs.
+- Mobile Web order-recognition settings smoke check on port 54366: opened
+  Settings, scrolled to `订单识别 AI`, entered a fake local API key, saved,
+  saw `订单识别配置已保存` and `已配置`, then reloaded Settings and verified the
+  saved-key state persisted without showing the key in clear text. The pass
+  then cleared the configuration through the confirmation dialog and verified
+  `未配置` returned, with no browser warning or error logs. The `测试配置`
+  action was intentionally not used, so the pass did not send an external
+  request.
+- Mobile Web order-recognition test-configuration smoke check on port 54382:
+  ran Settings against a localhost-only fake OpenAI-compatible endpoint on
+  port 54381, saved `订单识别 AI` configuration, verified the API key field
+  cleared to the saved-key state without exposing the secret, tapped
+  `测试配置`, saw `配置可用`, confirmed the fake service received one local POST,
+  and then cleared the configuration back to `未配置` with no browser warning
+  or error logs.
+- Mobile Web demo-data reset smoke check on port 54367: added a user-created
+  item named `reset-test-nori`, verified the Settings counts increased to
+  `库存批次 5` and `物品资料 6`, then used `重置示例数据`. The confirmation copy
+  clearly promised only built-in sample data would be rebuilt, the app showed
+  `示例数据已重置，清理 9 条旧示例数据`, and the catalog still showed
+  `reset-test-nori` afterward with no browser warning or error logs.
 - Mobile Web manual-add smoke check on port 54335: opened Add, entered
   `内测手动橙子` with the default quantity and purchase date, saved it, returned
   to the catalog, saw the new item with `1` batch, then opened its item-profile
   detail at `?route=items%2Fwiki%2F...` with no browser warning or error logs.
+- Mobile Web full-field manual-add smoke check on port 54368: opened Add,
+  selected category `日用品`, selected storage location `冷藏`, entered
+  `field-test-cleanser`, set unit `瓶`, chose expiry date `2026-06-25` from the
+  date picker, and saved. The catalog immediately showed `日用品 · 冷藏 · 单位 瓶`
+  with `7 天后到期`, the item-profile detail showed category, default unit,
+  storage location, and the inventory batch dates, and the inventory detail
+  showed expiry `2026-06-25`, reminder date `2026-06-22`, lead time `3 天`,
+  and storage `冷藏`, with no browser warning or error logs.
+- Mobile Web tagged manual-add smoke check on port 54369: opened Add, selected
+  the tags `临期优先`, `常用`, and `易浪费`, entered `tag-test-cereal` with unit
+  `袋`, and saved. The item-profile inventory row showed the first two tags
+  (`临期优先 · 常用`) in its compact summary, and the inventory detail `标签`
+  card showed all three saved tags with no browser warning or error logs.
+- Mobile Web manual-add validation smoke check on port 54400: tried saving a
+  blank manual item and verified the form stayed on the Add page with
+  `请输入物品名称`; then entered `validation-test-item`, changed quantity to
+  `0`, and verified the form showed `请输入大于 0 的整数` without saving. After
+  correcting quantity to `2`, saving succeeded, the catalog showed the new
+  item with quantity `2`, and the temporary inventory/profile were cleaned up
+  through the UI with no browser warning or error logs.
+- Mobile Web manual-add round-trip smoke check on port 54412 against the
+  current build/web on 2026-06-20: opened Add in a 390 px mobile viewport,
+  entered `beta-smoke-0620b` with quantity `1` and unit `盒`, saved the item,
+  verified the catalog showed the new profile with `1` active batch, opened
+  the item-profile detail, verified the facts and batch row, deleted the batch
+  through `批量` / `全选` / `批量删除库存`, verified `使用中批次 0` and
+  `暂无库存`, then deleted the empty profile and confirmed searching
+  `beta-smoke` showed `没有匹配物品`. The same pass also cleaned up the prior
+  leftover `beta-smoke-0620` test profile through the same user-visible delete
+  path. No browser warning or error logs appeared.
 - Mobile Web inventory-detail quantity smoke check on port 54336: opened the
   Home priority row for `鲜牛奶`, reached `?route=items%2Fitem%2Fitem-milk-1`,
   increased quantity from `2 盒` to `3 盒`, verified the fact row updated, then
@@ -85,6 +1260,38 @@ check confirmed it hands off cleanly to the rendered Home screen.
   correct quantities and units, confirmed batch import, saw `导入完成` with
   `新增 2`, and verified the catalog showed `苹果 4` and `酸奶 2` with no
   browser warning or error logs.
+- Mobile Web no-date duplicate order-text smoke check on port 54402: pasted
+  `DUP-SMOKE-NODATE-001` without a purchase date and imported two rows. The
+  first pass exposed that repeating the same order still showed `2 可入库` and
+  would add duplicates because duplicate checks skipped rows without purchase
+  dates. After allowing order-id/name duplicate checks without a purchase date,
+  the rebuilt Web app showed `0 可入库`, `2 疑似重复`, `添加 0 个物品`, and the
+  result dialog `没有新增物品` with `跳过 2`, with no browser warning or error
+  logs.
+- Mobile Web order-text review-edit smoke check on port 54393: pasted an order
+  containing `内测复核苹果 4个`, a gift line, and `内测散装坚果` without a
+  quantity. The review page showed `3/3 已选`, `1 可入库`, and `2 需要确认`;
+  editing the apple quantity from `4` to `6` updated its summary pill, unselecting
+  the gift left it out of the import, filling the nut unit as `袋` and tapping
+  `标记已确认` changed the primary action to `添加 2 个物品`. Confirming import
+  showed `新增 2`, `跳过 1`, `需要手动处理 0`, and the catalog showed only
+  `内测复核苹果 6` and `内测散装坚果 1`, with no browser warning or error logs.
+- Mobile Web bulk order-text backup reminder smoke check on ports 54397 and
+  54398: pasted an order-like text containing a standalone reference
+  `BETA-BACKUP-001` plus 10 inventory lines. The first pass imported the 10
+  valid rows and verified Settings showed the backup reminder card with a
+  cumulative unbacked-change note; it also exposed that the standalone
+  reference appeared as a low-confidence item needing confirmation. After
+  filtering standalone reference lines, the rebuilt Web app showed
+  `10/10 已选`, `10 可入库`, no `需要确认`, and the first review card was
+  `备份提醒米`, with no browser warning or error logs. The test used isolated
+  local ports.
+- Mobile Web backup reminder export-clear smoke check on port 54399: pasted 10
+  valid order-text inventory rows, confirmed batch import with `新增 10` and
+  `需要手动处理 0`, opened Settings, verified the `建议导出备份` card appeared
+  with a cumulative unbacked-change note, tapped the card's `导出` action, saw
+  `备份已导出`, and verified the reminder card disappeared with no browser
+  warning or error logs. The test used an isolated local port.
 - Mobile Web consume/history smoke check on port 54338: opened `面包` inventory
   detail, confirmed `标记已消耗`, returned to Home with the pending reminder
   count reduced from 2 to 1, then opened `?route=items&view=history` and saw
@@ -97,13 +1304,34 @@ check confirmed it hands off cleanly to the rendered Home screen.
   the search restored the `面包` row with no browser warning or error logs.
 - Mobile Web inventory-table export smoke check on port 54339: opened Settings,
   used `导出库存表格`, and saw `库存表格已导出` feedback with no browser
-  warning or error logs. Codex In-app Browser does not support download events,
-  so this proves the live UI trigger and success feedback but not downloaded
-  file persistence.
+  warning or error logs. Rechecked on port 54396 with
+  `waitForEvent('download')`: no download event was emitted, but the page
+  created a blob link with download name
+  `vibe-fridge-inventory-20260619-212643.csv`. This proves the live UI trigger,
+  success path, and intended file name, but not downloaded file persistence.
+- Mobile Web backup export smoke check on port 54365: opened Settings, used
+  `导出备份`, and saw `备份已导出` feedback with no browser warning or error
+  logs. Rechecked on port 54396 with `waitForEvent('download')`: no download
+  event was emitted, but the page created a blob link with download name
+  `vibe-fridge-backup-20260619-212616.json`. This proves the live UI trigger,
+  success path, and intended file name, but not downloaded file persistence.
+- Mobile Web legacy-import preview smoke check on ports 54372 and 54373:
+  opening Settings and tapping `导入旧版库存` originally produced a Flutter Web
+  asset 404 warning while probing the optional ignored
+  `legacy_inventory.local.json`; after checking the asset manifest before
+  loading the override, the preview dialog opened on the empty bundled legacy
+  file with all counts at 0 and no current-port browser warning or error logs.
 - Mobile Web catalog search smoke check on port 54340: opened the Items tab,
   searched for `牛奶`, saw the catalog narrow to `鲜牛奶` while keeping the
   expiring mini-card visible, then opened the result to
   `?route=items%2Fwiki%2Fwiki-milk` with no browser warning or error logs.
+- Mobile Web browser-history smoke check on port 54380 after switching the root
+  app shell to `MaterialApp.router`, then repeated on port 54382 after making
+  route parsing synchronous: loaded `?route=items&q=牛奶`, opened the `鲜牛奶`
+  item-profile detail at `?route=items%2Fwiki%2Fwiki-milk`, used browser Back
+  to return to the searched catalog with `q=牛奶`, then used browser Forward to
+  reopen `?route=items%2Fwiki%2Fwiki-milk`. The URL stayed hash-free, the
+  detail page rendered, and no browser warning or error logs appeared.
 - Mobile Web catalog category-filter smoke check on port 54361: opened the
   Items tab, selected the `日用品` category chip, verified the URL changed to
   `?route=items&category=cat-daily` and the catalog list narrowed to `牙膏`,
@@ -115,12 +1343,32 @@ check confirmed it hands off cleanly to the rendered Home screen.
   its own transparent `Material`, the edit screen opened with no browser
   warning or error logs, and saving `存放位置` as `冷藏` was visible on the
   inventory detail facts after reload.
+- Mobile Web inventory-edit tags/reminder smoke check on port 54370: opened
+  `鲜牛奶` inventory detail, edited the batch, selected `临期优先` and `常用`,
+  changed reminder lead time from `3` days to `1` day, and saved. The detail
+  screen updated reminder date from `2026-06-18` to `2026-06-20`, showed
+  `提前天数 1 天` in the facts card, and rendered the saved tags in the `标签`
+  card with no browser warning or error logs.
+- Mobile Web inventory-reminder disable smoke check on port 54371: opened
+  `鲜牛奶` inventory detail, edited the batch, turned off `启用过期提醒`, and
+  saved. The detail reminder card changed its status pill from `已启用` to
+  `已关闭`, the facts card showed `提醒开关 关闭`, and the `提前天数` fact row
+  was hidden while the expiry date stayed intact, with no browser warning or
+  error logs.
 - Mobile Web item-profile edit smoke check on port 54349: editing `鲜牛奶`
   originally saved data but left the detail page stale and produced a Flutter
   debug assertion from an async-looking `setState` refresh callback; after
   reworking the detail refresh, saving a second description marker returned to
   the item-profile detail with the new description visible immediately and no
   new browser warning or error logs.
+- Mobile Web item-profile default-field edit smoke check on port 54394: added
+  `profile-default-test`, opened its item-profile detail, edited default unit
+  to `盒`, suggested shelf life to `14` days, default reminder lead time to
+  `2` days, storage location to `冷藏`, and notes to `默认值内测备注`. The first
+  pass exposed that notes saved but were invisible on the detail page; after
+  showing non-empty notes in the profile facts card, the rebuilt Web app showed
+  default unit, shelf life, reminder lead time, storage location, and notes
+  immediately after save with no browser warning or error logs.
 - Mobile Web item-profile batch-location smoke check on port 54350: opened
   `鲜牛奶`, entered batch mode, selected the inventory batch, used `改位置`,
   chose `冷冻`, saw `已修改 1 条库存的位置`, verified the batch card showed
@@ -140,6 +1388,13 @@ check confirmed it hands off cleanly to the rendered Home screen.
   error logs. The first pass exposed that the facts card said `库存批次 1`
   while the batch list showed both active and consumed rows, so the facts label
   was clarified to `使用中批次`.
+- Mobile Web item-profile batch-delete smoke check on port 54390: manually
+  added `batch-delete-test` twice and verified the catalog merged them into
+  one item profile with `2` batches, opened the item-profile detail, entered
+  `批量` mode, used `全选`, confirmed `批量删除库存`, saw the detail page exit
+  selection mode with `使用中批次 0`, `暂无库存`, and `已删除 2 条库存记录`,
+  returned to the catalog and verified the profile count was `0` batches, then
+  deleted the empty test profile, with no browser warning or error logs.
 - Mobile Web consume-restore smoke check on port 54355: opened `面包`
   inventory detail, confirmed `标记已消耗`, verified it appeared in History as
   `已消耗`, opened the consumed detail, used `恢复为使用中`, then verified
@@ -151,6 +1406,13 @@ check confirmed it hands off cleanly to the rendered Home screen.
   `感冒药` changed to `0` batches, then reopened the deleted direct detail URL
   and saw the friendly `库存记录不存在` empty state with no browser warning or
   error logs.
+- Mobile Web item-profile delete smoke check on port 54389: added
+  `profile-delete-test`, opened its item-profile detail, verified deleting the
+  profile was blocked while `使用中批次` was `1`, deleted the inventory batch,
+  saw the profile update to `使用中批次 0` with the `暂无库存` empty state,
+  deleted the now-empty profile, verified catalog search showed
+  `没有匹配物品`, and reopened the stale profile URL to the friendly
+  `物品资料不存在` empty state with no browser warning or error logs.
 - Mobile Web shopping-item delete smoke check on port 54357: opened the
   shopping tab, added the `面包` replenishment suggestion to the pending list,
   opened the row menu, confirmed the destructive `删除采购项` dialog, and
@@ -176,19 +1438,63 @@ check confirmed it hands off cleanly to the rendered Home screen.
   verified the address bar stayed on the query route without a Flutter hash
   fragment while rendering the inventory detail page with no browser warning
   or error logs.
-- Targeted UI-copy grep for engineering terms found no new actionable
+- Desktop Web direct inventory-detail URL regression check on port 54381 after
+  switching the root app shell to `MaterialApp.router`: loaded
+  `?route=items%2Fitem%2Fitem-bread-1` directly and verified it rendered the
+  `面包` inventory detail page. The URL stayed hash-free and no browser warning
+  or error logs appeared.
+- Initial targeted UI-copy grep for engineering terms found no new actionable
   user-facing leaks. The remaining AI `JSON` wording is confined to prompts or
   internal exceptions and is wrapped by the user-friendly recipe fallback copy.
-- `flutter build macos --debug`: blocked by local environment. Flutter reached
-  Xcode dependency resolution, then failed because the active developer
-  directory is Command Line Tools and `xcodebuild` is unavailable to `xcrun`.
+- Follow-up UI-copy scan found inventory-detail import traces could display
+  internal source values such as `legacy` and import batch identifiers for
+  older imported rows. The detail page now maps that source to `旧版库存` and
+  hides internal import batch ids from the user-facing trace.
+- The same copy pass found Settings restore/import feedback using
+  implementation-flavored terms like `恢复前快照`, `健康检查`, and `日志`.
+  Those labels now use user-facing backup/check/detail wording instead.
+- A follow-up Settings copy pass found the then-visible built-in check still
+  used acceptance-style wording. That user-facing entry was later removed; the
+  internal check-data labels still use `应用自检` language.
+- Inspecting the app self-check failure path found failed check details would
+  include raw Dart prefixes such as `Bad state:` before the useful message.
+  Internal self-check failures now strip those technical prefixes.
+- `flutter build macos --debug`: initially blocked by local environment.
+  Flutter reached Xcode dependency resolution, then failed because the active
+  developer directory was Command Line Tools and `xcodebuild` was unavailable
+  to `xcrun`. After the user installed Xcode and accepted the license, the same
+  command passed and produced the debug macOS app bundle.
+- Xcode environment setup attempt after user approval: installed Homebrew
+  `cocoapods`, `mas`, `xcodes`, and `aria2`. `xcodes install 26.5` could not
+  proceed without Apple ID credentials, and `mas get 497799835` failed while
+  looking up Xcode through the App Store API with a TLS error. The App Store
+  Xcode page was opened for manual sign-in/install.
+- `flutter run -d macos`: initially blocked by missing full Xcode, then passed
+  after Xcode 26.5 was installed and selected. The app launched in debug mode
+  and exposed a Dart VM Service; the shell reported `Failed to foreground app`
+  after launch.
 - `flutter build apk --debug`: blocked by local environment after downloading
   Flutter Android artifacts; Flutter reported no Android SDK.
 - `xmllint --noout mobile/android/app/src/main/AndroidManifest.xml`: passed
   after adding the Android boot/package-replaced reminder receiver.
-- `flutter doctor -v`: confirmed no Android SDK, incomplete Xcode, missing
-  CocoaPods, no Chrome binary, and sandboxed network checks failing without
-  elevated network access.
+- `flutter doctor -v`: initially confirmed no Android SDK, incomplete Xcode,
+  missing CocoaPods, no Chrome binary, and sandboxed network checks failing
+  without elevated network access. After installing CocoaPods and rerunning with
+  elevated network access, it confirmed CocoaPods 1.16.2 and healthy network
+  resources. After Xcode 26.5 was installed and selected, doctor no longer
+  reported missing first-launch components; only Android SDK, Chrome, and
+  simulator runtime gaps remained relevant outside the macOS desktop target.
+  Rechecked on 2026-06-19 with the bundled Flutter SDK: Android SDK is still
+  absent, only the macOS desktop device is detected, sandboxed network resource
+  checks still fail, and `xcodebuild -checkFirstLaunchStatus` returns success
+  even though `flutter doctor` still emits a stale first-launch warning.
+  Rechecked on 2026-06-20 after `xcodebuild -runFirstLaunch`,
+  `xcodebuild -checkFirstLaunchStatus`, and `xcodebuild -license check` all
+  returned success: `flutter doctor` still reports the Xcode
+  additional-component warning, and elevated `xcrun simctl list runtimes` /
+  `xcrun simctl list devices` show no Simulator runtimes or devices. This
+  leaves iOS/Simulator validation unavailable, but does not block macOS desktop
+  build/test validation.
 - `python3 tools/perf_inventory_sqlite.py`: passed. Core inventory queries
   remained well under thresholds with 5,000 generated records: exact catalog
   search 0.683 ms, category filter 2.177 ms, today-action query 1.839 ms,
@@ -204,6 +1510,10 @@ check confirmed it hands off cleanly to the rendered Home screen.
   instead of retaining Flutter hash fragments.
 - Web route cleanup now covers the remaining detail entry points from home
   priority rows, item-profile batch rows, and recipe cards.
+- Web route cleanup now also handles generated non-ASCII recipe identifiers,
+  such as AI recipe titles in Chinese, without leaving Flutter hash fragments.
+- Web route restoration now opens direct rule-recipe links such as
+  `?route=recipes%2Fquick-breakfast` instead of only selecting the Recipes tab.
 - Web cold-start loading screen compiles into `build/web/index.html` and uses
   system Chinese fonts until Flutter's first frame has settled.
 - Web app metadata now uses the product name, inventory-focused description,
@@ -220,7 +1530,13 @@ check confirmed it hands off cleanly to the rendered Home screen.
 
 - Home dashboard renders summary, expiring priority inventory, and category
   distribution clearly after fonts load.
+- Desktop Web renders the main Home, Items, Add, Recipes, and Settings surfaces
+  in centered wide layouts without overlap, and the native loading screen now
+  hides the desktop Chinese-font settling window before handing off to Flutter.
 - Home total action badge opens the cleanup-focused inventory list.
+- Home reminder-due summary opens the focused reminder inventory list, and
+  today-action cards can be snoozed or ignored with immediate count/list
+  refresh and user feedback.
 - Home expiring-priority rows open inventory batch detail.
 - Catalog expiring mini cards open inventory batch detail.
 - Catalog search filters the live mobile Web list and search results still open
@@ -229,20 +1545,39 @@ check confirmed it hands off cleanly to the rendered Home screen.
   the full catalog without stale route state.
 - Manual add flow saved a test item, returned to the catalog, and the new
   item-profile detail opened from the live mobile Web UI.
+- Manual add also handles category, storage location, unit, and expiry-date
+  fields end to end, with catalog, item-profile detail, and inventory detail
+  staying consistent.
+- Manual add saves processing-priority tags from the mobile Web UI, and tagged
+  inventory displays those tags in item-profile and inventory detail views.
+- Manual add validation blocks blank names and non-positive quantities with
+  user-actionable inline messages, then allows saving once the user corrects
+  the fields.
 - Inventory detail quantity controls update visibly in both directions and the
   detail fact row stays in sync.
 - Inventory edit now opens without Flutter debug assertions in the live mobile
   Web UI, and edited storage location data persists into the detail facts.
+- Inventory edit can update reminder lead time and processing-priority tags,
+  and the inventory detail view reflects both changes immediately after save.
+- Inventory reminders can be disabled from the edit screen, and the detail
+  view reflects the disabled state without losing the expiry date.
 - Item-profile edit now saves from the live mobile Web UI and refreshes the
   detail header to the edited description without a manual browser reload.
+- Item-profile edit now shows saved notes in the profile facts card, along
+  with edited default unit, shelf life, reminder lead time, and storage
+  location.
 - Item-profile batch mode can update selected inventory storage locations, and
   both the batch card and inventory detail fact row stay in sync.
 - Item-profile batch category changes update the profile-level category and
   the inventory detail fact row consistently.
 - Item-profile batch consume can split a multi-quantity batch into active and
   consumed rows while keeping the active-batch count understandable.
+- Item-profile batch delete can select all visible inventory batches, remove
+  them together, clear selection mode, and keep profile/catalog counts in sync.
 - Direct Web detail URLs now clean up late Flutter hash fragments and keep the
   copyable address bar on the app's query-route format.
+- Browser Back from a searched catalog detail returns to the searched catalog
+  state with the keyword preserved.
 - Marking an inventory batch consumed removes it from active priority handling
   and shows it in the history tab as `已消耗`.
 - History search keeps matching consumed records visible and shows a
@@ -251,6 +1586,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
   History and back into active catalog and expiring views.
 - Deleting a single inventory batch returns to the catalog, updates the item
   count, and leaves a friendly empty state for stale direct detail URLs.
+- Empty item profiles can be deleted only after their inventory batches are
+  removed, and stale profile URLs resolve to a friendly empty state.
 - Shopping list checkbox moves a pending item into the purchased section.
 - Purchased shopping-list items can be unchecked back into the pending section
   after a mistaken tap.
@@ -261,22 +1598,86 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Shopping-list row deletion removes the pending item and lets its
   replenishment suggestion reappear.
 - Purchased shopping items can be converted into inventory after confirmation,
-  and the catalog count updates in the live mobile Web UI.
+  the catalog count updates in the live mobile Web UI, and shopping notes are
+  retained as inventory batch descriptions without polluting the item-profile
+  description.
+- Shopping conversion now has widget coverage for the confirmation dialog,
+  cancel path, controller handoff, and success feedback.
+- Uncategorized shopping items remain labeled `未分类` after conversion into
+  catalog, item-profile, and inventory-detail surfaces.
+- Catalog row cart actions add the selected item profile to the shopping list
+  without navigating away, and deleting that pending item restores the
+  replenishment suggestion state.
+- Focused inventory cards reached from Home action tiles can add their exact
+  batch to the shopping list while preserving the focused list route.
 - Recipes page lists priority consumables and concrete recipe suggestions.
 - AI recipe generation falls back to rule suggestions when the AI service is
   not configured, with user-facing copy and a reset action.
+- AI recipe generation succeeds against a reachable local OpenAI-compatible
+  endpoint, replaces the rule list with the AI result, and opens the generated
+  recipe detail without mixed query/hash routing.
+- Direct Web recipe URLs restore rule-generated recipe detail pages and return
+  to the recipe list cleanly from the detail back action.
+- Unrecoverable Web recipe detail URLs, such as stale AI-generated ids after a
+  refresh, now fall back to the recipe list instead of leaving a stale detail
+  route in the address bar.
 - Recipe detail shows consumed inventory, missing ingredients, steps, and the
   inventory deduction action.
+- Recipe cooking now has controller-level coverage that applies the detail
+  action's inventory-use quantities and verifies the deducted inventory values
+  are persisted.
+- Recipe favorites update from both the list and detail surfaces, and recently
+  viewed recipes appear in `最近生成` without stale favorite state.
 - Running a recipe deduction updates priority consumable counts in the live
   mobile Web UI and returns to the recipe list with user feedback.
-- Settings self-check completed and cleaned up its temporary data, and the
-  mobile Web UI shows the 15/15 result plus readable per-check timings.
+- Internal app self-check completed and cleaned up its temporary data.
+  Automated self-check coverage now verifies 17 checks including recipe
+  cooking deduction.
+- Settings now has widget coverage verifying developer-only self-check controls
+  are not rendered for users.
+- Rebuilt Web output on port 54390 and reloaded Settings in the in-app
+  browser. The old self-check position now flows directly from `食谱偏好` to
+  `订单识别 AI`, with no `应用自检` card and no browser warning/error logs.
+- Settings backup reminder UI now has widget coverage for the pending reminder
+  card, reason copy, accumulated change count, and export action.
+- Settings order-recognition key privacy now has widget coverage that verifies
+  a stored key keeps the API key field empty while showing configured and
+  locally saved status copy.
 - Settings recipe preferences save from the mobile Web UI and reload with the
   edited values still visible.
+- Settings recipe preferences now have automated coverage for default values,
+  text trimming, time/serving bounds, damaged persisted numeric values, and the
+  Settings save action that reloads normalized field values.
+- Settings order-recognition configuration saves from the mobile Web UI,
+  persists after reload without revealing the saved key, and can be cleared
+  through the confirmation dialog.
+- Settings order-recognition clear now persists blank service address and model
+  values instead of restoring defaults on the next load, while fresh first-run
+  settings still start from the built-in defaults.
+- Settings order-recognition `测试配置` can validate a reachable local
+  OpenAI-compatible endpoint and report `配置可用` without exposing the saved API
+  key in the UI.
+- Settings demo-data reset rebuilds the built-in sample data from the mobile
+  Web UI while preserving user-created inventory.
+- Settings demo-data reset now has widget coverage for the confirmation copy,
+  cancel path, reset call, and success message with cleared-row count.
 - Settings inventory-table export can be triggered from the live mobile Web UI,
   and the app shows success feedback without console warnings or errors.
+- Settings backup export can be triggered from the live mobile Web UI, and the
+  app shows success feedback without console warnings or errors.
+- Settings backup reminder appears in the live mobile Web UI after a bulk
+  local import reaches the dirty-change threshold, with user-facing copy that
+  explains a backup is recommended before more changes accumulate.
+- Settings backup reminder can be cleared from the live mobile Web UI by using
+  the reminder card's export action, and the card disappears after the app
+  reports `备份已导出`.
+- Settings legacy-import preview opens without probing missing optional local
+  assets, so the empty bundled import file no longer causes Web asset warnings.
 - Repository backup/restore tests cover pre-restore snapshots, replacement
   restore, post-restore health checks, and backup reminder clearing.
+- Repository backup/restore tests now verify a backup can round-trip user
+  inventory tags, ignored-reminder records, and pending shopping-list data
+  across a replacement restore.
 - Repository backup/restore tests now also reject incomplete or damaged backup
   files before any current data is replaced or a restore snapshot is created.
 - Repository export tests now verify the user-facing inventory table uses
@@ -284,19 +1685,52 @@ check confirmed it hands off cleanly to the rendered Home screen.
   plain calendar dates.
 - Repository export tests now verify the inventory table starts with a UTF-8
   marker so spreadsheet apps can detect Chinese text more reliably.
+- Repository export tests now verify inventory-table cells escape commas,
+  quotes, and newlines in user-entered item names, storage locations, tags,
+  and source labels.
 - Notification payload tests cover pending reminders, ignored reminders, title
   and body content, schedule time, and serialized timestamp fields.
 - Local notification sync result tests now cover supported, unauthorized,
   unsupported, missing implementation, and unknown failure copy.
+- Local notification sync service tests now verify granted sync sends the real
+  pending-reminder payload to the platform channel and denied permission skips
+  platform scheduling.
 - Local notification permission channel tests now cover native status parsing
   and platform-exception fallback copy.
 - Local notification permission copy tests now cover the unsupported-platform
   hint shown in Settings when native scheduling actions are disabled.
 - Local notification channel tests now cover tap callbacks, malformed tap
   payloads, and safe launch-target fallback when the platform call fails.
+- Local notification controller handoff tests now verify a notification tap
+  target is stored for the app shell and consumed exactly once.
+- Local notification controller tests now verify requesting permission triggers
+  reminder sync only after authorization is granted, and skips scheduling when
+  permission is denied.
+- macOS RunnerTests now verify the native notification request builder maps
+  Dart channel payloads to `inventory-<itemId>` request identifiers, preserves
+  `itemId` in `userInfo`, skips malformed rows, and enforces the minimum
+  trigger delay used before adding `UNNotificationRequest`s. They also verify
+  the scheduled inventory reminder's native content title/body/sound/userInfo,
+  future trigger timing, the immediate Settings test notification request's
+  diagnostic identifier prefix, copy, and 1-second trigger; native notification
+  permission statuses map to the Flutter channel contract; and notification tap
+  payloads store/emit the selected inventory item id.
 - Android notification scheduling now persists pending reminder payloads and
   registers boot/package-replaced restoration points; runtime proof still needs
   an Android SDK/device environment.
+- Android scheduled reminder delivery now checks `POST_NOTIFICATIONS` again in
+  the broadcast receiver and catches `SecurityException` before posting, so a
+  reminder firing after the user revokes notification permission should be
+  skipped instead of crashing the receiver.
+- Notification tap and launch-target item ids are now normalized across Dart,
+  Android, and macOS bridges. Blank or whitespace-only platform payloads are
+  ignored, and item ids with accidental surrounding whitespace are trimmed
+  before routing to inventory detail.
+- Added a long-term source-level user-facing copy guard for screens and shared
+  widgets. It scans Dart string literals while ignoring interpolation
+  expressions, and fails if Settings, app pages, dialogs, snackbars, or shared
+  UI copy reintroduce terms such as `应用自检`, `SQLite`, `Wiki`, `legacy`,
+  `ISO-8601`, or `payload`.
 - Bootstrap error page tests now verify startup diagnostics remain copyable
   without exposing technical details on screen by default.
 - AI recipe fallback tests now verify service failures still return rule-based
@@ -305,6 +1739,19 @@ check confirmed it hands off cleanly to the rendered Home screen.
   response snippets stay out of user-facing configuration messages.
 - Pasted order-text import now has live mobile Web coverage from text parsing
   through review confirmation and catalog verification.
+- Order-text review supports editing recognized quantities, filling missing
+  units, excluding selected rows such as gifts, and confirming low-confidence
+  items before batch import.
+- Order-import review now has widget coverage for low-confidence confirmation,
+  primary import-count updates, batch confirmation copy, and the final
+  controller handoff for confirmed items.
+- Pasted order-text parsing now ignores standalone order/reference id lines so
+  users do not have to manually exclude an obvious non-inventory row.
+- Order-recognition parser tests now cover standalone reference lines in
+  pasted order text while keeping normal product rows intact.
+- Repository shopping-list conversion tests now verify converted shopping
+  notes are retained on inventory batches and do not become item-profile
+  descriptions.
 
 ## Fixes Made During This Pass
 
@@ -330,6 +1777,9 @@ check confirmed it hands off cleanly to the rendered Home screen.
   screenshot in app storage.
 - Expanded pasted order text unit parsing so common units like `枚` and `根`
   do not get stuck in the item name or default to quantity 1.
+- Filtered standalone order/reference id lines out of pasted order-text import
+  so strings such as `BETA-BACKUP-001` do not appear as low-confidence
+  inventory candidates.
 - Disabled local notification action buttons on unsupported platforms so users
   do not have to click a dead-end action to learn that reminders cannot be
   scheduled there.
@@ -340,6 +1790,12 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Simplified the backup restore success message so it does not expose an
   implementation-level restored row count as if it were a user-facing item
   count.
+- Preserved shopping-list notes when checked items are converted into
+  inventory by saving the note on the inventory batch description without
+  syncing it into the item-profile description.
+- Unified null-category fallback copy to `未分类` across catalog cards,
+  item-profile facts, and inventory-detail facts, while leaving the real
+  `其他` category unchanged.
 - Reworded local notification sync failures so platform/plugin error codes are
   not shown directly to users.
 - Added Android reminder restoration after device reboot or app update by
@@ -357,19 +1813,44 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Fixed nullable SQL query arguments in shopping-list de-duplication and legacy
   duplicate detection so sqflite no longer logs a future-breaking null argument
   warning.
+- Changed legacy import asset loading to consult the Flutter asset manifest
+  before loading the ignored `.local` override, avoiding a Web 404 warning when
+  only the bundled empty legacy file is present.
 - Cleaned up Web detail route syncing so copied detail URLs are no longer set
   up to keep both the app route query and a Flutter hash route after
-  navigation; this pass verified compilation, while browser address-bar
-  automation was unavailable locally.
+  navigation; later browser-history and direct-route checks verified the
+  address bar stays on hash-free query routes.
 - Extended the same route cleanup pattern to home priority rows, item-profile
   batch rows, and recipe detail navigation so those natural beta-user paths
   avoid mixed query/hash URLs too.
 - Strengthened Web route hash cleanup with delayed retries so direct detail
   URLs also remove late Flutter hash fragments after the Navigator settles.
+- Canonicalized Web route comparisons so non-ASCII generated routes, including
+  Chinese AI recipe ids, are compared consistently with URL-encoded query
+  routes before clearing Flutter hash fragments.
+- Added recipe-detail restoration for Web route startup and history changes,
+  so stable rule recipe ids can be opened from copied URLs or browser reloads.
+- Added a recipe-route fallback that replaces unrecoverable detail ids with
+  `/recipes`, keeping stale generated links from leaving misleading URLs.
 - Added a lightweight Web loading screen that uses native system Chinese fonts,
   matches the app's warm visual style, honors reduced-motion preferences, and
-  hides shortly after Flutter's first frame to reduce the cold-start square-text
-  flash.
+  hides after Flutter's first frame to reduce the cold-start square-text flash.
+- Extended the Web loading screen's first-frame delay after desktop direct-route
+  testing showed CanvasKit could briefly expose square Chinese glyphs before
+  fonts settled.
+- Hardened the Web loading screen hide handler with inline opacity,
+  visibility, and pointer-events styles after browser retesting showed class
+  toggling alone could leave the layer intercepting clicks.
+- Added a custom Web bootstrap that omits Flutter service-worker registration,
+  unregisters stale same-origin service workers, deletes stale Flutter Cache
+  Storage entries, and reloads once when the current page is still controlled
+  by an old worker.
+- Added no-cache hints to the Web entry HTML and cache-busted the bootstrap
+  script request so a current index page is less likely to execute stale Web
+  startup code.
+- Added Web `_headers` cache policy for common static hosts so entry and
+  startup scripts, including Flutter's generated `flutter_service_worker.js`,
+  are served with no-cache/no-store semantics after deployment.
 - Replaced Web/PWA template metadata so browser tabs and installed app surfaces
   show `vibe-fridge`, the app's actual inventory purpose, and product colors.
 - Reworded macOS camera and photo permission prompts to match the app's Chinese
@@ -382,6 +1863,8 @@ check confirmed it hands off cleanly to the rendered Home screen.
 - Reworked item-profile detail refresh after editing so saved profile changes
   reload from controller changes and remain visible without a manual browser
   refresh.
+- Displayed non-empty item-profile notes in the profile detail facts card, so
+  notes entered on the edit screen are visible after saving.
 - Clarified item-profile batch category copy so the picker and success
   feedback describe the profile-level category being changed instead of
   implying only one inventory batch owns the category.
@@ -392,11 +1875,134 @@ check confirmed it hands off cleanly to the rendered Home screen.
   updates refresh without returning a `Future` from `setState`.
 - Reworded the history-page filtered-empty state so searching within existing
   history no longer implies there are no historical records at all.
+- Reworded inventory-detail import traces so old imports show `旧版库存` rather
+  than raw internal source values, and internal import batch ids are no longer
+  displayed as user-facing details.
+- Switched the main app shell to `MaterialApp.router` with a root Navigator
+  that leaves browser history ownership to the app's query-route state, fixing
+  browser Forward from a searched catalog detail back into the same detail URL.
+- Reworded Settings restore/import feedback from snapshot, health-check, and
+  log terminology to backup, check, detail, and record wording.
+- Reworded Settings built-in check copy from acceptance wording to
+  app self-check wording.
+- Removed the Settings app self-check card and run action so developer-only
+  diagnostics are no longer exposed to users.
+- Cleaned app self-check failure details so internal reports show the
+  actionable reason without raw exception prefixes.
+- Extended the internal app self-check so it also verifies backup content
+  includes inventory rows, tag links, reminder logs, and shopping-list data.
+- Clarified the generic error snackbar action from `复制` to `复制详情`, keeping
+  technical diagnostics out of the visible message while making the hidden copy
+  action understandable.
+- Reworded the backup reminder card from row/export wording to inventory-data
+  backup wording, so users see why they should back up after local changes
+  without spreadsheet-like implementation terms.
+- Reworded data-health check messages from internal status/field names to
+  inventory and profile language, so import or restore issues explain what
+  needs attention without exposing raw state values.
+- Reworded legacy-import and demo-reset summaries from data-row wording to
+  user-facing record wording, including preview counts, import results, and
+  example-data cleanup feedback.
+- Reworded the order-recognition key copy from storage terminology to
+  `密钥状态` / `本机安全保存` / `本机安全区域`, so Settings describes the outcome
+  rather than the implementation.
+- Fixed macOS order-recognition configuration saves failing with
+  `PlatformException(Unexpected security result code, Code: -34018)` by
+  storing the VLM API key through the regular macOS Keychain path instead of
+  the Data Protection Keychain path that requires an entitlement not present in
+  local debug builds.
+- Fixed macOS reminder sync reporting success before `UNUserNotificationCenter`
+  finished adding pending requests. The native bridge now waits for all add
+  completions and returns `schedule_failed` if the system rejects a request, so
+  Settings shows a sync failure instead of `已同步` for a failed platform
+  schedule.
+- Added WebDAV cloud backup in Settings, including configuration storage,
+  connection testing, backup upload, latest-backup restore confirmation, and
+  user-facing copy that warns Web users when the cloud service needs to allow
+  browser access.
+- Fixed two WebDAV Settings issues found during browser smoke testing: after
+  saving a WebDAV password, the password field is now rebuilt so Flutter Web no
+  longer keeps the secret in the active text-editing DOM value; WebDAV actions
+  also clear stale snackbars before running so a previous authentication error
+  does not remain visible after a successful retry or upload.
+- Rechecked the live Settings WebDAV path on the existing in-app browser tab:
+  a stopped local WebDAV endpoint produced actionable connection-failure copy,
+  then a fresh local endpoint accepted saved credentials, connection testing,
+  and backup upload without browser warning/error logs.
+- Fixed a macOS runtime launch exception discovered during desktop validation:
+  AppDelegate no longer calls FlutterAppDelegate's unimplemented optional
+  launch selector, and a rebuilt debug app now starts far enough to initialize
+  and query the notification center without that exception.
+- Added macOS native coverage that the launched app's
+  `UNUserNotificationCenter.current().delegate` is the app delegate, proving
+  system notification responses have a registered app-side entry point before
+  manual delivery and click validation.
+- Added direct macOS AppDelegate payload-routing coverage so the delegate layer
+  now proves notification response userInfo is handed to the shared tap handler,
+  stores the launch target, and posts the in-process tap event without needing
+  a real delivered notification.
+- Added a debug-only VM Service extension for beta smoke testing of the running
+  macOS app's notification permission channel. It is not visible in the UI and
+  is not release behavior, but it lets local validation prove the live Flutter
+  app can reach the native notification bridge. Added a second explicit
+  debug-only extension for sending a diagnostic test notification when a manual
+  authorization pass intentionally opts into `--send-test`. Extracted the
+  payload builders behind those extensions so the smoke-contract JSON shapes
+  have durable Flutter test coverage.
+- Added `tools/check_notification_status.mjs`, a reusable local smoke helper
+  that calls the debug VM Service extension for a running Flutter app and
+  validates the notification status payload shape before printing the result.
+  It can optionally assert expected `supported`, `granted`, and `status`
+  values for repeatable beta validation, can wait for debug extension
+  registration with `--wait-extension-ms`, and can call the diagnostic
+  test-notification extension only when `--send-test` is supplied.
+- Added `tools/run_macos_notification_smoke.mjs`, an automated local runner
+  that launches the macOS Flutter target, waits for the VM Service URL, runs
+  the notification status helper after a short extension-registration wait, and
+  exits the app. This makes the current macOS notification-channel smoke
+  reproducible without manual URL copying, and keeps the send-test path opt-in.
+- Added `tools/check_android_environment.mjs`, a read-only Android runtime
+  gate that runs Flutter's devices, emulators, and doctor checks, prints a
+  compact JSON report, and fails until an Android SDK and Android runtime target
+  are available.
+- Added `ext.vibe_fridge.secureStorageSmoke` plus
+  `tools/check_secure_storage_smoke.mjs` and
+  `tools/run_macos_secure_storage_smoke.mjs`, giving beta validation a
+  repeatable way to prove the running macOS app can write, read, and delete a
+  temporary secure-storage value without using real user secrets.
 
 ## Remaining Risks
 
-- Android and macOS local notification behavior still needs device or desktop
-  runtime validation on a machine with Android SDK and full Xcode/CocoaPods.
-- The native notification implementations still need runtime proof even though
-  the Dart service degrades cleanly when permission is missing, unsupported, or
-  the platform channel is absent.
+- Android local notification behavior still needs runtime validation on a
+  machine with Android SDK configured. A current `flutter devices` check still
+  detects only macOS, and `flutter doctor -v` still reports no Android SDK.
+  A 2026-06-20 `flutter build apk --debug` recheck still stops before Android
+  compilation with no Android SDK, and `flutter emulators` reports no emulator
+  sources. A later 2026-06-20 recheck after the full Flutter regression recheck
+  produced the same result: only macOS was detected, no emulator sources were
+  available, `flutter doctor -v` reported `Unable to locate Android SDK`, and
+  `flutter build apk --debug` stopped with `[!] No Android SDK found`.
+  Android source-level manifest/channel/payload wiring and the immediate
+  test-notification channel are now covered by tests, but scheduled reminder
+  delivery, permission prompts, and notification-click routing still need a
+  device or emulator.
+- macOS app build and repaired launch are now proven locally, but macOS
+  notification permission, due reminder delivery, and notification-click routing
+  still need targeted desktop runtime validation. The native bridge/delegate
+  source wiring, runtime delegate registration, live running-app permission
+  status channel, immediate test-notification channel, scheduling payload
+  builder, async scheduling completion/error handling, permission-status mapper,
+  and tap payload handoff are now covered by tests or smoke hooks, but system
+  notification behavior is not fully replaceable with unit tests.
+- Web app updates can still be masked by older same-origin browser cache or
+  previously registered service-worker state. During Settings retesting, port
+  54371 still showed older self-check wording after a rebuild, while fresh port
+  54372 loaded the current build. The custom bootstrap now avoids registering a
+  replacement Flutter service worker, clears stale registrations, and deletes
+  stale Flutter Cache Storage entries once the current index is loaded, and the
+  current entry HTML discourages browser caching plus cache-busts the bootstrap
+  request. The generated Web build also includes `_headers` no-cache policy for
+  common static hosts, including `flutter_service_worker.js`, and a same-origin
+  simulation with a stale worker plus stale Flutter cache now recovers cleanly.
+  Deployment hosts that ignore `_headers` still need equivalent HTTP cache
+  headers before hosted update behavior is fully proven.

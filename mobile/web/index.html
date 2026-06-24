@@ -18,6 +18,9 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <meta
     name="description"
     content="vibe-fridge helps you manage home inventory, expiry reminders, shopping, and recipe ideas."
@@ -162,13 +165,27 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
-  <script src="flutter_bootstrap.js" async></script>
+  <script>
+    const bootstrapScript = document.createElement('script');
+    bootstrapScript.async = true;
+    bootstrapScript.src = `flutter_bootstrap.js?v=${Date.now()}`;
+    document.body.appendChild(bootstrapScript);
+  </script>
   <script>
     const loadingScreen = document.getElementById('app-loading');
-    const hideLoadingScreen = () => loadingScreen?.classList.add('is-hidden');
+    const hideLoadingScreen = () => {
+      if (!loadingScreen) {
+        return;
+      }
+
+      loadingScreen.classList.add('is-hidden');
+      loadingScreen.style.opacity = '0';
+      loadingScreen.style.pointerEvents = 'none';
+      loadingScreen.style.visibility = 'hidden';
+    };
 
     window.addEventListener('flutter-first-frame', () => {
-      window.setTimeout(hideLoadingScreen, 240);
+      window.setTimeout(hideLoadingScreen, 4200);
     });
     window.setTimeout(hideLoadingScreen, 8000);
   </script>

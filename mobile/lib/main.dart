@@ -1,30 +1,113 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/services.dart';
 
 import 'data/app_database.dart';
+import 'data/debug_service_extensions.dart';
 import 'data/inventory_controller.dart';
 import 'data/inventory_repository.dart';
 import 'screens/app_shell.dart';
 import 'theme/app_theme.dart';
 
+const bootstrapInitializationTimeout = Duration(seconds: 12);
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  try {
-    final database = await AppDatabase.open();
-    final repository = InventoryRepository(database);
-    final controller = InventoryController(repository);
-    await controller.initialize();
+  runApp(const VibeFridgeBootstrapApp());
+}
 
-    runApp(VibeFridgeApp(controller: controller));
-  } catch (error, stackTrace) {
-    runApp(
-      VibeFridgeBootstrapErrorApp(
+@visibleForTesting
+Future<InventoryController> loadInventoryControllerForBootstrap() async {
+  final database = await withBootstrapTimeout(
+    AppDatabase.open(),
+    operation: '打开本地资料',
+  );
+  final repository = InventoryRepository(database);
+  final controller = InventoryController(repository);
+  await withBootstrapTimeout(
+    controller.initialize(),
+    operation: '加载库存资料',
+  );
+  registerDebugServiceExtensions(controller);
+  return controller;
+}
+
+typedef BootstrapControllerLoader = Future<InventoryController> Function();
+
+class VibeFridgeBootstrapApp extends StatefulWidget {
+  const VibeFridgeBootstrapApp({
+    super.key,
+    this.controllerLoader = loadInventoryControllerForBootstrap,
+  });
+
+  final BootstrapControllerLoader controllerLoader;
+
+  @override
+  State<VibeFridgeBootstrapApp> createState() => _VibeFridgeBootstrapAppState();
+}
+
+class _VibeFridgeBootstrapAppState extends State<VibeFridgeBootstrapApp> {
+  InventoryController? _controller;
+  Object? _error;
+  StackTrace? _stackTrace;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadController());
+  }
+
+  Future<void> _loadController() async {
+    try {
+      final controller = await widget.controllerLoader();
+      if (!mounted) {
+        return;
+      }
+      setState(() => _controller = controller);
+    } catch (error, stackTrace) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _error = error;
+        _stackTrace = stackTrace;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = _controller;
+    if (controller != null) {
+      return VibeFridgeApp(controller: controller);
+    }
+    final error = _error;
+    final stackTrace = _stackTrace;
+    if (error != null && stackTrace != null) {
+      return VibeFridgeBootstrapErrorApp(
         error: error,
         stackTrace: stackTrace,
-      ),
-    );
+      );
+    }
+    return const VibeFridgeBootstrapLoadingApp();
   }
+}
+
+@visibleForTesting
+Future<T> withBootstrapTimeout<T>(
+  Future<T> future, {
+  required String operation,
+  Duration timeout = bootstrapInitializationTimeout,
+}) {
+  return future.timeout(
+    timeout,
+    onTimeout: () {
+      throw TimeoutException('启动初始化超时：$operation', timeout);
+    },
+  );
 }
 
 class VibeFridgeApp extends StatelessWidget {
@@ -34,7 +117,7 @@ class VibeFridgeApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       title: 'vibe-fridge',
       theme: AppTheme.light(),
@@ -49,7 +132,122 @@ class VibeFridgeApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      home: AppShell(controller: controller),
+      routeInformationParser: const _VibeFridgeRouteParser(),
+      routerDelegate: _VibeFridgeRouterDelegate(controller),
+    );
+  }
+}
+
+class VibeFridgeBootstrapLoadingApp extends StatelessWidget {
+  const VibeFridgeBootstrapLoadingApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'vibe-fridge',
+      theme: AppTheme.light(),
+      themeMode: ThemeMode.light,
+      home: Scaffold(
+        body: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: AppBreakpoints.contentMaxWidth,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.pageHorizontal),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: AppSizes.emptyIconContainer,
+                      height: AppSizes.emptyIconContainer,
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryContainer,
+                        borderRadius: BorderRadius.circular(AppRadii.large),
+                      ),
+                      child: const Icon(
+                        Icons.kitchen_outlined,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.fieldGap),
+                    Text(
+                      '正在整理你的库存',
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.w900,
+                              ),
+                    ),
+                    const SizedBox(height: AppSpacing.cardGap),
+                    Text(
+                      '这通常只需要几秒。',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                    ),
+                    const SizedBox(height: AppSpacing.sectionGap),
+                    const LinearProgressIndicator(minHeight: 4),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _VibeFridgeRouteParser extends RouteInformationParser<String> {
+  const _VibeFridgeRouteParser();
+
+  @override
+  Future<String> parseRouteInformation(
+    RouteInformation routeInformation,
+  ) {
+    return SynchronousFuture(routeInformation.uri.toString());
+  }
+
+  @override
+  RouteInformation restoreRouteInformation(String configuration) {
+    return RouteInformation(uri: Uri.parse(configuration));
+  }
+}
+
+class _VibeFridgeRouterDelegate extends RouterDelegate<String>
+    with ChangeNotifier, PopNavigatorRouterDelegateMixin<String> {
+  _VibeFridgeRouterDelegate(this.controller);
+
+  final InventoryController controller;
+
+  @override
+  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+  String _configuration = '/';
+
+  @override
+  String get currentConfiguration => _configuration;
+
+  @override
+  Future<void> setNewRoutePath(String configuration) async {
+    _configuration = configuration;
+    notifyListeners();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Navigator(
+      key: navigatorKey,
+      pages: [
+        MaterialPage<void>(
+          child: AppShell(controller: controller),
+        ),
+      ],
+      onDidRemovePage: (_) {},
     );
   }
 }

@@ -302,7 +302,10 @@ class ItemsScreenState extends State<ItemsScreen> {
                               );
                               setWebRouteState(route, replace: true);
                               await detail;
-                              _syncItemsRoute(replace: true);
+                              if (!supportsWebRouteState ||
+                                  isCurrentWebRoute(route)) {
+                                _syncItemsRoute(replace: true);
+                              }
                               if (mounted) {
                                 await widget.controller.refresh();
                               }
@@ -380,7 +383,9 @@ class ItemsScreenState extends State<ItemsScreen> {
     );
     setWebRouteState(route, replace: true);
     await detail;
-    _syncItemsRoute(replace: true);
+    if (!supportsWebRouteState || isCurrentWebRoute(route)) {
+      _syncItemsRoute(replace: true);
+    }
     if (mounted) {
       await widget.controller.refresh();
     }
@@ -1422,7 +1427,7 @@ class _RegisteredItemTile extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   [
-                    item.categoryName ?? '其他',
+                    item.categoryName ?? '未分类',
                     if (item.storageLocation != null) item.storageLocation!,
                     if (item.defaultUnit != null) '单位 ${item.defaultUnit}',
                   ].join(' · '),

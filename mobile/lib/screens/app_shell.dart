@@ -27,6 +27,7 @@ class _AppShellState extends State<AppShell> {
   int _index = 0;
   final List<Widget?> _screens = List<Widget?>.filled(_tabCount, null);
   final _itemsScreenKey = GlobalKey<ItemsScreenState>();
+  final _recipesScreenKey = GlobalKey<RecipesScreenState>();
   StreamSubscription<String>? _webRouteSubscription;
 
   @override
@@ -109,16 +110,37 @@ class _AppShellState extends State<AppShell> {
       }
       _index = index;
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) {
         return;
       }
       Navigator.of(context).popUntil((route) => route.isFirst);
       if (index == 1) {
         _itemsScreenKey.currentState?.applyRequest(_itemsRequestFromUri(uri));
-        _openItemsDetailForRoute(uri);
+        if (_isItemsDetailRoute(uri)) {
+          await _waitForWebRouteSettle(route);
+          if (!mounted || !isCurrentWebRoute(route)) {
+            return;
+          }
+        }
+        await _openItemsDetailForRoute(uri);
+      } else if (index == 3) {
+        if (_isRecipeDetailRoute(uri)) {
+          await _waitForWebRouteSettle(route);
+          if (!mounted || !isCurrentWebRoute(route)) {
+            return;
+          }
+        }
+        _openRecipeDetailForRoute(uri);
       }
     });
+  }
+
+  Future<void> _waitForWebRouteSettle(String route) async {
+    if (!supportsWebRouteState || !isCurrentWebRoute(route)) {
+      return;
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 80));
   }
 
   int _indexForWebRoute(Uri uri) {
@@ -182,7 +204,9 @@ class _AppShellState extends State<AppShell> {
       );
       setWebRouteState(route, replace: true);
       await detail;
-      setWebRouteState('/items', replace: true);
+      if (!supportsWebRouteState || isCurrentWebRoute(route)) {
+        setWebRouteState('/items', replace: true);
+      }
       return;
     }
     if (kind == 'wiki') {
@@ -198,8 +222,32 @@ class _AppShellState extends State<AppShell> {
       );
       setWebRouteState(route, replace: true);
       await detail;
-      setWebRouteState('/items', replace: true);
+      if (!supportsWebRouteState || isCurrentWebRoute(route)) {
+        setWebRouteState('/items', replace: true);
+      }
     }
+  }
+
+  bool _isItemsDetailRoute(Uri uri) {
+    return uri.pathSegments.length >= 3 && uri.pathSegments.first == 'items';
+  }
+
+  void _openRecipeDetailForRoute(Uri uri) {
+    if (uri.pathSegments.length < 2 || uri.pathSegments.first != 'recipes') {
+      return;
+    }
+    final id = uri.pathSegments[1];
+    if (id.isEmpty) {
+      return;
+    }
+    final opened = _recipesScreenKey.currentState?.openRecipeById(id) ?? false;
+    if (!opened) {
+      setWebRouteState('/recipes', replace: true);
+    }
+  }
+
+  bool _isRecipeDetailRoute(Uri uri) {
+    return uri.pathSegments.length >= 2 && uri.pathSegments.first == 'recipes';
   }
 
   String _routeForIndex(int index) {
@@ -280,7 +328,9 @@ class _AppShellState extends State<AppShell> {
         ),
       )
           .then((_) {
-        setWebRouteState('/items', replace: true);
+        if (!supportsWebRouteState || isCurrentWebRoute(route)) {
+          setWebRouteState('/items', replace: true);
+        }
       });
       setWebRouteState(route, replace: true);
     });
@@ -307,7 +357,10 @@ class _AppShellState extends State<AppShell> {
           controller: widget.controller,
           onItemSaved: () => _select(1),
         ),
-      3 => RecipesScreen(controller: widget.controller),
+      3 => RecipesScreen(
+          key: _recipesScreenKey,
+          controller: widget.controller,
+        ),
       4 => SettingsScreen(controller: widget.controller),
       _ => const SizedBox.shrink(),
     };

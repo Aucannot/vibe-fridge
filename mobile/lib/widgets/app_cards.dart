@@ -707,7 +707,7 @@ void showAppErrorSnackBar(
     SnackBar(
       content: Text(message),
       action: SnackBarAction(
-        label: '复制',
+        label: '复制详情',
         onPressed: () {
           Clipboard.setData(ClipboardData(text: details));
         },

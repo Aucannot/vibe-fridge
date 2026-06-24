@@ -42,27 +42,36 @@ abstract class VlmSecretStore {
   Future<void> delete(String key);
 }
 
-class FlutterSecureVlmSecretStore implements VlmSecretStore {
-  FlutterSecureVlmSecretStore({
+class FlutterSecureSecretStore implements VlmSecretStore {
+  FlutterSecureSecretStore({
     FlutterSecureStorage storage = const FlutterSecureStorage(),
   }) : _storage = storage;
 
   final FlutterSecureStorage _storage;
+  static const _macOsOptions = MacOsOptions(
+    useDataProtectionKeyChain: false,
+  );
 
   @override
   Future<String?> read(String key) {
-    return _storage.read(key: key);
+    return _storage.read(key: key, mOptions: _macOsOptions);
   }
 
   @override
   Future<void> write(String key, String value) {
-    return _storage.write(key: key, value: value);
+    return _storage.write(key: key, value: value, mOptions: _macOsOptions);
   }
 
   @override
   Future<void> delete(String key) {
-    return _storage.delete(key: key);
+    return _storage.delete(key: key, mOptions: _macOsOptions);
   }
+}
+
+class FlutterSecureVlmSecretStore extends FlutterSecureSecretStore {
+  FlutterSecureVlmSecretStore({
+    super.storage,
+  });
 }
 
 class VlmSettingsStore {
@@ -116,8 +125,8 @@ class VlmSettingsStore {
   Future<void> clear() async {
     final preferences = await SharedPreferences.getInstance();
     await Future.wait([
-      preferences.remove(_endpointKey),
-      preferences.remove(_modelKey),
+      preferences.setString(_endpointKey, ''),
+      preferences.setString(_modelKey, ''),
       preferences.remove(_legacyApiKeyKey),
       _secretStore.delete(_secureApiKeyKey),
     ]);

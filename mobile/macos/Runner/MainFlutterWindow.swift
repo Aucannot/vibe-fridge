@@ -73,12 +73,11 @@ final class MacLocalNotificationBridge {
     case "requestPermission":
       requestPermission(result: result)
     case "getLaunchItemId":
-      let itemId = UserDefaults.standard.string(forKey: "notification_item_id")
-      UserDefaults.standard.removeObject(forKey: "notification_item_id")
-      result(itemId)
+      result(MacLocalNotificationTapHandler.consumeLaunchItemId())
     case "scheduleInventoryReminders":
-      scheduleInventoryReminders(arguments: call.arguments)
-      result(nil)
+      scheduleInventoryReminders(arguments: call.arguments, result: result)
+    case "sendTestNotification":
+      sendTestNotification(result: result)
     case "cancelAll":
       center.removeAllPendingNotificationRequests()
       result(nil)
@@ -90,13 +89,11 @@ final class MacLocalNotificationBridge {
   private func permissionStatus(result: @escaping FlutterResult) {
     center.getNotificationSettings { settings in
       DispatchQueue.main.async {
-        let granted = settings.authorizationStatus == .authorized ||
-          settings.authorizationStatus == .provisional
-        result([
-          "supported": true,
-          "granted": granted,
-          "status": self.statusText(settings.authorizationStatus)
-        ])
+        result(
+          MacLocalNotificationPermissionFactory
+            .snapshot(for: settings.authorizationStatus)
+            .channelMap
+        )
       }
     }
   }
@@ -115,41 +112,52 @@ final class MacLocalNotificationBridge {
     }
   }
 
-  private func scheduleInventoryReminders(arguments: Any?) {
-    center.removeAllPendingNotificationRequests()
-    guard let payload = arguments as? [String: Any],
-          let notifications = payload["notifications"] as? [[String: Any]]
-    else {
-      return
-    }
-    for row in notifications {
-      guard let itemId = row["itemId"] as? String,
-            let title = row["title"] as? String,
-            let body = row["body"] as? String,
-            let scheduledAtMillis = row["scheduledAtMillis"] as? NSNumber
-      else {
-        continue
+  private func scheduleInventoryReminders(
+    arguments: Any?,
+    result: @escaping FlutterResult
+  ) {
+    let notifications = MacLocalNotificationRequestFactory.requests(
+      from: arguments
+    )
+    MacLocalNotificationScheduler.schedule(
+      notifications,
+      center: center
+    ) { error in
+      if let error {
+        result(
+          FlutterError(
+            code: "schedule_failed",
+            message: error.localizedDescription,
+            details: nil
+          )
+        )
+        return
       }
-      let content = UNMutableNotificationContent()
-      content.title = title
-      content.body = body
-      content.sound = .default
-      content.userInfo = ["itemId": itemId]
+      result(nil)
+    }
+  }
 
-      let scheduledDate = Date(
-        timeIntervalSince1970: scheduledAtMillis.doubleValue / 1000
-      )
-      let interval = max(scheduledDate.timeIntervalSinceNow, 60)
-      let trigger = UNTimeIntervalNotificationTrigger(
-        timeInterval: interval,
-        repeats: false
-      )
-      let request = UNNotificationRequest(
-        identifier: "inventory-\(itemId)",
-        content: content,
-        trigger: trigger
-      )
-      center.add(request)
+  private func sendTestNotification(result: @escaping FlutterResult) {
+    let diagnostic = MacDiagnosticNotificationRequestFactory.request()
+    let request = UNNotificationRequest(
+      identifier: diagnostic.identifier,
+      content: diagnostic.content(),
+      trigger: diagnostic.trigger()
+    )
+    center.add(request) { error in
+      DispatchQueue.main.async {
+        if let error {
+          result(
+            FlutterError(
+              code: "schedule_failed",
+              message: error.localizedDescription,
+              details: nil
+            )
+          )
+          return
+        }
+        result(nil)
+      }
     }
   }
 
@@ -157,23 +165,16 @@ final class MacLocalNotificationBridge {
     guard let itemId = notification.userInfo?["itemId"] as? String else {
       return
     }
-    channel.invokeMethod("notificationTapped", arguments: ["itemId": itemId])
+    let normalizedItemId = itemId.trimmingCharacters(
+      in: .whitespacesAndNewlines
+    )
+    guard !normalizedItemId.isEmpty else {
+      return
+    }
+    channel.invokeMethod(
+      "notificationTapped",
+      arguments: ["itemId": normalizedItemId]
+    )
   }
 
-  private func statusText(
-    _ status: UNAuthorizationStatus
-  ) -> String {
-    switch status {
-    case .authorized:
-      return "granted"
-    case .denied:
-      return "denied"
-    case .notDetermined:
-      return "unknown"
-    case .provisional:
-      return "provisional"
-    @unknown default:
-      return "unknown"
-    }
-  }
 }

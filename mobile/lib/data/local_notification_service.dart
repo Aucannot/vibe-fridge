@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import 'inventory_repository.dart';
@@ -7,20 +8,29 @@ class LocalNotificationService {
     MethodChannel channel = const MethodChannel(
       'vibe_fridge/local_notifications',
     ),
-  }) : _channel = channel;
+    bool? supportsPlatformNotifications,
+  })  : _channel = channel,
+        _supportsPlatformNotifications =
+            supportsPlatformNotifications ?? !kIsWeb;
 
   final MethodChannel _channel;
+  final bool _supportsPlatformNotifications;
   void Function(String itemId)? _onNotificationTap;
 
   void setOnNotificationTap(void Function(String itemId)? handler) {
     _onNotificationTap = handler;
+    if (!_supportsPlatformNotifications) {
+      return;
+    }
     _channel.setMethodCallHandler((call) async {
       if (call.method != 'notificationTapped') {
         return null;
       }
       final arguments = call.arguments;
-      final itemId = arguments is Map ? arguments['itemId'] as String? : null;
-      if (itemId != null && itemId.isNotEmpty) {
+      final itemId = _normalizeItemId(
+        arguments is Map ? arguments['itemId'] : null,
+      );
+      if (itemId != null) {
         _onNotificationTap?.call(itemId);
       }
       return null;
@@ -28,21 +38,64 @@ class LocalNotificationService {
   }
 
   Future<LocalNotificationPermissionSnapshot> initialize() async {
+    if (!_supportsPlatformNotifications) {
+      return LocalNotificationPermissionSnapshot.unsupported;
+    }
     return _permissionCall('initialize');
   }
 
   Future<LocalNotificationPermissionSnapshot> getPermissionStatus() async {
+    if (!_supportsPlatformNotifications) {
+      return LocalNotificationPermissionSnapshot.unsupported;
+    }
     return _permissionCall('getPermissionStatus');
   }
 
   Future<LocalNotificationPermissionSnapshot> requestPermission() async {
+    if (!_supportsPlatformNotifications) {
+      return LocalNotificationPermissionSnapshot.unsupported;
+    }
     return _permissionCall('requestPermission');
   }
 
+  Future<LocalNotificationTestResult> sendTestNotification() async {
+    final permission = await requestPermission();
+    if (!permission.supported || !permission.granted) {
+      return LocalNotificationTestResult(
+        permission: permission,
+        sent: false,
+        skippedReason: permission.supported ? 'permission' : 'unsupported',
+      );
+    }
+
+    try {
+      await _channel.invokeMethod<void>('sendTestNotification');
+      return LocalNotificationTestResult(
+        permission: permission,
+        sent: true,
+      );
+    } on MissingPluginException {
+      return const LocalNotificationTestResult(
+        permission: LocalNotificationPermissionSnapshot.unsupported,
+        sent: false,
+        skippedReason: 'missing_plugin',
+      );
+    } on PlatformException catch (error) {
+      return LocalNotificationTestResult(
+        permission: permission,
+        sent: false,
+        skippedReason: error.code,
+      );
+    }
+  }
+
   Future<String?> getLaunchItemId() async {
+    if (!_supportsPlatformNotifications) {
+      return null;
+    }
     try {
       final itemId = await _channel.invokeMethod<String>('getLaunchItemId');
-      return itemId == null || itemId.isEmpty ? null : itemId;
+      return _normalizeItemId(itemId);
     } on MissingPluginException {
       return null;
     } on PlatformException {
@@ -114,6 +167,14 @@ class LocalNotificationService {
         status: error.code,
       );
     }
+  }
+
+  String? _normalizeItemId(Object? rawItemId) {
+    if (rawItemId is! String) {
+      return null;
+    }
+    final itemId = rawItemId.trim();
+    return itemId.isEmpty ? null : itemId;
   }
 }
 
@@ -200,5 +261,31 @@ class LocalNotificationSyncResult {
       return '当前平台不可用';
     }
     return '同步失败，请稍后重试';
+  }
+}
+
+class LocalNotificationTestResult {
+  const LocalNotificationTestResult({
+    required this.permission,
+    required this.sent,
+    this.skippedReason,
+  });
+
+  final LocalNotificationPermissionSnapshot permission;
+  final bool sent;
+  final String? skippedReason;
+
+  String get displayText {
+    if (sent) {
+      return '已发送测试通知';
+    }
+    final reason = skippedReason;
+    if (reason == 'permission') {
+      return '通知未授权';
+    }
+    if (reason == 'unsupported' || reason == 'missing_plugin') {
+      return '当前平台不可用';
+    }
+    return '测试通知发送失败，请稍后重试';
   }
 }

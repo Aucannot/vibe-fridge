@@ -1,5 +1,6 @@
 package com.vibefridge.vibe_fridge
 
+import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -7,16 +8,23 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 
 class ReminderNotificationReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val itemId = intent.getStringExtra(LocalNotificationContract.extraItemId)
             ?: return
+        if (itemId.isBlank()) {
+            return
+        }
         val title = intent.getStringExtra(LocalNotificationContract.extraTitle)
             ?: "库存提醒"
         val body = intent.getStringExtra(LocalNotificationContract.extraBody)
             ?: "打开 vibe-fridge 查看详情"
+        if (!hasNotificationPermission(context)) {
+            return
+        }
         val notificationManager = context.getSystemService(
             Context.NOTIFICATION_SERVICE
         ) as NotificationManager
@@ -48,10 +56,22 @@ class ReminderNotificationReceiver : BroadcastReceiver() {
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .build()
-        notificationManager.notify(
-            LocalNotificationContract.requestCodeFor(itemId),
-            notification,
-        )
+        try {
+            notificationManager.notify(
+                LocalNotificationContract.requestCodeFor(itemId),
+                notification,
+            )
+        } catch (ignored: SecurityException) {
+            return
+        }
+    }
+
+    private fun hasNotificationPermission(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            return true
+        }
+        return context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
     }
 
     private fun ensureChannel(notificationManager: NotificationManager) {

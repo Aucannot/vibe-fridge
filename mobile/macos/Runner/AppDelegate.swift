@@ -6,7 +6,6 @@ import UserNotifications
 class AppDelegate: FlutterAppDelegate, UNUserNotificationCenterDelegate {
   override func applicationDidFinishLaunching(_ notification: Notification) {
     UNUserNotificationCenter.current().delegate = self
-    super.applicationDidFinishLaunching(notification)
   }
 
   override func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -35,16 +34,17 @@ class AppDelegate: FlutterAppDelegate, UNUserNotificationCenterDelegate {
     didReceive response: UNNotificationResponse,
     withCompletionHandler completionHandler: @escaping () -> Void
   ) {
-    if let itemId = response.notification.request.content.userInfo["itemId"]
-        as? String {
-      UserDefaults.standard.set(itemId, forKey: "notification_item_id")
-      NotificationCenter.default.post(
-        name: .vibeFridgeNotificationTapped,
-        object: nil,
-        userInfo: ["itemId": itemId]
-      )
-    }
+    handleNotificationResponseUserInfo(
+      response.notification.request.content.userInfo
+    )
     completionHandler()
+  }
+
+  @discardableResult
+  func handleNotificationResponseUserInfo(
+    _ userInfo: [AnyHashable: Any]
+  ) -> String? {
+    MacLocalNotificationTapHandler.handleTap(userInfo: userInfo)
   }
 }
 
